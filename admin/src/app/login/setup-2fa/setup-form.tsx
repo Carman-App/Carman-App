@@ -13,15 +13,15 @@ export default function SetupForm({ initial, next }: { initial: SetupState; next
   if (state?.backupCodes) {
     return (
       <div className="mt-6 space-y-4">
-        <div className="rounded border border-amber-900/50 bg-amber-950/30 p-4">
-          <p className="text-sm font-medium text-amber-200">Save these backup codes now</p>
-          <p className="mt-1 text-xs text-amber-200/70">
+        <div className="rounded border border-amber-200 bg-amber-100 p-4">
+          <p className="text-sm font-medium text-amber-800">Save these backup codes now</p>
+          <p className="mt-1 text-xs text-amber-800/70">
             Each one signs you in once if you lose access to your authenticator. They will not be
             shown again.
           </p>
-          <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm text-neutral-100">
+          <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm text-neutral-900">
             {state.backupCodes.map((code) => (
-              <li key={code} className="rounded bg-neutral-950 px-2 py-1 text-center">
+              <li key={code} className="rounded bg-white px-2 py-1 text-center">
                 {code}
               </li>
             ))}
@@ -31,7 +31,7 @@ export default function SetupForm({ initial, next }: { initial: SetupState; next
           <input type="hidden" name="next" value={next} />
           <button
             type="submit"
-            className="w-full rounded bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-white"
+            className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 transition hover:bg-neutral-800"
           >
             I&apos;ve saved my backup codes — continue
           </button>
@@ -43,21 +43,21 @@ export default function SetupForm({ initial, next }: { initial: SetupState; next
   return (
     <div className="mt-6 space-y-4">
       {state?.qrDataUrl && (
-        <div className="flex justify-center rounded bg-white p-3">
+        <div className="flex justify-center rounded bg-neutral-900 p-3">
           {/* Data URI from the server — next/image's optimizer doesn't apply here. */}
           <Image src={state.qrDataUrl} alt="Two-factor setup QR code" width={200} height={200} unoptimized />
         </div>
       )}
       {state?.secret && (
-        <div className="rounded border border-neutral-800 bg-neutral-950 p-3 text-center">
+        <div className="rounded border border-neutral-200 bg-white p-3 text-center">
           <p className="text-xs text-neutral-500">Can&apos;t scan? Enter this manually:</p>
-          <p className="mt-1 break-all font-mono text-sm text-neutral-200">{state.secret}</p>
+          <p className="mt-1 break-all font-mono text-sm text-neutral-800">{state.secret}</p>
         </div>
       )}
       <form action={action} className="space-y-4">
         <input type="hidden" name="next" value={next} />
         <div>
-          <label htmlFor="code" className="block text-sm text-neutral-300">
+          <label htmlFor="code" className="block text-sm text-neutral-700">
             6-digit code
           </label>
           <input
@@ -69,18 +69,18 @@ export default function SetupForm({ initial, next }: { initial: SetupState; next
             autoFocus
             required
             placeholder="123456"
-            className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm tracking-widest text-neutral-100 outline-none focus:border-neutral-500"
+            className="mt-1 w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm tracking-widest text-neutral-900 outline-none focus:border-neutral-500"
           />
         </div>
         {state?.error && (
-          <p className="text-sm text-red-400" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {state.error}
           </p>
         )}
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-white disabled:opacity-60"
+          className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 transition hover:bg-neutral-800 disabled:opacity-60"
         >
           {pending ? "Confirming…" : "Confirm and enable"}
         </button>

@@ -56,6 +56,57 @@ export const AUDIT_LOG_ROLES: AdminRole[] = [AdminRole.OWNER];
 
 /** Billing & Plans — FINANCE's actual domain ("subscriptions, payments... for the accountant"); SUPPORT/READ have no reason to be here. */
 export const BILLING_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.FINANCE];
+/** MON-07 refund/credit is squarely inside FINANCE's "refunds" Can-list — same roles as Billing, distinguished only by the two-person approval above a threshold (see src/lib/approvals.ts). */
+export const MONEY_REFUND_ROLES: AdminRole[] = BILLING_ROLES;
+
+// --- Phase Two policy (see AGENTS.md "Phase TWO · RUN") --------------------
+// Garages/Vehicles and Workshops/Work read surfaces name individual
+// accounts/vehicles/workshops, so they follow ACCOUNTS_ROLES exactly like
+// the existing Phase One garages/vehicles/workshops/jobs pages already do.
+
+export const GARAGE_ROLES: AdminRole[] = ACCOUNTS_ROLES;
+/** GAR-07 garage ownership handover — irreversible-adjacent, two-person approved, OWNER-only to request or approve. */
+export const GARAGE_TRANSFER_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+export const WORK_ROLES: AdminRole[] = ACCOUNTS_ROLES;
+/** WORK-02/03 grant/revoke a workshop's verified mark — reputational and platform-facing, OWNER-only. */
+export const WORKSHOP_VERIFICATION_ROLES: AdminRole[] = [AdminRole.OWNER];
+/** WORK-08 call/message log entries are routine ops notes, same roster as the rest of Accounts/Work. */
+export const WORK_CONTACT_LOG_ROLES: AdminRole[] = ACCOUNTS_ROLES;
+
+/** SUP-01..08 ticket queue — SUPPORT's named domain ("reply, escalate"), plus OWNER oversight. */
+export const SUPPORT_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+/** SUP-03 "view as user" consent-session scaffolding — logged/no-op today either way, same roster as the rest of Support. */
+export const CONSENT_SESSION_ROLES: AdminRole[] = SUPPORT_ROLES;
+
+/** TRUST-01/02 read queues — SUPPORT's "escalate" duty, plus OWNER. */
+export const TRUST_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+/** TRUST-03/05/06 — capability restriction, image takedown, and regulator disclosure approval are all suspend-shaped (irreversible-adjacent, reputational, or legal) — OWNER-only, mirroring ACCOUNT_DANGEROUS_ACTION_ROLES. */
+export const TRUST_DANGEROUS_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+/** COMM-01..06 — building/editing campaigns, templates, and banners is SUPPORT+OWNER operational work. */
+export const MESSAGING_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+/** COMM-01 taking a campaign live (after its required test send) reaches every recipient in a segment — OWNER-only, test/draft/build stays MESSAGING_ROLES. */
+export const MESSAGING_SEND_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+// --- Phase Three policy (see AGENTS.md "Phase THREE · STEER") --------------
+
+/** GROW-01..08 — growth analytics names individual accounts (GROW-08's shortlist), so it follows ACCOUNTS_ROLES like Garages/Work do. */
+export const GROWTH_ROLES: AdminRole[] = ACCOUNTS_ROLES;
+
+/** DATA-01..06 — records/data-quality surfaces per-account storage and sync-error detail, same roster as Accounts/Records. */
+export const DATA_QUALITY_ROLES: AdminRole[] = ACCOUNTS_ROLES;
+
+/** CFG-01..08 — authoring/drafting config is OWNER+SUPPORT operational work, mirroring MESSAGING_ROLES. */
+export const CONFIG_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+/** CFG-06 taking a draft live changes what every account's app would eventually read — OWNER-only, mirroring MESSAGING_SEND_ROLES. */
+export const CONFIG_PUBLISH_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+/** OPS-01..07 — introspective platform/ops visibility (errors, deploys, backups, costs), not customer data — OWNER-only, grouped with the rest of Admin. */
+export const SYSTEM_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+/** PRIV-01..05 — data export, deletion policy, consent, and retention config are compliance-grade and irreversible-adjacent — OWNER-only, mirroring ACCOUNT_DANGEROUS_ACTION_ROLES/TRUST_DANGEROUS_ROLES. PRIV-05's masking/reveal is applied inside Money's existing billing pages and stays gated by BILLING_ROLES there, not this constant. */
+export const PRIVACY_ROLES: AdminRole[] = [AdminRole.OWNER];
 
 export function canAccessAccounts(role: AdminRole): boolean {
   return ACCOUNTS_ROLES.includes(role);

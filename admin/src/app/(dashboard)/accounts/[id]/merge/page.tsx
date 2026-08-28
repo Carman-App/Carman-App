@@ -22,10 +22,10 @@ export default async function MergeAccountPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href={`/accounts/${primaryId}`} className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href={`/accounts/${primaryId}`} className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Account
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-neutral-100">Merge into this account</h1>
+        <h1 className="mt-1 text-lg font-semibold text-neutral-900">Merge into this account</h1>
         <p className="text-sm text-neutral-500">
           ACCT-08: this account ({primaryId}) is the PRIMARY that survives. Enter the id of the
           SECONDARY (losing) account below to preview what would move — nothing is written until you
@@ -33,33 +33,33 @@ export default async function MergeAccountPage({
         </p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-800 p-4">
+      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4">
         <div className="flex-1 min-w-64">
           <label className="block text-xs text-neutral-500">Secondary (losing) account id</label>
           <input
             name="with"
             defaultValue={secondaryId}
             placeholder="cuid of the account to merge in"
-            className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800"
         >
           Preview
         </button>
       </form>
 
       {preview && preview.error && (
-        <p className="rounded border border-red-900/50 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+        <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {preview.error}
         </p>
       )}
 
       {preview && !preview.error && preview.primary && preview.secondary && (
         <div className="space-y-4">
-          <div className="rounded border border-neutral-800 p-4 text-sm text-neutral-300">
+          <div className="rounded border border-neutral-200 p-4 text-sm text-neutral-700">
             <p>
               <span className="text-neutral-500">Primary (keeps this id, survives):</span>{" "}
               {preview.primary.name} · {preview.primary.email} · {preview.primary.id}
@@ -131,12 +131,12 @@ function PreviewCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded border border-neutral-800 p-3">
+    <div className="rounded border border-neutral-200 p-3">
       <p className="text-xs text-neutral-500">
         {title} ({count})
       </p>
-      <ul className="mt-1 max-h-24 space-y-0.5 overflow-y-auto text-sm text-neutral-300">
-        {count === 0 ? <li className="text-neutral-600">None</li> : children}
+      <ul className="mt-1 max-h-24 space-y-0.5 overflow-y-auto text-sm text-neutral-700">
+        {count === 0 ? <li className="text-neutral-500">None</li> : children}
       </ul>
     </div>
   );

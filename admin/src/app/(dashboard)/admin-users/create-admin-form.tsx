@@ -15,25 +15,25 @@ export default function CreateAdminForm() {
   return (
     <form
       action={action}
-      className="grid grid-cols-1 gap-3 rounded border border-neutral-800 p-4 sm:grid-cols-5"
+      className="grid grid-cols-1 gap-3 rounded border border-neutral-200 p-4 sm:grid-cols-5"
     >
       <input
         name="name"
         placeholder="Name"
         required
-        className="rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
       />
       <input
         name="email"
         type="email"
         placeholder="Email"
         required
-        className="rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
       />
       <select
         name="role"
         defaultValue={AdminRole.SUPPORT}
-        className="rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
       >
         {ROLES.map((r) => (
           <option key={r} value={r}>
@@ -47,22 +47,22 @@ export default function CreateAdminForm() {
         placeholder="Temporary password (8+ chars)"
         required
         minLength={8}
-        className="rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        className="rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
       />
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-60"
+        className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create admin"}
       </button>
       {state?.error && (
-        <p className="col-span-full text-sm text-red-400" role="alert">
+        <p className="col-span-full text-sm text-red-600" role="alert">
           {state.error}
         </p>
       )}
       {state?.ok && (
-        <p className="col-span-full text-sm text-emerald-400">
+        <p className="col-span-full text-sm text-emerald-600">
           Admin created. They&rsquo;ll set up two-factor on first sign-in.
         </p>
       )}

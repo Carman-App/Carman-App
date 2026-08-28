@@ -53,7 +53,7 @@ export default async function AuditPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-100">Audit log</h1>
+        <h1 className="text-lg font-semibold text-neutral-900">Audit log</h1>
         <p className="text-sm text-neutral-500">
           Every admin write, append-only (AUD-01) — actor, action, target, before/after, reason,
           IP, timestamp. Not editable by anyone, including Owner; enforced both in code (no
@@ -61,13 +61,13 @@ export default async function AuditPage({
         </p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-800 p-4">
+      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4">
         <div>
           <label className="block text-xs text-neutral-500">Actor (admin) id</label>
           <input
             name="actorId"
             defaultValue={sp.actorId}
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <div>
@@ -75,7 +75,7 @@ export default async function AuditPage({
           <input
             name="targetAccountId"
             defaultValue={sp.targetAccountId}
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <div>
@@ -84,7 +84,7 @@ export default async function AuditPage({
             name="action"
             defaultValue={sp.action}
             placeholder="e.g. account.suspend"
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <div>
@@ -93,7 +93,7 @@ export default async function AuditPage({
             type="date"
             name="from"
             defaultValue={sp.from}
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <div>
@@ -102,26 +102,26 @@ export default async function AuditPage({
             type="date"
             name="to"
             defaultValue={sp.to}
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800"
         >
           Filter
         </button>
         <Link
           href={`/api/admin/audit/export${exportQs ? `?${exportQs}` : ""}`}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500"
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:border-neutral-500"
         >
           Export CSV
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded border border-neutral-800">
+      <div className="overflow-x-auto rounded border border-neutral-200">
         <table className="w-full min-w-max text-left text-sm">
-          <thead className="bg-neutral-900 text-neutral-400">
+          <thead className="bg-neutral-50 text-neutral-600">
             <tr>
               <th className="whitespace-nowrap px-4 py-2 font-medium">When</th>
               <th className="whitespace-nowrap px-4 py-2 font-medium">Actor</th>
@@ -132,7 +132,7 @@ export default async function AuditPage({
               <th className="whitespace-nowrap px-4 py-2 font-medium">IP</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800">
+          <tbody className="divide-y divide-neutral-200">
             {entries.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
@@ -141,7 +141,7 @@ export default async function AuditPage({
               </tr>
             )}
             {entries.map((e) => (
-              <tr key={e.id} className="hover:bg-neutral-900/60">
+              <tr key={e.id} className="hover:bg-neutral-100">
                 <td className="whitespace-nowrap px-4 py-2">{formatDateTime(e.createdAt)}</td>
                 <td className="whitespace-nowrap px-4 py-2">
                   <Badge value={e.actorType} /> {e.actorId ?? "—"}

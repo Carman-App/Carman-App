@@ -47,24 +47,24 @@ function formatMetricValue(key: PulseMetricKey, value: number | null): string {
 }
 
 function DirectionArrow({ direction }: { direction: MetricSnapshot["direction"] }) {
-  if (direction === "up") return <span className="text-emerald-400">▲</span>;
-  if (direction === "down") return <span className="text-red-400">▼</span>;
+  if (direction === "up") return <span className="text-emerald-600">▲</span>;
+  if (direction === "down") return <span className="text-red-600">▼</span>;
   if (direction === "flat") return <span className="text-neutral-500">▬</span>;
-  return <span className="text-neutral-600">?</span>;
+  return <span className="text-neutral-500">?</span>;
 }
 
 function MetricCard({ snapshot, href }: { snapshot: MetricSnapshot; href?: string }) {
   const body = (
-    <div className="rounded border border-neutral-800 bg-neutral-900/40 p-4 transition hover:border-neutral-700">
+    <div className="rounded border border-neutral-200 bg-neutral-50 p-4 transition hover:border-neutral-300">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{snapshot.label}</p>
         <DirectionArrow direction={snapshot.direction} />
       </div>
-      <p className="mt-1 text-2xl font-semibold text-neutral-50">
+      <p className="mt-1 text-2xl font-semibold text-neutral-900">
         {formatMetricValue(snapshot.key, snapshot.today)}
       </p>
       {snapshot.untrackedReason ? (
-        <p className="mt-2 text-xs text-neutral-600">{snapshot.untrackedReason}</p>
+        <p className="mt-2 text-xs text-neutral-500">{snapshot.untrackedReason}</p>
       ) : (
         <div className="mt-2 space-y-0.5 text-xs text-neutral-500">
           <p>
@@ -108,7 +108,7 @@ export default async function PulsePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-100">Pulse</h1>
+        <h1 className="text-lg font-semibold text-neutral-900">Pulse</h1>
         <p className="text-sm text-neutral-500">
           {accountTotal.toLocaleString()} accounts total. All &ldquo;today&rdquo;/&ldquo;yesterday&rdquo;/weekly
           figures on this page use a fixed reference timezone: <strong>{PULSE_TIMEZONE_LABEL}</strong> — not
@@ -119,9 +119,9 @@ export default async function PulsePage() {
 
       {/* PULSE-02: alert strip, above the numbers. */}
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-neutral-400">Alerts</h2>
+        <h2 className="text-sm font-medium text-neutral-600">Alerts</h2>
         {realAlerts.length === 0 ? (
-          <p className="rounded border border-dashed border-neutral-800 px-4 py-3 text-sm text-neutral-500">
+          <p className="rounded border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-500">
             Nothing outside its normal band right now.
           </p>
         ) : (
@@ -129,29 +129,29 @@ export default async function PulsePage() {
             {realAlerts.map((a) => (
               <li
                 key={a.id}
-                className="rounded border border-amber-900/50 bg-amber-950/20 px-4 py-2 text-sm"
+                className="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm"
               >
                 {a.href ? (
-                  <Link href={a.href} className="font-medium text-amber-200 hover:underline">
+                  <Link href={a.href} className="font-medium text-amber-800 hover:underline">
                     {a.title}
                   </Link>
                 ) : (
-                  <span className="font-medium text-amber-200">{a.title}</span>
+                  <span className="font-medium text-amber-800">{a.title}</span>
                 )}
-                <p className="text-xs text-amber-200/70">{a.description}</p>
+                <p className="text-xs text-amber-800/70">{a.description}</p>
               </li>
             ))}
           </ul>
         )}
-        <details className="rounded border border-neutral-800 px-4 py-2 text-sm text-neutral-500">
-          <summary className="cursor-pointer text-neutral-400">
+        <details className="rounded border border-neutral-200 px-4 py-2 text-sm text-neutral-500">
+          <summary className="cursor-pointer text-neutral-600">
             {notWiredAlerts.length} alert type(s) not wired up yet
           </summary>
           <ul className="mt-2 space-y-2">
             {notWiredAlerts.map((a) => (
               <li key={a.id}>
-                <span className="font-medium text-neutral-300">{a.title}</span>
-                <p className="text-xs text-neutral-600">{a.description}</p>
+                <span className="font-medium text-neutral-700">{a.title}</span>
+                <p className="text-xs text-neutral-500">{a.description}</p>
               </li>
             ))}
           </ul>
@@ -161,20 +161,20 @@ export default async function PulsePage() {
       {/* PULSE-01/04/05/06: headline numbers, pinned-first. */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-400">Pinned</h2>
+          <h2 className="text-sm font-medium text-neutral-600">Pinned</h2>
           <details className="text-xs text-neutral-500">
-            <summary className="cursor-pointer hover:text-neutral-300">Customize pinned metrics</summary>
-            <form action={savePinnedMetrics} className="mt-2 space-y-1 rounded border border-neutral-800 p-3">
+            <summary className="cursor-pointer hover:text-neutral-700">Customize pinned metrics</summary>
+            <form action={savePinnedMetrics} className="mt-2 space-y-1 rounded border border-neutral-200 p-3">
               <p className="text-neutral-500">Pick up to 5 to pin to the top (saved to your admin account):</p>
               {PULSE_METRIC_KEYS.map((key) => (
-                <label key={key} className="flex items-center gap-2 text-neutral-300">
+                <label key={key} className="flex items-center gap-2 text-neutral-700">
                   <input type="checkbox" name="metric" value={key} defaultChecked={pinnedKeys.includes(key)} />
                   {snapshots[key].label}
                 </label>
               ))}
               <button
                 type="submit"
-                className="mt-2 rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-white"
+                className="mt-2 rounded bg-neutral-900 px-3 py-1 text-xs font-medium text-neutral-100 hover:bg-neutral-800"
               >
                 Save
               </button>
@@ -190,7 +190,7 @@ export default async function PulsePage() {
 
       {restKeys.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-neutral-400">More metrics</h2>
+          <h2 className="text-sm font-medium text-neutral-600">More metrics</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {restKeys.map((key) => (
               <MetricCard key={key} snapshot={snapshots[key]} href={linkForMetric(key, admin.role)} />
@@ -201,20 +201,20 @@ export default async function PulsePage() {
 
       {/* PULSE-03: live feed, newest first — type + account only. */}
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-neutral-400">Live feed</h2>
+        <h2 className="text-sm font-medium text-neutral-600">Live feed</h2>
         {feed === null ? (
-          <p className="rounded border border-dashed border-neutral-800 px-4 py-3 text-sm text-neutral-500">
+          <p className="rounded border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-500">
             Your role (Read-only) sees aggregate numbers only — the live feed names accounts, so
             it isn&rsquo;t shown here.
           </p>
         ) : feed.length === 0 ? (
-          <p className="rounded border border-dashed border-neutral-800 px-4 py-3 text-sm text-neutral-500">
+          <p className="rounded border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-500">
             No activity yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded border border-neutral-800">
+          <div className="overflow-x-auto rounded border border-neutral-200">
             <table className="w-full min-w-max text-left text-sm">
-              <thead className="bg-neutral-900 text-neutral-400">
+              <thead className="bg-neutral-50 text-neutral-600">
                 <tr>
                   <th className="whitespace-nowrap px-4 py-2 font-medium">When</th>
                   <th className="whitespace-nowrap px-4 py-2 font-medium">Type</th>
@@ -222,9 +222,9 @@ export default async function PulsePage() {
                   <th className="whitespace-nowrap px-4 py-2 font-medium">Detail</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800">
+              <tbody className="divide-y divide-neutral-200">
                 {feed.map((item) => (
-                  <tr key={item.id} className="hover:bg-neutral-900/60">
+                  <tr key={item.id} className="hover:bg-neutral-100">
                     <td className="whitespace-nowrap px-4 py-2">{formatDateTime(item.at)}</td>
                     <td className="whitespace-nowrap px-4 py-2">{feedEventLabel(item.type)}</td>
                     <td className="whitespace-nowrap px-4 py-2">
@@ -236,7 +236,7 @@ export default async function PulsePage() {
                         item.accountName
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2 text-neutral-400">{item.detail}</td>
+                    <td className="whitespace-nowrap px-4 py-2 text-neutral-600">{item.detail}</td>
                   </tr>
                 ))}
               </tbody>

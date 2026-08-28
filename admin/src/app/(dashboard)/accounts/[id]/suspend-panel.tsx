@@ -34,7 +34,7 @@ function SuspendForm({ accountId }: { accountId: string }) {
       <button
         type="button"
         onClick={() => setStep(1)}
-        className="rounded border border-red-800 px-3 py-1.5 text-sm text-red-300 hover:border-red-600"
+        className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:border-red-400"
       >
         Suspend this account
       </button>
@@ -42,7 +42,7 @@ function SuspendForm({ accountId }: { accountId: string }) {
   }
 
   return (
-    <form action={formAction} className="space-y-3 rounded border border-red-900/50 bg-red-950/10 p-4">
+    <form action={formAction} className="space-y-3 rounded border border-red-200 bg-red-50 p-4">
       <input type="hidden" name="accountId" value={accountId} />
       <div>
         <label className="block text-xs text-neutral-500">Reason (required)</label>
@@ -50,7 +50,7 @@ function SuspendForm({ accountId }: { accountId: string }) {
           name="suspendReason"
           required
           defaultValue=""
-          className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
         >
           <option value="" disabled>
             Pick a reason…
@@ -68,11 +68,11 @@ function SuspendForm({ accountId }: { accountId: string }) {
           name="note"
           required
           rows={2}
-          className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           placeholder="Details for the record"
         />
       </div>
-      <p className="rounded border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-400">
+      <p className="rounded border border-neutral-200 bg-neutral-100 px-3 py-2 text-xs text-neutral-600">
         They keep their data. They lose: signing in to the app, creating new records, and receiving
         notifications. They keep: existing garages/vehicles/history, which stay visible read-only.
         (Actual sign-in enforcement belongs wherever end-user auth eventually lands — no login system
@@ -89,12 +89,12 @@ function SuspendForm({ accountId }: { accountId: string }) {
         <button
           type="button"
           onClick={() => setStep(0)}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-400 hover:border-neutral-500"
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-500"
         >
           Cancel
         </button>
       </div>
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
   );
 }
@@ -114,8 +114,8 @@ function UnsuspendForm({
   const [state, formAction, pending] = useActionState<ActionState, FormData>(unsuspendAccount, undefined);
 
   return (
-    <div className="space-y-3 rounded border border-amber-900/50 bg-amber-950/10 p-4">
-      <p className="text-sm text-amber-200">
+    <div className="space-y-3 rounded border border-amber-200 bg-amber-50 p-4">
+      <p className="text-sm text-amber-800">
         Suspended {formatDateTime(suspension.suspendedAt)} — {titleCase(suspension.suspendedReason)}
         {suspension.suspendedNote ? `: ${suspension.suspendedNote}` : ""}
       </p>
@@ -126,16 +126,16 @@ function UnsuspendForm({
           name="reason"
           required
           rows={2}
-          className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+          className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
         />
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-60"
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-60"
         >
           {pending ? "Unsuspending…" : "Unsuspend"}
         </button>
-        {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       </form>
     </div>
   );

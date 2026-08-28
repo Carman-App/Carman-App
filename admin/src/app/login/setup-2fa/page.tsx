@@ -20,10 +20,10 @@ export default async function SetupTwoFactorPage({
   const initial = await startTwoFactorSetup();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-10">
-      <div className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-900 p-8 shadow-xl">
-        <h1 className="text-xl font-semibold text-neutral-100">Set up two-factor authentication</h1>
-        <p className="mt-1 text-sm text-neutral-400">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
+      <div className="w-full max-w-md rounded-lg border border-neutral-200 bg-neutral-50 p-8 shadow-xl">
+        <h1 className="text-xl font-semibold text-neutral-900">Set up two-factor authentication</h1>
+        <p className="mt-1 text-sm text-neutral-600">
           Required for every admin account before you can sign in ({admin.email}). Scan the QR
           code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then
           enter the 6-digit code it shows.

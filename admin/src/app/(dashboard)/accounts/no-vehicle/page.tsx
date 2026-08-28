@@ -44,10 +44,10 @@ export default async function NoVehicleAccountsPage({
   return (
     <div className="space-y-4">
       <div>
-        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Accounts
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-neutral-100">Signed up, no vehicle</h1>
+        <h1 className="mt-1 text-lg font-semibold text-neutral-900">Signed up, no vehicle</h1>
         <p className="text-sm text-neutral-500">
           ACCT-04: accounts that own no garage with a vehicle in it, and hold no vehicle-level
           membership either. Mark a row &ldquo;chased&rdquo; once followed up so nobody chases the
@@ -55,7 +55,7 @@ export default async function NoVehicleAccountsPage({
         </p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-800 p-4">
+      <form className="flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4">
         <div>
           <label className="block text-xs text-neutral-500">Signed up at least (days ago)</label>
           <input
@@ -64,7 +64,7 @@ export default async function NoVehicleAccountsPage({
             name="minAgeDays"
             defaultValue={sp.minAgeDays}
             placeholder="e.g. 7"
-            className="mt-1 w-32 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 w-32 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           />
         </div>
         <div>
@@ -72,7 +72,7 @@ export default async function NoVehicleAccountsPage({
           <select
             name="region"
             defaultValue={sp.region ?? ""}
-            className="mt-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+            className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
           >
             <option value="">Any</option>
             {Object.values(Region).map((r) => (
@@ -82,27 +82,27 @@ export default async function NoVehicleAccountsPage({
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 pb-1 text-sm text-neutral-300">
+        <label className="flex items-center gap-2 pb-1 text-sm text-neutral-700">
           <input type="checkbox" name="includeChased" value="1" defaultChecked={includeChased} />
           Include already-chased
         </label>
         <button
           type="submit"
-          className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800"
         >
           Filter
         </button>
         <Link
           href={`/api/admin/accounts/no-vehicle-export${exportQs ? `?${exportQs}` : ""}`}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500"
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:border-neutral-500"
         >
           Export CSV
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded border border-neutral-800">
+      <div className="overflow-x-auto rounded border border-neutral-200">
         <table className="w-full min-w-max text-left text-sm">
-          <thead className="bg-neutral-900 text-neutral-400">
+          <thead className="bg-neutral-50 text-neutral-600">
             <tr>
               <th className="whitespace-nowrap px-4 py-2 font-medium">Name</th>
               <th className="whitespace-nowrap px-4 py-2 font-medium">Email</th>
@@ -112,7 +112,7 @@ export default async function NoVehicleAccountsPage({
               <th className="whitespace-nowrap px-4 py-2 font-medium"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800">
+          <tbody className="divide-y divide-neutral-200">
             {accounts.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
@@ -121,7 +121,7 @@ export default async function NoVehicleAccountsPage({
               </tr>
             )}
             {accounts.map((a) => (
-              <tr key={a.id} className={a.chasedNoVehicleAt ? "opacity-50" : "hover:bg-neutral-900/60"}>
+              <tr key={a.id} className={a.chasedNoVehicleAt ? "opacity-50" : "hover:bg-neutral-100"}>
                 <td className="whitespace-nowrap px-4 py-2">
                   <Link href={`/accounts/${a.id}`} className="hover:underline">
                     {a.user.name}
@@ -132,7 +132,7 @@ export default async function NoVehicleAccountsPage({
                 <td className="whitespace-nowrap px-4 py-2">{formatDate(a.createdAt)}</td>
                 <td className="whitespace-nowrap px-4 py-2">
                   {a.chasedNoVehicleAt ? (
-                    <span className="text-neutral-400" title={formatDateTime(a.chasedNoVehicleAt)}>
+                    <span className="text-neutral-600" title={formatDateTime(a.chasedNoVehicleAt)}>
                       Chased {formatDate(a.chasedNoVehicleAt)}
                     </span>
                   ) : (
@@ -143,7 +143,7 @@ export default async function NoVehicleAccountsPage({
                   {!a.chasedNoVehicleAt && canRunAccountQuickAction(session.role) && (
                     <form action={markChasedNoVehicle}>
                       <input type="hidden" name="accountId" value={a.id} />
-                      <button type="submit" className="text-xs text-neutral-300 hover:underline">
+                      <button type="submit" className="text-xs text-neutral-700 hover:underline">
                         Mark chased
                       </button>
                     </form>

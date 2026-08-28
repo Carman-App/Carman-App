@@ -21,16 +21,16 @@ export function DetailView({
   fields: DetailField[];
 }) {
   return (
-    <div className="rounded border border-neutral-800">
-      <div className="border-b border-neutral-800 px-4 py-3">
-        <h2 className="text-base font-semibold text-neutral-100">{title}</h2>
+    <div className="rounded border border-neutral-200">
+      <div className="border-b border-neutral-200 px-4 py-3">
+        <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
         {subtitle && <p className="text-sm text-neutral-500">{subtitle}</p>}
       </div>
-      <dl className="divide-y divide-neutral-800">
+      <dl className="divide-y divide-neutral-200">
         {fields.map((field) => (
           <div key={field.label} className="grid grid-cols-3 gap-4 px-4 py-3 text-sm">
             <dt className="text-neutral-500">{field.label}</dt>
-            <dd className="col-span-2 text-neutral-200">{field.value ?? "—"}</dd>
+            <dd className="col-span-2 text-neutral-800">{field.value ?? "—"}</dd>
           </div>
         ))}
       </dl>
@@ -41,7 +41,7 @@ export function DetailView({
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-medium text-neutral-400">{title}</h3>
+      <h3 className="text-sm font-medium text-neutral-600">{title}</h3>
       {children}
     </section>
   );

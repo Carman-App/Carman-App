@@ -56,6 +56,11 @@ async function updateRecord(
   input: ReturnType<typeof updateRecordSchema.parse>,
 ) {
   const date = input.date ? new Date(input.date) : undefined;
+  // DATA-02 — every real PATCH stamps editedAt, the one genuine "this record
+  // was edited after creation" signal (see schema.prisma FuelRecord.editedAt
+  // comment). Distinct from createdAt/date so entered-late vs. edited-later
+  // can be told apart.
+  const editedAt = new Date();
   switch (type) {
     case "fuel":
       return prisma.fuelRecord.update({
@@ -67,6 +72,7 @@ async function updateRecord(
           odometerAtEntry: input.odometerAtEntry,
           place: input.place,
           notes: input.notes,
+          editedAt,
         },
       });
     case "service":
@@ -79,6 +85,7 @@ async function updateRecord(
           description: input.description,
           place: input.place,
           notes: input.notes,
+          editedAt,
         },
       });
     case "repair":
@@ -91,6 +98,7 @@ async function updateRecord(
           description: input.description,
           place: input.place,
           notes: input.notes,
+          editedAt,
         },
       });
     case "expense":
@@ -103,6 +111,7 @@ async function updateRecord(
           category: input.category as ExpenseCategory | undefined,
           place: input.place,
           notes: input.notes,
+          editedAt,
         },
       });
     case "odometer":
@@ -112,6 +121,7 @@ async function updateRecord(
           date,
           odometerKm: input.odometerKm,
           notes: input.notes,
+          editedAt,
         },
       });
   }

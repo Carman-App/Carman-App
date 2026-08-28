@@ -13,7 +13,7 @@ export default async function RecordsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-100">Records</h1>
+        <h1 className="text-lg font-semibold text-neutral-900">Records</h1>
         <p className="text-sm text-neutral-500">
           Fuel, service, repair, expense, and odometer entries across every vehicle, newest first.
         </p>

@@ -24,10 +24,10 @@ type SearchResult = {
 };
 
 const KIND_COLORS: Record<ResultKind, string> = {
-  Account: "border-sky-800 bg-sky-950/40 text-sky-300",
-  Garage: "border-amber-800 bg-amber-950/40 text-amber-300",
-  Vehicle: "border-violet-800 bg-violet-950/40 text-violet-300",
-  Invoice: "border-emerald-800 bg-emerald-950/40 text-emerald-300",
+  Account: "border-sky-200 bg-sky-100 text-sky-700",
+  Garage: "border-amber-200 bg-amber-100 text-amber-700",
+  Vehicle: "border-violet-200 bg-violet-100 text-violet-700",
+  Invoice: "border-emerald-200 bg-emerald-100 text-emerald-700",
 };
 
 function KindLabel({ kind }: { kind: ResultKind }) {
@@ -145,7 +145,7 @@ export default async function AccountsPage({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-neutral-100">Accounts</h1>
+          <h1 className="text-lg font-semibold text-neutral-900">Accounts</h1>
           <p className="text-sm text-neutral-500">
             Universal search — account name/email/id, garage name, vehicle plate, or invoice id.
             Every result links to the owning account.
@@ -153,7 +153,7 @@ export default async function AccountsPage({
         </div>
         <Link
           href="/accounts/no-vehicle"
-          className="whitespace-nowrap rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500"
+          className="whitespace-nowrap rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:border-neutral-500"
         >
           Signed up, no vehicle →
         </Link>
@@ -165,9 +165,9 @@ export default async function AccountsPage({
           name="q"
           defaultValue={query}
           placeholder="Search by name, email, account id, garage name, plate, or invoice id…"
-          className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
         />
-        <p className="text-xs text-neutral-600">
+        <p className="text-xs text-neutral-500">
           Invoices don&rsquo;t have a human-readable number yet, only an internal id — search
           matches that id. Phone isn&rsquo;t tracked in this product yet — search can&rsquo;t match
           it.

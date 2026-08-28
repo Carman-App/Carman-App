@@ -10,15 +10,25 @@ const ACCOUNTS_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
 const BILLING_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.FINANCE];
 const ADMIN_MANAGEMENT_ROLES: AdminRole[] = [AdminRole.OWNER];
 const AUDIT_LOG_ROLES: AdminRole[] = [AdminRole.OWNER];
+const SUPPORT_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const TRUST_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const MESSAGING_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const GROWTH_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const DATA_QUALITY_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const CONFIG_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.SUPPORT];
+const SYSTEM_ROLES: AdminRole[] = [AdminRole.OWNER];
+const PRIVACY_ROLES: AdminRole[] = [AdminRole.OWNER];
 
 export type NavItem = { href: string; label: string; roles: AdminRole[] };
 export type NavSection = { label: string; items: NavItem[] };
 
-// Phase Two/Three surfaces (Money, Workshops verification, Work, Support
-// queue, Trust, Growth, Config, Messaging, System, Privacy) are out of
-// scope for this pass; the pre-existing read-only list/detail pages below
-// are left in place but labelled as a preview, not rebuilt to the fuller
-// Phase Two spec.
+// Phase Two ("Phase TWO · RUN" in AGENTS.md) routes registered up front by
+// the lead agent so the parallel sub-agents building Garages+Vehicles,
+// Workshops+Work, Money, Support+Trust, and Messaging never need to touch
+// this shared file (avoids concurrent-edit conflicts). Each surface's
+// sub-navigation (tabs, secondary links) lives inside its own landing page,
+// not spelled out here. Phase Three (Growth, Records/data quality, Config,
+// System, Privacy) routes are registered the same way, up front, below.
 export const NAV_SECTIONS: NavSection[] = [
   { label: "", items: [{ href: "/", label: "Pulse", roles: ALL_ROLES }] },
   {
@@ -26,7 +36,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [{ href: "/accounts", label: "Owners & Mechanics", roles: ACCOUNTS_ROLES }],
   },
   {
-    label: "Owner side (read-only preview)",
+    label: "Garages & Vehicles",
     items: [
       { href: "/garages", label: "Garages", roles: ACCOUNTS_ROLES },
       { href: "/vehicles", label: "Vehicles", roles: ACCOUNTS_ROLES },
@@ -35,15 +45,48 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Workshop side (read-only preview)",
+    label: "Workshops & Work",
     items: [
       { href: "/workshops", label: "Workshops", roles: ACCOUNTS_ROLES },
       { href: "/jobs", label: "Jobs", roles: ACCOUNTS_ROLES },
+      { href: "/work", label: "Work overview", roles: ACCOUNTS_ROLES },
     ],
   },
   {
     label: "",
-    items: [{ href: "/billing", label: "Billing & Plans", roles: BILLING_ROLES }],
+    items: [{ href: "/billing", label: "Money", roles: BILLING_ROLES }],
+  },
+  {
+    label: "Support",
+    items: [{ href: "/support", label: "Ticket queue", roles: SUPPORT_ROLES }],
+  },
+  {
+    label: "Trust & Safety",
+    items: [{ href: "/trust", label: "Reports & disputes", roles: TRUST_ROLES }],
+  },
+  {
+    label: "Messaging",
+    items: [{ href: "/messaging", label: "Campaigns & templates", roles: MESSAGING_ROLES }],
+  },
+  {
+    label: "Growth",
+    items: [{ href: "/growth", label: "Growth", roles: GROWTH_ROLES }],
+  },
+  {
+    label: "Data quality",
+    items: [{ href: "/data-quality", label: "Records & data quality", roles: DATA_QUALITY_ROLES }],
+  },
+  {
+    label: "Configuration",
+    items: [{ href: "/config", label: "Config", roles: CONFIG_ROLES }],
+  },
+  {
+    label: "System",
+    items: [{ href: "/system", label: "System", roles: SYSTEM_ROLES }],
+  },
+  {
+    label: "Privacy",
+    items: [{ href: "/privacy", label: "Data rights", roles: PRIVACY_ROLES }],
   },
   {
     label: "Admin",

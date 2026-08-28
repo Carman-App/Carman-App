@@ -11,7 +11,7 @@ export default async function SecurityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-100">My security</h1>
+        <h1 className="text-lg font-semibold text-neutral-900">My security</h1>
         <p className="text-sm text-neutral-500">
           Signed in as {admin.email} · role: {roleLabel(admin.role)}. Two-factor authentication is
           required for every admin (AUD-05) and was verified for this session.
@@ -19,10 +19,10 @@ export default async function SecurityPage() {
       </div>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-neutral-400">Active sessions</h2>
-        <div className="overflow-x-auto rounded border border-neutral-800">
+        <h2 className="text-sm font-medium text-neutral-600">Active sessions</h2>
+        <div className="overflow-x-auto rounded border border-neutral-200">
           <table className="w-full min-w-max text-left text-sm">
-            <thead className="bg-neutral-900 text-neutral-400">
+            <thead className="bg-neutral-50 text-neutral-600">
               <tr>
                 <th className="whitespace-nowrap px-4 py-2 font-medium">Started</th>
                 <th className="whitespace-nowrap px-4 py-2 font-medium">Last seen</th>
@@ -33,12 +33,12 @@ export default async function SecurityPage() {
                 <th className="whitespace-nowrap px-4 py-2 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800">
+            <tbody className="divide-y divide-neutral-200">
               {sessions.map((s) => {
                 const isCurrent = s.id === currentSessionId;
                 const isLive = !s.revokedAt && s.expiresAt > new Date();
                 return (
-                  <tr key={s.id} className="hover:bg-neutral-900/60">
+                  <tr key={s.id} className="hover:bg-neutral-100">
                     <td className="whitespace-nowrap px-4 py-2">{formatDateTime(s.createdAt)}</td>
                     <td className="whitespace-nowrap px-4 py-2">{formatDateTime(s.lastSeenAt)}</td>
                     <td className="whitespace-nowrap px-4 py-2">{formatDateTime(s.expiresAt)}</td>
@@ -52,17 +52,17 @@ export default async function SecurityPage() {
                           {s.revokedReason === "force_signout" ? "Signed out" : s.revokedAt ? "Ended" : "Expired"}
                         </span>
                       ) : isCurrent ? (
-                        <span className="text-emerald-400">This device</span>
+                        <span className="text-emerald-600">This device</span>
                       ) : (
-                        <span className="text-neutral-300">Active</span>
+                        <span className="text-neutral-700">Active</span>
                       )}
-                      {s.isNewLocation && <span className="ml-2 text-amber-400">new location</span>}
+                      {s.isNewLocation && <span className="ml-2 text-amber-600">new location</span>}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">
                       {isLive && !isCurrent && (
                         <form action={forceSignOutSession}>
                           <input type="hidden" name="sessionId" value={s.id} />
-                          <button type="submit" className="text-xs text-red-400 hover:underline">
+                          <button type="submit" className="text-xs text-red-600 hover:underline">
                             Force sign-out
                           </button>
                         </form>

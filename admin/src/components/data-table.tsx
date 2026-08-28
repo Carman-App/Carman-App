@@ -21,16 +21,16 @@ export function DataTable<T extends { id: string }>({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded border border-dashed border-neutral-800 p-8 text-center text-sm text-neutral-500">
+      <div className="rounded border border-dashed border-neutral-200 p-8 text-center text-sm text-neutral-500">
         {emptyLabel}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-neutral-800">
+    <div className="overflow-x-auto rounded border border-neutral-200">
       <table className="w-full min-w-max text-left text-sm">
-        <thead className="bg-neutral-900 text-neutral-400">
+        <thead className="bg-neutral-50 text-neutral-600">
           <tr>
             {columns.map((col) => (
               <th key={col.header} className="whitespace-nowrap px-4 py-2 font-medium">
@@ -39,13 +39,13 @@ export function DataTable<T extends { id: string }>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-neutral-800">
+        <tbody className="divide-y divide-neutral-200">
           {rows.map((row) => (
-            <tr key={row.id} className="transition hover:bg-neutral-900/60">
+            <tr key={row.id} className="transition hover:bg-neutral-100">
               {columns.map((col) => (
                 <td key={col.header} className={`whitespace-nowrap px-0 py-0 ${col.className ?? ""}`}>
                   {href ? (
-                    <Link href={href(row)} className="block px-4 py-2 hover:text-neutral-50">
+                    <Link href={href(row)} className="block px-4 py-2 hover:text-neutral-900">
                       {col.cell(row)}
                     </Link>
                   ) : (

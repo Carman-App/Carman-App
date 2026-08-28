@@ -37,10 +37,10 @@ export default async function JobDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/jobs" className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href="/jobs" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Jobs
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-neutral-100">{job.faultDescription}</h1>
+        <h1 className="mt-1 text-lg font-semibold text-neutral-900">{job.faultDescription}</h1>
       </div>
 
       <DetailView

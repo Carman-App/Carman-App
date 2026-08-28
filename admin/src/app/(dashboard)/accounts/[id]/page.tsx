@@ -12,6 +12,10 @@ import { SuspendPanel } from "./suspend-panel";
 import { DeletePanel, RestorePanel } from "./delete-panel";
 import { RegionPanel } from "./region-panel";
 import { UndoMergeButton } from "./undo-merge-button";
+import { BillingHistorySection } from "./billing-history-section";
+import { TicketHistorySection } from "./ticket-history-section";
+import { TrustSection } from "./trust-section";
+import { MessagingHistorySection } from "./messaging-history-section";
 
 export const dynamic = "force-dynamic";
 
@@ -65,15 +69,15 @@ export default async function AccountDetailPage({
     });
     return (
       <div className="space-y-4">
-        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Accounts
         </Link>
-        <div className="rounded border border-sky-900/50 bg-sky-950/20 p-6">
-          <h1 className="text-lg font-semibold text-neutral-100">This account was merged</h1>
-          <p className="mt-2 text-sm text-neutral-300">
+        <div className="rounded border border-sky-200 bg-sky-50 p-6">
+          <h1 className="text-lg font-semibold text-neutral-900">This account was merged</h1>
+          <p className="mt-2 text-sm text-neutral-700">
             Merged into{" "}
             {primary ? (
-              <Link href={`/accounts/${primary.id}`} className="text-sky-300 hover:underline">
+              <Link href={`/accounts/${primary.id}`} className="text-sky-700 hover:underline">
                 {primary.user.name} ({primary.user.email})
               </Link>
             ) : (
@@ -101,24 +105,24 @@ export default async function AccountDetailPage({
     const adminNames = await getAdminNames([account.deletedByAdminId]);
     return (
       <div className="space-y-4">
-        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Accounts
         </Link>
-        <div className="rounded border border-red-900/50 bg-red-950/20 p-6">
-          <h1 className="text-lg font-semibold text-neutral-100">{account.user.name} — deleted</h1>
-          <p className="mt-2 text-sm text-neutral-300">
+        <div className="rounded border border-red-200 bg-red-50 p-6">
+          <h1 className="text-lg font-semibold text-neutral-900">{account.user.name} — deleted</h1>
+          <p className="mt-2 text-sm text-neutral-700">
             Deleted on {formatDateTime(account.deletedAt)} by{" "}
             {(account.deletedByAdminId && adminNames.get(account.deletedByAdminId)) ?? "an admin"}.
           </p>
           {withinWindow ? (
             <div className="mt-4 space-y-3">
-              <p className="text-sm text-amber-300">
+              <p className="text-sm text-amber-700">
                 {daysRemaining} day{daysRemaining === 1 ? "" : "s"} remaining to restore.
               </p>
               {canRunDangerousAccountAction(session.role) && <RestorePanel accountId={account.id} />}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-neutral-400">
+            <p className="mt-4 text-sm text-neutral-600">
               This account&rsquo;s data is past the recovery window — Carma does not currently have
               an automated purge job, but the console treats it as gone and no restore is offered.
             </p>
@@ -236,12 +240,12 @@ export default async function AccountDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-200">
+        <Link href="/accounts" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← Accounts
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-neutral-100">{account.user.name}</h1>
+        <h1 className="mt-1 text-lg font-semibold text-neutral-900">{account.user.name}</h1>
         {account.suspendedAt && (
-          <p className="mt-1 inline-block rounded border border-amber-800 bg-amber-950/30 px-2 py-1 text-xs text-amber-300">
+          <p className="mt-1 inline-block rounded border border-amber-200 bg-amber-100 px-2 py-1 text-xs text-amber-700">
             Suspended
           </p>
         )}
@@ -346,7 +350,7 @@ export default async function AccountDetailPage({
       <Section title="Plan & payment state">
         <DetailView
           title="Subscription"
-          subtitle="Detailed payment/invoice history is Phase Two (Money surface) — not built here."
+          subtitle="See Billing history below for charges, refunds and plan changes."
           fields={[
             {
               label: "Current plan",
@@ -370,6 +374,10 @@ export default async function AccountDetailPage({
         />
       </Section>
 
+      <Section title="Billing history (MON-06)">
+        <BillingHistorySection accountId={account.id} />
+      </Section>
+
       <Section title="Device / app version (ACCT-09)">
         <DetailView
           title="Device"
@@ -384,7 +392,15 @@ export default async function AccountDetailPage({
       </Section>
 
       <Section title="Tickets">
-        <p className="text-sm text-neutral-500">No ticket system yet (Phase Two).</p>
+        <TicketHistorySection accountId={account.id} />
+      </Section>
+
+      <Section title="Trust & safety">
+        <TrustSection accountId={account.id} />
+      </Section>
+
+      <Section title="Messaging">
+        <MessagingHistorySection accountId={account.id} />
       </Section>
 
       <Section title="Onboarding trail (ACCT-03)">
@@ -403,11 +419,11 @@ export default async function AccountDetailPage({
             <ol className="space-y-1 text-sm">
               {onboardingSteps.map((s, i) => (
                 <li key={s.step} className="flex items-center gap-2">
-                  <span className="w-5 text-neutral-600">{i + 1}.</span>
-                  <span className={s.at ? "text-neutral-200" : "text-neutral-600"}>{s.step}</span>
+                  <span className="w-5 text-neutral-500">{i + 1}.</span>
+                  <span className={s.at ? "text-neutral-800" : "text-neutral-500"}>{s.step}</span>
                   <span className="text-neutral-500">— {s.at ? formatDateTime(s.at) : "not reached"}</span>
                   {stoppedOnStep === s.step && (
-                    <span className="rounded border border-amber-800 bg-amber-950/30 px-1.5 py-0.5 text-xs text-amber-300">
+                    <span className="rounded border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
                       stopped here
                     </span>
                   )}
@@ -419,9 +435,9 @@ export default async function AccountDetailPage({
       </Section>
 
       <Section title="Admin actions taken on this account">
-        <div className="overflow-x-auto rounded border border-neutral-800">
+        <div className="overflow-x-auto rounded border border-neutral-200">
           <table className="w-full min-w-max text-left text-sm">
-            <thead className="bg-neutral-900 text-neutral-400">
+            <thead className="bg-neutral-50 text-neutral-600">
               <tr>
                 <th className="whitespace-nowrap px-4 py-2 font-medium">When</th>
                 <th className="whitespace-nowrap px-4 py-2 font-medium">Actor</th>
@@ -429,7 +445,7 @@ export default async function AccountDetailPage({
                 <th className="whitespace-nowrap px-4 py-2 font-medium">Reason</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800">
+            <tbody className="divide-y divide-neutral-200">
               {auditEntries.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
@@ -452,7 +468,7 @@ export default async function AccountDetailPage({
             </tbody>
           </table>
         </div>
-        <Link href={`/audit?targetAccountId=${account.id}`} className="text-sm text-neutral-400 hover:underline">
+        <Link href={`/audit?targetAccountId=${account.id}`} className="text-sm text-neutral-600 hover:underline">
           Full audit history for this account →
         </Link>
       </Section>
@@ -487,7 +503,7 @@ export default async function AccountDetailPage({
             <div className="space-y-3">
               <Link
                 href={`/accounts/${account.id}/merge`}
-                className="inline-block rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-neutral-500"
+                className="inline-block rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-800 hover:border-neutral-500"
               >
                 Merge another account into this one →
               </Link>
@@ -496,8 +512,8 @@ export default async function AccountDetailPage({
                   <p className="text-xs text-neutral-500">Recent merges into this account</p>
                   <ul className="mt-1 space-y-2 text-sm">
                     {recentMerges.map((m) => (
-                      <li key={m.id} className="rounded border border-neutral-800 p-2">
-                        <p className="text-neutral-300">
+                      <li key={m.id} className="rounded border border-neutral-200 p-2">
+                        <p className="text-neutral-700">
                           Secondary <Link href={`/accounts/${m.secondaryAccountId}`} className="hover:underline">{m.secondaryAccountId}</Link>{" "}
                           merged {formatDateTime(m.performedAt)} by {adminNames.get(m.performedByAdminId) ?? m.performedByAdminId} — {m.reason}
                         </p>

@@ -79,6 +79,7 @@ export async function POST(
         title: input.title,
         expiryDate: input.expiryDate ? new Date(input.expiryDate) : undefined,
         fileKey: input.fileKey,
+        fileSizeBytes: input.fileSizeBytes,
         uploadedByAccountId: account.id,
       },
       include: { documentType: true },

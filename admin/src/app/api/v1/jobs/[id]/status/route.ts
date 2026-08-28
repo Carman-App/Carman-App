@@ -41,10 +41,25 @@ export async function POST(
     const nextStatus = parsed.data.status as JobStatus;
     assertJobTransition(job.status, nextStatus);
 
-    const updated = await prisma.job.update({
-      where: { id: jobId },
-      data: { status: nextStatus },
-    });
+    // WORK-05 needs real "time entered this state" history to compute median
+    // age per state — record every transition here (nothing else in this
+    // codebase writes JobStatusEvent yet). Job.status update and the event
+    // row are written together so the history can never drift from the
+    // cached current status.
+    const [updated] = await prisma.$transaction([
+      prisma.job.update({
+        where: { id: jobId },
+        data: { status: nextStatus },
+      }),
+      prisma.jobStatusEvent.create({
+        data: {
+          jobId: job.id,
+          fromStatus: job.status,
+          toStatus: nextStatus,
+          changedByAccountId: account.id,
+        },
+      }),
+    ]);
 
     await writeAuditLog({
       actorId: account.id,

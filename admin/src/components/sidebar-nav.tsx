@@ -16,7 +16,7 @@ export function SidebarNav({ role }: { role: AdminRole }) {
         return (
           <div key={section.label || i}>
             {section.label && (
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-neutral-600">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 {section.label}
               </p>
             )}
@@ -30,8 +30,8 @@ export function SidebarNav({ role }: { role: AdminRole }) {
                       href={item.href}
                       className={`block rounded px-3 py-1.5 text-sm transition ${
                         active
-                          ? "bg-neutral-800 text-neutral-50"
-                          : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
+                          ? "bg-neutral-200 text-neutral-900"
+                          : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                       }`}
                     >
                       {item.label}

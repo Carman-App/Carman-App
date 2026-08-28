@@ -21,7 +21,7 @@ export default async function JobsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-100">Jobs</h1>
+        <h1 className="text-lg font-semibold text-neutral-900">Jobs</h1>
         <p className="text-sm text-neutral-500">Every job across every workshop, by current state.</p>
       </div>
       <DataTable

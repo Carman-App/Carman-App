@@ -16,7 +16,7 @@ export function RegionPanel({ accountId, currentRegion }: { accountId: string; c
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-neutral-500"
+        className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-800 hover:border-neutral-500"
       >
         Correct country / currency
       </button>
@@ -24,7 +24,7 @@ export function RegionPanel({ accountId, currentRegion }: { accountId: string; c
   }
 
   return (
-    <form action={formAction} className="space-y-3 rounded border border-neutral-800 p-4">
+    <form action={formAction} className="space-y-3 rounded border border-neutral-200 p-4">
       <input type="hidden" name="accountId" value={accountId} />
       <p className="text-xs text-neutral-500">
         This schema doesn&rsquo;t stamp a currency on individual records (FuelRecord/ServiceRecord/
@@ -39,7 +39,7 @@ export function RegionPanel({ accountId, currentRegion }: { accountId: string; c
           name="region"
           defaultValue=""
           required
-          className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
         >
           <option value="" disabled>
             Pick a region…
@@ -57,27 +57,27 @@ export function RegionPanel({ accountId, currentRegion }: { accountId: string; c
           name="reason"
           required
           rows={2}
-          className="mt-1 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
         />
       </div>
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-60"
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Apply region change"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-400 hover:border-neutral-500"
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-500"
         >
           Cancel
         </button>
       </div>
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-emerald-400">{state.message}</p>}
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.ok && <p className="text-sm text-emerald-600">{state.message}</p>}
     </form>
   );
 }

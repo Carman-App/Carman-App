@@ -149,6 +149,10 @@ export const createDocumentSchema = z
     title: z.string().trim().min(1).max(200),
     expiryDate: z.iso.datetime().optional(),
     fileKey: z.string().trim().max(500).optional(),
+    // DATA-05 — optional, forward-looking only: nothing in the mobile app
+    // sends this today, so it stays null on every document until a future
+    // mobile change starts reporting the real upload size here.
+    fileSizeBytes: z.number().int().nonnegative().optional(),
   })
   .refine((data) => Boolean(data.documentTypeId || data.documentTypeCode), {
     message: "documentTypeId or documentTypeCode is required.",
