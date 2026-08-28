@@ -1,0 +1,1965 @@
+// Carma — Prisma schema
+//
+// Models the full owner + workshop domain described in AGENTS.md/the product
+// brief, plus the internal AdminUser used only by this admin panel.
+//
+// Design notes (read before extending):
+// - Money fields use Decimal(12,2). Distances/odometer use Int (km).
+// - Financial/history rows use soft delete (`deletedAt`) instead of hard
+//   delete: fuel/service/repair/expense records, invoices, payments,
+//   documents. Nothing should physically destroy vehicle history.
+// - "Actor" columns (enteredByAccountId, approvedByAccountId, recordedByAccountId,
+//   decidedByAccountId, invitedByAccountId, uploadedByAccountId,
+//   generatedByAccountId, requestedByWorkshopMemberId, revokedByAccountId, ...)
+//   are plain id columns, not enforced Prisma relations. They record "who did
+//   this" without ballooning the relation graph with dozens of named
+//   back-references on Account/WorkshopMember; AuditLog is the source of
+//   truth for actor history. Structural relations that drive authorization
+//   and cascades (ownership, membership, resource hierarchy) remain real FKs.
+// - `usage` (plan usage/limits) is intentionally NOT a stored table — it is
+//   computed on demand from real rows (vehicle counts, jobs this month, etc.)
+//   in src/lib/limits.ts, per "plans/limits belong in the domain layer".
+// - End-user (Owner/Mechanic) authentication is out of scope for this schema
+//   revision — see User/Account below. AdminUser (internal admin login) is
+//   deliberately separate and unaffected.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum Region {
+  KE
+  UG
+  TZ
+  NG
+  ZA
+  US
+  GB
+}
+
+enum ProfileType {
+  OWNER
+  MECHANIC
+}
+
+enum GarageRole {
+  OWNER
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+}
+
+enum VehicleUsage {
+  DAILY
+  PROJECT
+  WEEKEND
+  COMMERCIAL
+}
+
+enum Powertrain {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+}
+
+enum ExpenseCategory {
+  FUEL
+  SERVICE
+  INSURANCE
+  LOAN
+  OTHER
+}
+
+enum ReminderKind {
+  SERVICE_DUE
+  DOCUMENT_EXPIRY
+  ESTIMATE_PENDING
+  PROJECT_STALLED
+}
+
+enum BuildStageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+}
+
+enum WorkshopRole {
+  OWNER
+  MECHANIC
+  FRONTDESK
+  APPRENTICE
+}
+
+// Job lifecycle. See src/lib/jobs/state-machine.ts for the allowed
+// transition graph — this enum only declares the possible states.
+enum JobStatus {
+  INTAKE
+  AWAITING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  READY_FOR_COLLECTION
+  INVOICED
+  PARTIALLY_PAID
+  PAID
+  DECLINED
+  CANCELLED
+}
+
+enum JobLineKind {
+  PART
+  LABOUR
+  SERVICE
+  FLUID
+}
+
+enum InspectionItemStatus {
+  GOOD
+  ATTENTION
+  URGENT
+}
+
+enum EstimateStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum EstimateDecisionType {
+  APPROVED
+  DECLINED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CARD
+  OTHER
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum ReportScope {
+  VEHICLE
+  GARAGE
+}
+
+enum PlanSubject {
+  OWNER
+  WORKSHOP
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum AuditActorType {
+  ADMIN
+  ACCOUNT
+}
+
+// Admin console roles — see AGENTS.md section 03. Enforced server-side on
+// every route/page via src/lib/auth/rbac.ts; never a client-only hide.
+enum AdminRole {
+  OWNER
+  SUPPORT
+  FINANCE
+  READ
+}
+
+// Fixed reasons for ACCT-06 (suspend) — "required reason from a fixed list".
+enum SuspensionReason {
+  FRAUD_SUSPECTED
+  PAYMENT_DISPUTE
+  ABUSE_REPORTED
+  TOS_VIOLATION
+  USER_REQUESTED
+  OTHER
+}
+
+// Distinguishes admin-performed verification (ACCT-05) from a future
+// self-serve verification flow — "recorded as admin-verified (distinct
+// from self-verified)".
+enum VerificationSource {
+  SELF
+  ADMIN
+}
+
+enum NotificationType {
+  JOB_UPDATE
+  ESTIMATE_READY
+  INVOICE_ISSUED
+  DOCUMENT_EXPIRING
+  ACCESS_REQUEST
+  GENERIC
+}
+
+// ============================================================================
+// Phase Two enums — see AGENTS.md "Phase TWO · RUN" for the story numbers
+// referenced in comments throughout this file (GAR-*, WORK-*, MON-*, SUP-*,
+// TRUST-*, COMM-*).
+// ============================================================================
+
+// Generic two-person approval, reused by any dangerous action that needs a
+// second admin's sign-off beyond a required reason (GAR-07 garage handover,
+// MON-07 refunds above a threshold). One admin requests with a reason and an
+// exact payload of what will execute; a *different* admin approves (or
+// rejects); only then does the actual mutation run — enforced in
+// src/lib/approvals.ts, never trust a client-supplied "approved" flag.
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  CANCELLED
+}
+
+// MON-05 cancellation reasons — fixed set, "grouped/counted".
+enum CancellationReason {
+  TOO_EXPENSIVE
+  MISSING_FEATURE
+  SWITCHED_COMPETITOR
+  NO_LONGER_NEEDED
+  TECHNICAL_ISSUES
+  OTHER
+}
+
+enum WorkshopVerificationAction {
+  GRANTED
+  REVOKED
+}
+
+// TRUST-03 — restrict one capability instead of the whole account.
+enum RestrictionCapability {
+  INVITES
+  INVOICING
+  PHOTO_UPLOAD
+  ESTIMATES
+  MESSAGING
+}
+
+// TRUST-02 evidence trail subject / WORK-07 dispute count — same table,
+// two call sites.
+enum DisputeKind {
+  INVOICE
+  ESTIMATE
+  JOB
+  VEHICLE
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// TRUST-01 user report queue. Named AbuseReport (not "Report" — that name
+// is already taken by the generated-PDF Report model above, a different
+// domain entirely).
+enum AbuseReportStatus {
+  OPEN
+  IN_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+// TRUST-06.
+enum DisclosureRequestType {
+  POLICE
+  INSURER
+  REGULATOR
+  OTHER
+}
+
+// SUP-01..08.
+enum TicketChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+  PHONE
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+// SUP-06 — fixed category set, required to close.
+enum TicketCategory {
+  BILLING
+  TECHNICAL
+  ACCOUNT
+  ABUSE
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum TicketMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// Honest delivery-state set: NO_PROVIDER is the real state for every
+// non-IN_APP channel until real messaging-provider credentials exist (see
+// src/lib/notifications/provider.ts's existing no-op pattern).
+enum TicketMessageDeliveryState {
+  SENT
+  QUEUED
+  NO_PROVIDER
+  FAILED
+  DELIVERED
+}
+
+// SUP-03 "see the app as the user" scaffolding. ASSERTED is the only method
+// actually reachable today — there is no mobile-side consent handshake to
+// request MOBILE_PUSH_REQUEST from; that value is reserved for when one
+// exists, not implemented.
+enum ConsentMethod {
+  MOBILE_PUSH_REQUEST
+  ASSERTED
+}
+
+enum ConsentSessionStatus {
+  REQUESTED
+  GRANTED
+  ACTIVE
+  EXPIRED
+  DENIED
+  ENDED
+}
+
+// COMM-01..06.
+enum CampaignChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+// COMM-03 — suppression is keyed by channel AND message class.
+enum MessageClass {
+  MARKETING
+  TRANSACTIONAL
+  PRODUCT_UPDATE
+}
+
+enum CampaignStatus {
+  DRAFT
+  TEST_SENT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum CampaignRecipientState {
+  QUEUED
+  SENT
+  NO_PROVIDER
+  SUPPRESSED
+  FAILED
+}
+
+enum SuppressionReason {
+  USER_OPTED_OUT
+  BOUNCED
+  ADMIN_SET
+}
+
+enum BannerSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// MON-03/06 — no payment processor is connected (see .env.example's
+// reserved STRIPE_* vars); every row here reflects that honestly rather
+// than fabricating processor responses.
+enum FailedPaymentStatus {
+  RETRYING
+  RESOLVED
+  ABANDONED
+}
+
+enum RefundCreditType {
+  REFUND
+  CREDIT
+}
+
+enum RefundCreditStatus {
+  REQUESTED
+  APPROVED
+  EXECUTED
+  DENIED
+}
+
+// MON-01/02/05/08 — one append-only event per thing that happened to a
+// subscription, so month-over-month movement (new/expansion/contraction/
+// churn), cohort conversion, and cancellation-reason grouping are all
+// derived from one real history instead of separately-tracked counters.
+enum SubscriptionEventType {
+  STARTED
+  TRIAL_CONVERTED
+  UPGRADED
+  DOWNGRADED
+  CANCELLED
+  REACTIVATED
+  PAYMENT_FAILED
+  REFUNDED
+  TRIAL_EXTENDED
+  FREE_PERIOD_GRANTED
+}
+
+// ============================================================================
+// Internal admin auth (this panel only — not end-user facing)
+// ============================================================================
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  // Default OWNER: today there is exactly one seeded admin (see
+  // scripts/create-admin.ts) and it must keep full access after this
+  // migration lands. New admins should be created with an explicit,
+  // narrower role via the admin-management screen (AUD-04).
+  role         AdminRole @default(OWNER)
+
+  // TOTP 2FA (AUD-05). Sign-in is not complete until a code is verified —
+  // see src/lib/auth/twofactor.ts and src/app/login/2fa/.
+  twoFactorSecret      String? // otpauth base32 secret; only ever present server-side
+  twoFactorEnabled     Boolean  @default(false)
+  twoFactorBackupCodes String[] @default([]) // bcrypt-hashed one-time backup codes
+
+  disabledAt DateTime? // AUD-04: deactivate an admin without deleting the row (audit trail stays intact)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions        AdminSession[]
+  pulsePreference AdminPulsePreference?
+
+  @@map("admin_users")
+}
+
+// DB-backed session record behind the signed cookie (src/lib/auth/session.ts
+// embeds this row's id in the cookie payload). Needed so "active sessions
+// listed with force sign-out" (AUD-05) can actually revoke a session
+// server-side — a purely stateless signed cookie can't be invalidated early.
+model AdminSession {
+  id            String    @id @default(cuid())
+  adminUserId   String
+  ipAddress     String?
+  userAgent     String?
+  isNewLocation Boolean   @default(false) // this admin's IP not seen in their prior sessions
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String? // "force_signout" | "expired" | "logout"
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@map("admin_sessions")
+}
+
+// PULSE-06: which 5 metrics an admin has pinned, persisted per admin.
+model AdminPulsePreference {
+  id          String   @id @default(cuid())
+  adminUserId String   @unique
+  metricKeys  String[] // ordered PulseMetricKey values, max 5 — see src/lib/pulse/metrics.ts
+  updatedAt   DateTime @updatedAt
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_pulse_preferences")
+}
+
+// ACCT-08 merge: preview happens live (computed, not stored); this row is
+// the reversible record of what actually moved once an admin confirms,
+// so "one reversible merge keeping both ids" can be undone exactly.
+model AccountMerge {
+  id                 String    @id @default(cuid())
+  primaryAccountId   String
+  secondaryAccountId String
+  movedRefs          Json      @db.JsonB // { garageIds, garageMemberIds, vehicleMembershipIds, workshopIds, workshopMemberIds, subscriptionIds, notificationIds }
+  reason             String
+  performedByAdminId String
+  performedAt        DateTime  @default(now())
+  revertedAt         DateTime?
+  revertedByAdminId  String?
+
+  @@index([primaryAccountId])
+  @@index([secondaryAccountId])
+  @@map("account_merges")
+}
+
+// ============================================================================
+// Identity — Owner/Mechanic side
+//
+// `User` is the future login identity (email/OAuth); `Account` is the
+// tenant record everything else attaches to. Deliberately no password/OAuth
+// fields yet — end-user auth (Apple/Google) is a later phase.
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ACCT-05 manual verification. No phone field exists anywhere in this
+  // schema yet (the mobile app never collects one) so phone verification
+  // has no data to attach to — the admin UI shows email verification only
+  // and states that phone is not tracked, rather than inventing a field
+  // nothing writes to.
+  emailVerifiedAt        DateTime?
+  emailVerifiedSource    VerificationSource?
+  emailVerifiedByAdminId String? // set only when emailVerifiedSource = ADMIN
+
+  account Account?
+
+  @@map("users")
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  region    Region   @default(KE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Proxy for the "active user" definition: there is no request-analytics
+  // table, so this single opportunistic timestamp (updated in
+  // src/lib/api/auth.ts on every authenticated /api/v1/* request) is the
+  // most recent evidence this account's app made an API call. It answers
+  // "active in window" (lastApiRequestAt >= window start) but is a real
+  // proxy, not true session/open-app analytics — labelled as such in the UI.
+  lastApiRequestAt DateTime?
+
+  // ACCT-06 suspend.
+  suspendedAt        DateTime?
+  suspendedReason    SuspensionReason?
+  suspendedNote      String?
+  suspendedByAdminId String?
+
+  // ACCT-07 soft delete + grace-window restore.
+  deletedAt        DateTime?
+  deletedByAdminId String?
+
+  // ACCT-08 merge: set on the "losing" account once merged. Its id keeps
+  // resolving (per "keeping both ids") but the detail page redirects to the
+  // surviving account and shows the merge record.
+  mergedIntoAccountId String?
+
+  // ACCT-04 "never chased twice" marker for the no-vehicle saved filter.
+  chasedNoVehicleAt        DateTime?
+  chasedNoVehicleByAdminId String?
+
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profiles            AccountProfile[]
+  garagesOwned        Garage[]            @relation("GarageOwner")
+  garageMemberships   GarageMember[]
+  vehicleMemberships  VehicleMembership[]
+  workshopsOwned      Workshop[]          @relation("WorkshopOwner")
+  workshopMemberships WorkshopMember[]
+  subscriptions       Subscription[]
+  notifications       Notification[]
+
+  // Phase Two — see AGENTS.md. Actor-style columns elsewhere (who filed/
+  // approved/requested) stay plain ids per this file's header convention;
+  // these are the "this belongs to this account" structural relations.
+  tickets               Ticket[]
+  capabilityRestrictions CapabilityRestriction[]
+  abuseReportsFiled     AbuseReport[]          @relation("AbuseReporter")
+  abuseReportsAgainst   AbuseReport[]          @relation("AbuseReported")
+  campaignRecipients    CampaignRecipient[]
+  messageSuppressions   MessageSuppression[]
+  whatsNewViews         WhatsNewView[]
+  consentSessions       ConsentSession[]
+
+  @@index([deletedAt])
+  @@index([suspendedAt])
+  @@map("accounts")
+}
+
+// Which capabilities ("I own vehicles" / "I fix vehicles") an account holds.
+// activeProfile (the current UI switch) is the row with isActive = true.
+model AccountProfile {
+  id        String      @id @default(cuid())
+  accountId String
+  type      ProfileType
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, type])
+  @@map("account_profiles")
+}
+
+// ============================================================================
+// Garages & Vehicles (Owner side)
+// ============================================================================
+
+model Garage {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  location  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner       Account            @relation("GarageOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     GarageMember[]
+  invitations GarageInvitation[]
+  vehicles    Vehicle[]
+
+  @@index([ownerId])
+  @@map("garages")
+}
+
+// Active membership only. A pending invite lives in GarageInvitation until
+// accepted, at which point a GarageMember row is created.
+model GarageMember {
+  id          String     @id @default(cuid())
+  garageId    String
+  accountId   String
+  role        GarageRole @default(MEMBER)
+  displayName String
+  joinedAt    DateTime   @default(now())
+
+  // GAR-02 "who's in a garage and how they got there" — denormalized since
+  // GarageInvitation rows aren't guaranteed to still exist/match once
+  // accepted (no FK from member back to the invitation it came from).
+  invitedByAccountId String?
+
+  // GAR-02 "former members retained as former, not deleted from the list" —
+  // a member who leaves/is removed gets this stamped instead of the row
+  // being deleted, so the list always shows full history.
+  removedAt        DateTime?
+  removedReason    String?
+  removedByAdminId String?
+
+  garage  Garage  @relation(fields: [garageId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([garageId, accountId])
+  @@index([accountId])
+  @@map("garage_members")
+}
+
+model GarageInvitation {
+  id                 String           @id @default(cuid())
+  garageId           String
+  email              String
+  role               GarageRole       @default(MEMBER)
+  status             InvitationStatus @default(PENDING)
+  invitedByAccountId String
+  token              String           @unique @default(cuid())
+  createdAt          DateTime         @default(now())
+  expiresAt          DateTime
+  acceptedAt         DateTime?
+
+  garage Garage @relation(fields: [garageId], references: [id], onDelete: Cascade)
+
+  @@index([garageId])
+  @@index([email])
+  @@map("garage_invitations")
+}
+
+model Vehicle {
+  id               String       @id @default(cuid())
+  garageId         String
+  make             String
+  model            String
+  year             Int
+  type             VehicleType  @default(CAR)
+  usage            VehicleUsage @default(DAILY)
+  plate            String
+  odometerKm       Int          @default(0)
+  photo            String?
+  vin              String?
+  powertrain       Powertrain?
+  nextServiceDueKm Int?
+  color            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  garage           Garage              @relation(fields: [garageId], references: [id], onDelete: Cascade)
+  memberships      VehicleMembership[]
+  fuelRecords      FuelRecord[]
+  serviceRecords   ServiceRecord[]
+  repairRecords    RepairRecord[]
+  expenseRecords   ExpenseRecord[]
+  odometerReadings OdometerReading[]
+  parts            Part[]
+  documents        Document[]
+  reminders        Reminder[]
+  projects         Project[]
+  jobs             Job[]
+  inspections      Inspection[]
+  estimates        Estimate[]
+  invoices         Invoice[]
+  accessRequests   AccessRequest[]
+  accessGrants     AccessGrant[]
+
+  // GAR-06 sale/transfer history, TRUST-02 evidence trail.
+  transfers VehicleTransfer[]
+  disputes  Dispute[]
+
+  @@index([garageId])
+  @@index([plate])
+  @@map("vehicles")
+}
+
+// Accounts with visibility/edit rights on a specific vehicle beyond base
+// garage membership (e.g. household sharing).
+model VehicleMembership {
+  id        String   @id @default(cuid())
+  vehicleId String
+  accountId String
+  addedAt   DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, accountId])
+  @@map("vehicle_memberships")
+}
+
+// ============================================================================
+// Records — one table per record type (fuel/service/repair/expense/odometer)
+// ============================================================================
+
+model FuelRecord {
+  id                 String    @id @default(cuid())
+  vehicleId          String
+  date               DateTime
+  amount             Decimal   @db.Decimal(12, 2)
+  litres             Decimal?  @db.Decimal(10, 3)
+  odometerAtEntry    Int
+  place              String?
+  enteredByAccountId String?
+  enteredByName      String
+  notes              String?
+  createdAt          DateTime  @default(now())
+  deletedAt          DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("fuel_records")
+}
+
+model ServiceRecord {
+  id                 String    @id @default(cuid())
+  vehicleId          String
+  date               DateTime
+  amount             Decimal   @db.Decimal(12, 2)
+  odometerAtEntry    Int
+  description        String?
+  place              String?
+  enteredByAccountId String?
+  enteredByName      String
+  notes              String?
+  createdAt          DateTime  @default(now())
+  deletedAt          DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("service_records")
+}
+
+model RepairRecord {
+  id                 String    @id @default(cuid())
+  vehicleId          String
+  date               DateTime
+  amount             Decimal   @db.Decimal(12, 2)
+  odometerAtEntry    Int
+  description        String?
+  place              String?
+  enteredByAccountId String?
+  enteredByName      String
+  notes              String?
+  createdAt          DateTime  @default(now())
+  deletedAt          DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("repair_records")
+}
+
+model ExpenseRecord {
+  id                 String          @id @default(cuid())
+  vehicleId          String
+  date               DateTime
+  amount             Decimal         @db.Decimal(12, 2)
+  odometerAtEntry    Int
+  category           ExpenseCategory @default(OTHER)
+  place              String?
+  enteredByAccountId String?
+  enteredByName      String
+  notes              String?
+  createdAt          DateTime        @default(now())
+  deletedAt          DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("expense_records")
+}
+
+model OdometerReading {
+  id                 String   @id @default(cuid())
+  vehicleId          String
+  date               DateTime
+  odometerKm         Int
+  enteredByAccountId String?
+  enteredByName      String
+  notes              String?
+  createdAt          DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("odometer_readings")
+}
+
+// Shared by vehicle-level part purchases and project-build part lines
+// (stageId set) — see ProjectStage below.
+model Part {
+  id        String    @id @default(cuid())
+  vehicleId String?
+  stageId   String?
+  name      String
+  cost      Decimal   @db.Decimal(12, 2)
+  supplier  String?
+  date      DateTime?
+  createdAt DateTime  @default(now())
+
+  vehicle Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  stage   ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([stageId])
+  @@map("parts")
+}
+
+// ============================================================================
+// Documents
+// ============================================================================
+
+model DocumentType {
+  id    String @id @default(cuid())
+  code  String @unique
+  label String
+
+  documents Document[]
+
+  @@map("document_types")
+}
+
+model Document {
+  id                  String    @id @default(cuid())
+  vehicleId           String
+  documentTypeId      String
+  title               String
+  expiryDate          DateTime?
+  fileKey             String? // object key in the S3-compatible bucket, see src/lib/storage.ts
+  uploadedByAccountId String?
+  addedAt             DateTime  @default(now())
+  deletedAt           DateTime?
+
+  // TRUST-05 "take down an uploaded image without destroying its record" —
+  // fileKey gets swapped for a stated placeholder object; originalFileKey
+  // preserves what it was (never deleted from storage by this action —
+  // src/lib/storage.ts's deleteFile is a separate, unrelated operation).
+  // The document row itself (title, expiryDate, vehicle link) is untouched.
+  takedownAt        DateTime?
+  takedownReason    String?
+  takedownByAdminId String?
+  originalFileKey   String?
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  @@index([vehicleId])
+  @@map("documents")
+}
+
+// ============================================================================
+// Reminders
+// ============================================================================
+
+model Reminder {
+  id          String       @id @default(cuid())
+  vehicleId   String
+  kind        ReminderKind
+  dueDate     DateTime?
+  dueKm       Int?
+  description String
+  resolved    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("reminders")
+}
+
+// ============================================================================
+// Project builds
+// ============================================================================
+
+model Project {
+  id        String   @id @default(cuid())
+  vehicleId String
+  name      String?
+  budget    Decimal  @db.Decimal(12, 2)
+  spent     Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  stages  ProjectStage[]
+
+  @@index([vehicleId])
+  @@map("projects")
+}
+
+model ProjectStage {
+  id        String           @id @default(cuid())
+  projectId String
+  name      String
+  status    BuildStageStatus @default(NOT_STARTED)
+  createdAt DateTime         @default(now())
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  modifications Modification[]
+  parts         Part[]
+
+  @@index([projectId])
+  @@map("project_stages")
+}
+
+model Modification {
+  id      String  @id @default(cuid())
+  stageId String
+  name    String
+  cost    Decimal @db.Decimal(12, 2)
+
+  stage ProjectStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId])
+  @@map("modifications")
+}
+
+// ============================================================================
+// Workshop side
+// ============================================================================
+
+model Workshop {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // WORK-02/03 — cached current state ("a mark that appears in the owner
+  // app"), kept in sync transactionally with the WorkshopVerification
+  // history below (see src/lib/workshops/verification.ts) so mobile can
+  // read a cheap boolean instead of recomputing history on every load.
+  verifiedBadge Boolean   @default(false)
+  verifiedAt    DateTime?
+
+  owner          Account            @relation("WorkshopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members        WorkshopMember[]
+  customers      WorkshopCustomer[]
+  jobs           Job[]
+  inspections    Inspection[]
+  estimates      Estimate[]
+  invoices       Invoice[]
+  accessRequests AccessRequest[]
+  accessGrants   AccessGrant[]
+  subscriptions  Subscription[]
+  verifications  WorkshopVerification[]
+  contactLogs    WorkshopContactLog[]
+  disputes       Dispute[]
+
+  @@index([ownerId])
+  @@map("workshops")
+}
+
+model WorkshopMember {
+  id          String       @id @default(cuid())
+  workshopId  String
+  accountId   String
+  role        WorkshopRole @default(MECHANIC)
+  displayName String
+  joinedAt    DateTime     @default(now())
+
+  workshop       Workshop        @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  account        Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  jobAssignments JobAssignment[]
+
+  @@unique([workshopId, accountId])
+  @@index([accountId])
+  @@map("workshop_members")
+}
+
+// A walk-in customer the workshop tracks, which may or may not be linked to
+// a real Carma Account.
+model WorkshopCustomer {
+  id              String   @id @default(cuid())
+  workshopId      String
+  name            String
+  phone           String?
+  linkedAccountId String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  jobs     Job[]
+
+  @@index([workshopId])
+  @@map("workshop_customers")
+}
+
+model Job {
+  id                 String    @id @default(cuid())
+  workshopId         String
+  customerId         String
+  vehicleId          String?
+  vehicleDescription String? // freeform "make model plate" when not linked to a Carma vehicle
+  faultDescription   String
+  status             JobStatus @default(INTAKE)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  workshop    Workshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  customer    WorkshopCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle?         @relation(fields: [vehicleId], references: [id])
+  lines       JobLine[]
+  assignments JobAssignment[]
+  inspections Inspection[]
+  estimates   Estimate[]
+  invoices    Invoice[]
+  statusEvents JobStatusEvent[]
+  disputes    Dispute[]
+
+  @@index([workshopId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("jobs")
+}
+
+model JobLine {
+  id          String      @id @default(cuid())
+  jobId       String
+  kind        JobLineKind @default(SERVICE)
+  description String
+  cost        Decimal     @db.Decimal(12, 2)
+  createdAt   DateTime    @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_lines")
+}
+
+// Which staff member(s) ("the bench") are working a job.
+model JobAssignment {
+  id               String   @id @default(cuid())
+  jobId            String
+  workshopMemberId String
+  assignedAt       DateTime @default(now())
+  note             String?
+
+  job            Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  workshopMember WorkshopMember @relation(fields: [workshopMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, workshopMemberId])
+  @@map("job_assignments")
+}
+
+// ============================================================================
+// Inspections
+// ============================================================================
+
+model Inspection {
+  id                        String   @id @default(cuid())
+  jobId                     String?
+  vehicleId                 String
+  workshopId                String
+  summary                   String
+  createdByWorkshopMemberId String?
+  createdAt                 DateTime @default(now())
+
+  job      Job?             @relation(fields: [jobId], references: [id])
+  vehicle  Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop Workshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  items    InspectionItem[]
+
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@map("inspections")
+}
+
+model InspectionItem {
+  id           String               @id @default(cuid())
+  inspectionId String
+  label        String
+  status       InspectionItemStatus @default(GOOD)
+  note         String?
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("inspection_items")
+}
+
+// ============================================================================
+// Estimates
+// ============================================================================
+
+model Estimate {
+  id         String         @id @default(cuid())
+  jobId      String
+  vehicleId  String
+  workshopId String
+  status     EstimateStatus @default(PENDING)
+  total      Decimal        @db.Decimal(12, 2)
+  notes      String?
+  createdAt  DateTime       @default(now())
+
+  job       Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop  Workshop           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  items     EstimateItem[]
+  decisions EstimateDecision[]
+  invoices  Invoice[]
+
+  @@index([jobId])
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@map("estimates")
+}
+
+model EstimateItem {
+  id          String  @id @default(cuid())
+  estimateId  String
+  description String
+  cost        Decimal @db.Decimal(12, 2)
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId])
+  @@map("estimate_items")
+}
+
+// Records each approve/decline action on an estimate (history, in case an
+// estimate is revised and re-sent).
+model EstimateDecision {
+  id                 String               @id @default(cuid())
+  estimateId         String
+  decision           EstimateDecisionType
+  decidedByAccountId String?
+  note               String?
+  decidedAt          DateTime             @default(now())
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId])
+  @@map("estimate_decisions")
+}
+
+// ============================================================================
+// Invoices & payments
+// ============================================================================
+
+model Invoice {
+  id         String        @id @default(cuid())
+  jobId      String
+  estimateId String?
+  vehicleId  String
+  workshopId String
+  status     InvoiceStatus @default(UNPAID)
+  total      Decimal       @db.Decimal(12, 2)
+  dueDate    DateTime?
+  createdAt  DateTime      @default(now())
+  deletedAt  DateTime?
+
+  job      Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  estimate Estimate?     @relation(fields: [estimateId], references: [id])
+  vehicle  Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([jobId])
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  cost        Decimal @db.Decimal(12, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  invoiceId           String
+  amount              Decimal       @db.Decimal(12, 2)
+  method              PaymentMethod @default(CASH)
+  paidAt              DateTime      @default(now())
+  recordedByAccountId String?
+  notes               String?
+  deletedAt           DateTime?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+// ============================================================================
+// Owner <-> Workshop access (consent, not tech)
+// ============================================================================
+
+// A workshop's ask to see a vehicle's history. Separate from AccessGrant:
+// a request only becomes visibility once approved and turned into a grant.
+model AccessRequest {
+  id                          String              @id @default(cuid())
+  vehicleId                   String
+  workshopId                  String
+  requestedByWorkshopMemberId String?
+  status                      AccessRequestStatus @default(PENDING)
+  scope                       String
+  requestedAt                 DateTime            @default(now())
+  respondedAt                 DateTime?
+
+  vehicle  Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop Workshop     @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  grant    AccessGrant?
+
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@map("access_requests")
+}
+
+// Approved, time-scoped, revocable visibility. A workshop only sees a
+// vehicle's history while a live (unexpired, unrevoked) grant exists.
+model AccessGrant {
+  id                  String    @id @default(cuid())
+  accessRequestId     String?   @unique
+  vehicleId           String
+  workshopId          String
+  approvedByAccountId String?
+  scope               String
+  startAt             DateTime  @default(now())
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  revokedByAccountId  String?
+  createdAt           DateTime  @default(now())
+
+  accessRequest AccessRequest? @relation(fields: [accessRequestId], references: [id])
+  vehicle       Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop      Workshop       @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@map("access_grants")
+}
+
+// ============================================================================
+// Reports
+// ============================================================================
+
+model Report {
+  id                   String      @id @default(cuid())
+  scope                ReportScope
+  scopeId              String // vehicleId or garageId, per `scope`
+  periodLabel          String
+  generatedByAccountId String?
+  fileKey              String? // object key in the S3-compatible bucket
+  generatedAt          DateTime    @default(now())
+
+  recipients ReportRecipient[]
+
+  @@index([scopeId])
+  @@map("reports")
+}
+
+model ReportRecipient {
+  id       String    @id @default(cuid())
+  reportId String
+  email    String
+  name     String?
+  sentAt   DateTime?
+  viewedAt DateTime?
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("report_recipients")
+}
+
+// ============================================================================
+// Notifications (abstraction only — see src/lib/notifications/provider.ts)
+// ============================================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  accountId String
+  type      NotificationType @default(GENERIC)
+  title     String
+  body      String
+  metadata  Json?            @db.JsonB
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("notifications")
+}
+
+// ============================================================================
+// Audit log
+// ============================================================================
+
+// Append-only by construction: no code path in this app updates or deletes
+// a row here (AUD-01, "not editable by anyone including OWNER"), and the
+// init migration for this table additionally installs a Postgres trigger
+// that rejects UPDATE/DELETE at the database level regardless of caller —
+// see prisma/migrations/*_admin_rbac_audit_accounts/migration.sql.
+model AuditLog {
+  id              String         @id @default(cuid())
+  actorId         String? // AdminUser.id or Account.id, per actorType
+  actorType       AuditActorType @default(ACCOUNT)
+  action          String // e.g. "garage.invite", "record.soft_delete", "job.status_change"
+  entityType      String // e.g. "Vehicle", "Job", "Invoice"
+  entityId        String
+  // Denormalized so "export everything done to one account" (AUD-02) is one
+  // indexed filter even when the entity acted on is a Garage/Vehicle/etc.
+  // owned by the account rather than the Account row itself.
+  targetAccountId String?
+  reason          String? // required for dangerous actions (suspend, merge, verify) — see src/lib/audit.ts
+  ipAddress       String?
+  beforeData      Json?          @db.JsonB
+  afterData       Json?          @db.JsonB
+  metadata        Json?          @db.JsonB
+  createdAt       DateTime       @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([targetAccountId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// Plans & subscriptions
+//
+// Usage against a plan's limits (garages, vehicles, seats, jobs/month,
+// staff) is computed on demand in src/lib/limits.ts, not stored here.
+// ============================================================================
+
+model Plan {
+  id              String      @id @default(cuid())
+  code            String      @unique // e.g. OWNER_FREE, WORKSHOP_FLEET
+  subject         PlanSubject
+  name            String
+  maxGarages      Int?
+  maxVehicles     Int?
+  maxSeats        Int?
+  maxJobsPerMonth Int?
+  maxStaff        Int?
+  priceCents      Int         @default(0)
+  createdAt       DateTime    @default(now())
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  subject          PlanSubject
+  accountId        String?
+  workshopId       String?
+  planId           String
+  status           SubscriptionStatus @default(TRIALING)
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  // MON-02 cohort conversion needs a start, not just an end.
+  trialStartedAt DateTime?
+
+  // MON-05 cancellation reasons + MON-04 dunning grace window.
+  cancelledAt        DateTime?
+  cancellationReason CancellationReason?
+  cancellationNote   String?
+  graceEndsAt        DateTime? // MON-04 "days remaining" in grace before lapse
+
+  // MON-06 masked payment method. Always null until a real processor is
+  // connected (see .env.example STRIPE_* reserved vars) — nothing in this
+  // codebase writes these fields yet.
+  paymentMethodBrand String?
+  paymentMethodLast4 String?
+
+  account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  workshop      Workshop?        @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  plan          Plan             @relation(fields: [planId], references: [id])
+  events        SubscriptionEvent[]
+  failedPayments FailedPayment[]
+  refundCredits RefundCredit[]
+
+  @@index([accountId])
+  @@index([workshopId])
+  @@map("subscriptions")
+}
+
+// ============================================================================
+// Two-person approval (shared — GAR-07 garage handover, MON-07 refunds above
+// a threshold). One admin requests with a reason and an exact payload of
+// what will execute; a *different* admin approves; only then does the
+// mutation run — enforced in src/lib/approvals.ts, never a client flag.
+// ============================================================================
+
+model TwoPersonApproval {
+  id                 String         @id @default(cuid())
+  action             String // e.g. "garage.transfer_owner", "billing.refund"
+  entityType         String
+  entityId           String
+  payload            Json           @db.JsonB // exact parameters to execute on approval — never re-derived at execute time
+  reason             String
+  requestedByAdminId String
+  requestedAt        DateTime       @default(now())
+  status             ApprovalStatus @default(PENDING)
+  approvedByAdminId  String?
+  approvedAt         DateTime?
+  rejectedReason     String?
+  executedAt         DateTime?
+  executionError     String?
+  createdAt          DateTime       @default(now())
+
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("two_person_approvals")
+}
+
+// ============================================================================
+// Garages & Vehicles — Phase Two additions (GAR-06)
+// ============================================================================
+
+model VehicleTransfer {
+  id               String    @id @default(cuid())
+  vehicleId        String
+  fromGarageId     String?
+  fromAccountId    String?
+  toGarageId       String?
+  toAccountId      String?
+  handoverCode     String?
+  itemsTransferred Json?     @db.JsonB // itemised, exactly as the user confirmed in-app
+  confirmedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_transfers")
+}
+
+// ============================================================================
+// Workshops & Work — Phase Two additions (WORK-02/03/05/07/08)
+// ============================================================================
+
+model WorkshopVerification {
+  id                 String                     @id @default(cuid())
+  workshopId         String
+  action             WorkshopVerificationAction
+  checkedItems       Json?                      @db.JsonB // what was checked
+  documentKeys       String[]                   @default([]) // S3 keys of attached evidence
+  reason             String? // required for REVOKED; optional context for GRANTED
+  effectiveAt        DateTime                   @default(now())
+  performedByAdminId String
+  createdAt          DateTime                   @default(now())
+
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  @@index([workshopId])
+  @@map("workshop_verifications")
+}
+
+model WorkshopContactLog {
+  id                 String   @id @default(cuid())
+  workshopId         String
+  accountId          String? // which staff/owner account was reached, if known
+  channel            String // "call" | "message" — mirrors whichever channel the workshop record's own link used
+  outcomeNote        String
+  performedByAdminId String
+  occurredAt         DateTime @default(now())
+
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  @@index([workshopId])
+  @@map("workshop_contact_logs")
+}
+
+model JobStatusEvent {
+  id                 String     @id @default(cuid())
+  jobId              String
+  fromStatus         JobStatus?
+  toStatus           JobStatus
+  changedAt          DateTime   @default(now())
+  changedByAccountId String?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([toStatus])
+  @@map("job_status_events")
+}
+
+// TRUST-02 evidence trail + WORK-07 dispute-rate outlier detection — same
+// table, two call sites (see AGENTS.md).
+model Dispute {
+  id                String        @id @default(cuid())
+  kind              DisputeKind
+  jobId             String?
+  vehicleId         String?
+  workshopId        String?
+  invoiceId         String? // plain id — Invoice has no back-relation, per this file's "actor columns" convention
+  estimateId        String?
+  raisedByAccountId String?
+  reason            String
+  status            DisputeStatus @default(OPEN)
+  resolutionNote    String?
+  resolvedByAdminId String?
+  resolvedAt        DateTime?
+  createdAt         DateTime      @default(now())
+
+  job      Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  workshop Workshop? @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([vehicleId])
+  @@index([workshopId])
+  @@index([status])
+  @@map("disputes")
+}
+
+// ============================================================================
+// Trust & safety — Phase Two additions (TRUST-01/03/06)
+// ============================================================================
+
+model AbuseReport {
+  id                 String            @id @default(cuid())
+  reportedAccountId  String
+  reportedEntityType String? // e.g. "Vehicle", "Job", "Account" — freeform, whatever was reported
+  reportedEntityId   String?
+  reporterAccountId  String?
+  reason             String
+  description        String?
+  status             AbuseReportStatus @default(OPEN)
+  actionTaken        String?
+  decidedByAdminId   String?
+  decidedAt          DateTime?
+  createdAt          DateTime          @default(now())
+
+  reportedAccount Account  @relation("AbuseReported", fields: [reportedAccountId], references: [id], onDelete: Cascade)
+  reporterAccount Account? @relation("AbuseReporter", fields: [reporterAccountId], references: [id])
+
+  @@index([reportedAccountId])
+  @@index([reporterAccountId])
+  @@index([status])
+  @@map("abuse_reports")
+}
+
+model CapabilityRestriction {
+  id               String                @id @default(cuid())
+  accountId        String
+  capability       RestrictionCapability
+  reason           String
+  startAt          DateTime              @default(now())
+  endAt            DateTime // automatic expiry — active iff endAt > now() and liftedAt is null
+  liftedAt         DateTime?
+  liftedByAdminId  String?
+  createdByAdminId String
+  createdAt        DateTime              @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("capability_restrictions")
+}
+
+model DisclosureRequest {
+  id                String                @id @default(cuid())
+  requesterName     String
+  requesterOrg      String
+  requestType       DisclosureRequestType
+  legalAuthority    String // e.g. warrant/subpoena reference, statutory basis
+  whatWasDisclosed  String
+  relatedAccountId  String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  approvedByAdminId String
+  userNotified      Boolean               @default(false)
+  userNotifiedAt    DateTime?
+  receivedAt        DateTime
+  respondedAt       DateTime?
+  createdAt         DateTime              @default(now())
+
+  @@index([relatedAccountId])
+  @@map("disclosure_requests")
+}
+
+// ============================================================================
+// Money — Carma's own subscription revenue, Phase Two additions.
+// Strictly separate from mechanic-invoice money (Job/Invoice/Payment above).
+// No payment processor is connected (see .env.example STRIPE_* reserved
+// vars) — FailedPayment/refund-execution/masked-card fields stay empty
+// until one is.
+// ============================================================================
+
+model SubscriptionEvent {
+  id                 String                @id @default(cuid())
+  subscriptionId     String
+  type               SubscriptionEventType
+  fromPlanId         String?
+  toPlanId           String?
+  amountCents        Int?
+  occurredAt         DateTime              @default(now())
+  note               String?
+  metadata           Json?                 @db.JsonB // e.g. { extendedUntil, thresholdApprovalId }
+  performedByAdminId String? // null when system-derived (e.g. TRIAL started at signup)
+  createdAt          DateTime              @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([type])
+  @@index([occurredAt])
+  @@map("subscription_events")
+}
+
+model FailedPayment {
+  id             String              @id @default(cuid())
+  subscriptionId String
+  amountCents    Int
+  currency       String
+  reasonCode     String? // processor's failure reason — null until a processor is connected
+  status         FailedPaymentStatus @default(RETRYING)
+  attemptedAt    DateTime            @default(now())
+  retryCount     Int                 @default(0)
+  nextRetryAt    DateTime?
+  userNotifiedAt DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("failed_payments")
+}
+
+model RefundCredit {
+  id                 String             @id @default(cuid())
+  subscriptionId     String
+  type               RefundCreditType
+  amountCents        Int
+  currency           String
+  full               Boolean            @default(false)
+  reason             String
+  status             RefundCreditStatus @default(REQUESTED)
+  requestedByAdminId String
+  approvalId         String? // TwoPersonApproval.id, set when above the approval threshold
+  executedAt         DateTime? // when set, the money-movement step is still a documented no-op — see MON-07
+  executionNote      String?
+  createdAt          DateTime           @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@map("refund_credits")
+}
+
+// MON-09 — conversion basis, stated beside every converted figure.
+model FxRate {
+  id                      String   @id @default(cuid())
+  currency                String   @unique
+  rateToReportingCurrency Decimal  @db.Decimal(18, 6) // 1 unit of `currency` = this many reporting-currency units
+  source                  String // e.g. "manual — no live FX provider connected"
+  asOfDate                DateTime
+  createdAt               DateTime @default(now())
+
+  @@map("fx_rates")
+}
+
+// ============================================================================
+// Support — Phase Two additions (SUP-01..08)
+// ============================================================================
+
+model Ticket {
+  id              String          @id @default(cuid())
+  accountId       String
+  channel         TicketChannel
+  subject         String
+  status          TicketStatus    @default(OPEN)
+  category        TicketCategory? // required at close time (SUP-06)
+  assignedAdminId String?
+
+  // SUP-02 technical-state snapshot, attached at open. Device/build/
+  // screens/errors aren't tracked anywhere in this codebase (no telemetry
+  // table) — left null and shown honestly, never fabricated.
+  attachedCountry      String?
+  attachedPlan         String?
+  attachedPaymentState String?
+
+  resolutionNote   String?
+  firstRespondedAt DateTime?
+  resolvedAt       DateTime?
+  closedAt         DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  account  Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  messages TicketMessage[]
+
+  @@index([accountId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id            String                     @id @default(cuid())
+  ticketId      String
+  direction     TicketMessageDirection
+  channel       TicketChannel
+  body          String
+  sentByAdminId String?
+  deliveryState TicketMessageDeliveryState @default(QUEUED)
+  sentAt        DateTime                   @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
+// SUP-03 "see the app as the user" scaffolding only — see AGENTS.md: not
+// wired to a real mobile-side consent handshake yet. No code path anywhere
+// grants read access off the back of this row; it is audit/logging
+// scaffolding, deliberately inert.
+model ConsentSession {
+  id                 String               @id @default(cuid())
+  accountId          String
+  requestedByAdminId String
+  requestedAt        DateTime             @default(now())
+  consentMethod      ConsentMethod
+  consentGrantedAt   DateTime?
+  expiresAt          DateTime?
+  startedAt          DateTime?
+  endedAt            DateTime?
+  status             ConsentSessionStatus @default(REQUESTED)
+  notes              String?
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("consent_sessions")
+}
+
+// ============================================================================
+// Messaging — Phase Two additions (COMM-01..06). Actual send delivery for
+// email/SMS/push stays a logged no-op until real provider credentials
+// exist — see src/lib/notifications/provider.ts's existing pattern.
+// ============================================================================
+
+model Segment {
+  id               String   @id @default(cuid())
+  name             String
+  definition       Json     @db.JsonB // attribute filters, e.g. { region, planCode, hasVehicle }
+  createdByAdminId String
+  createdAt        DateTime @default(now())
+
+  campaigns Campaign[]
+
+  @@map("segments")
+}
+
+model Campaign {
+  id                    String          @id @default(cuid())
+  segmentId             String?
+  name                  String
+  channel               CampaignChannel
+  messageClass          MessageClass
+  subject               String?
+  body                  String
+  scheduledAt           DateTime?
+  sentAt                DateTime?
+  testSentAt            DateTime?
+  testSentToAdminId     String?
+  status                CampaignStatus  @default(DRAFT)
+  recipientCountAtSend  Int?
+  suppressedCountAtSend Int?
+  createdByAdminId      String
+  createdAt             DateTime        @default(now())
+
+  segment    Segment?            @relation(fields: [segmentId], references: [id])
+  recipients CampaignRecipient[]
+
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id               String                 @id @default(cuid())
+  campaignId       String
+  accountId        String
+  channel          CampaignChannel
+  deliveryState    CampaignRecipientState @default(QUEUED)
+  suppressedReason String?
+  sentAt           DateTime?
+  createdAt        DateTime               @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([accountId])
+  @@map("campaign_recipients")
+}
+
+// COMM-03 — suppressed by channel and/or message class; null means "all".
+model MessageSuppression {
+  id               String            @id @default(cuid())
+  accountId        String
+  channel          CampaignChannel?
+  messageClass     MessageClass?
+  reason           SuppressionReason
+  createdByAdminId String?
+  createdAt        DateTime          @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("message_suppressions")
+}
+
+// COMM-04 — automatic notification templates, per language.
+model NotificationTemplate {
+  id               String   @id @default(cuid())
+  key              String // e.g. "SERVICE_DUE", "DOCUMENT_EXPIRING", "INVITE", "ESTIMATE", "INVOICE", "PAYMENT"
+  language         String   @default("en")
+  subject          String?
+  body             String // may contain {{variables}}
+  variables        String[] @default([]) // declared allowed variable names, validated on save
+  updatedByAdminId String?
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  @@unique([key, language])
+  @@map("notification_templates")
+}
+
+model WhatsNewNote {
+  id               String    @id @default(cuid())
+  version          String
+  title            String
+  body             String
+  publishedAt      DateTime?
+  createdByAdminId String
+  createdAt        DateTime  @default(now())
+
+  views WhatsNewView[]
+
+  @@map("whats_new_notes")
+}
+
+model WhatsNewView {
+  id        String    @id @default(cuid())
+  noteId    String
+  accountId String
+  seenAt    DateTime  @default(now())
+  readAt    DateTime?
+
+  note    WhatsNewNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  account Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, accountId])
+  @@map("whats_new_views")
+}
+
+model Banner {
+  id               String         @id @default(cuid())
+  message          String
+  severity         BannerSeverity @default(INFO)
+  audience         Json?          @db.JsonB // null = everyone, else a segment-shaped filter
+  startsAt         DateTime       @default(now())
+  expiresAt        DateTime
+  clearedAt        DateTime?
+  clearedByAdminId String?
+  createdByAdminId String
+  createdAt        DateTime       @default(now())
+
+  @@map("banners")
+}
