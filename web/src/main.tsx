@@ -1,7 +1,13 @@
-import '@fontsource/space-grotesk/400.css'
-import '@fontsource/space-grotesk/500.css'
-import '@fontsource/space-grotesk/600.css'
-import '@fontsource/space-mono/400.css'
+// Latin subsets only: the app and its documents are English (brief §05), and
+// latin-ext covers accented names. Fewer files to keep for offline use.
+import '@fontsource/space-grotesk/latin-400.css'
+import '@fontsource/space-grotesk/latin-ext-400.css'
+import '@fontsource/space-grotesk/latin-500.css'
+import '@fontsource/space-grotesk/latin-ext-500.css'
+import '@fontsource/space-grotesk/latin-600.css'
+import '@fontsource/space-grotesk/latin-ext-600.css'
+import '@fontsource/space-mono/latin-400.css'
+import '@fontsource/space-mono/latin-ext-400.css'
 import './styles/app.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
@@ -38,6 +44,16 @@ const router = createBrowserRouter([
     ],
   },
 ])
+
+// Keep the app and the report engine on the device, so reports can be made
+// offline (REACH-01). Production builds only — see sw/service-worker.js.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // No worker (a private window, an old browser): the app still works online.
+    })
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
