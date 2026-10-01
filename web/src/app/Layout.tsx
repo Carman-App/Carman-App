@@ -21,6 +21,14 @@ export function Layout() {
       <a className="visually-hidden" href="#main">
         Skip to content
       </a>
+      {import.meta.env.MODE === 'demo' ? (
+        <div className="demo-strip">
+          <p>
+            <strong>Preview with sample data.</strong> The garage, the workshop and their records are made up, and nothing here is sent or saved to a
+            server.
+          </p>
+        </div>
+      ) : null}
       <header className="shell-header">
         <div className="shell-bar">
           <Link to="/expense" className="brand" aria-label="Carma Reports, home">

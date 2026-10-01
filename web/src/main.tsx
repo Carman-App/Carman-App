@@ -12,7 +12,7 @@ import './styles/app.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Navigate, createBrowserRouter } from 'react-router'
+import { Navigate, createBrowserRouter, createMemoryRouter, type RouteObject } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { Layout, NotFound, RouteError } from './app/Layout.tsx'
 import { Archive } from './screens/Archive.tsx'
@@ -29,7 +29,7 @@ const queryClient = new QueryClient({
   },
 })
 
-const router = createBrowserRouter([
+const routes: RouteObject[] = [
   {
     element: <Layout />,
     errorElement: <RouteError />,
@@ -43,11 +43,15 @@ const router = createBrowserRouter([
       { path: '*', element: <NotFound /> },
     ],
   },
-])
+]
+
+// The demo build runs inside other pages (a shared preview), so it keeps its
+// place in memory instead of in the address bar.
+const router = import.meta.env.MODE === 'demo' ? createMemoryRouter(routes) : createBrowserRouter(routes)
 
 // Keep the app and the report engine on the device, so reports can be made
 // offline (REACH-01). Production builds only — see sw/service-worker.js.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && import.meta.env.MODE !== 'demo' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       // No worker (a private window, an old browser): the app still works online.

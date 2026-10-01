@@ -23,6 +23,9 @@ type Pdf = { blob: Blob; pages: number; url: string }
 // pdf.js is large; it loads with the first preview, not with the app.
 const PdfPages = lazy(() => import('../render/PdfPages.tsx'))
 
+// The demo build is a preview inside other pages, which can't hand over files.
+const SAVING_OFF = import.meta.env.MODE === 'demo'
+
 export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }: Props) {
   const [pdfFile, setPdfFile] = useState<Pdf | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
@@ -43,7 +46,14 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
         setPdfFile({ blob, pages, url })
       })
       .catch((error: unknown) => {
-        if (!cancelled) setFailed(error instanceof Error ? error.message : 'The PDF could not be laid out.')
+        if (cancelled) return
+        const message = error instanceof Error ? error.message : String(error)
+        // The layout engine is WebAssembly, which some locked-down pages refuse.
+        setFailed(
+          /WebAssembly/i.test(message)
+            ? 'The pages can’t be drawn here, because this page doesn’t allow the PDF engine to run. In the app, every page of the PDF appears here before you send it.'
+            : `The PDF couldn’t be laid out: ${message}`,
+        )
       })
     return () => {
       cancelled = true
@@ -86,7 +96,7 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
   const csvName = doc.filename.replace(/\.pdf$/i, '.csv')
   const cardName = doc.filename.replace(/\.pdf$/i, ' - summary.png')
   const pdfAsFile = pdfFile ? new File([pdfFile.blob], doc.filename, { type: 'application/pdf' }) : null
-  const shareable = pdfAsFile ? canShareFiles([pdfAsFile]) : false
+  const shareable = !SAVING_OFF && pdfAsFile ? canShareFiles([pdfAsFile]) : false
 
   const downloadPdf = async () => {
     if (!pdfFile) return
@@ -171,6 +181,11 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
             </div>
           )}
           <div className="export-side">
+            {SAVING_OFF ? (
+              <p className="banner">
+                This preview can’t save files. In the app, this is where you download or share the PDF, the CSV and the summary card.
+              </p>
+            ) : null}
             <div>
               <h3>The report</h3>
               <p className="file-facts">
@@ -184,7 +199,7 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
                 </p>
               ) : null}
             </div>
-            <button type="button" className="btn btn-primary" disabled={!pdfFile} onClick={() => void downloadPdf()}>
+            <button type="button" className="btn btn-primary" disabled={!pdfFile || SAVING_OFF} onClick={() => void downloadPdf()}>
               Download PDF
             </button>
             {shareable ? (
@@ -192,14 +207,14 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
                 Share PDF…
               </button>
             ) : null}
-            {pdfFile ? (
+            {pdfFile && !SAVING_OFF ? (
               <a className="btn btn-ghost" href={pdfFile.url} target="_blank" rel="noreferrer">
                 Open in a new tab to print
               </a>
             ) : null}
 
             <h3>For a spreadsheet</h3>
-            <button type="button" className="btn btn-secondary" onClick={() => void downloadCsv()}>
+            <button type="button" className="btn btn-secondary" disabled={SAVING_OFF} onClick={() => void downloadCsv()}>
               Download CSV
             </button>
 
@@ -207,7 +222,7 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
             {card ? (
               <>
                 <img className="card-preview" src={card.url} alt={`Summary card: ${doc.headline.label} ${doc.headline.value}, ${doc.periodLabel}`} />
-                <button type="button" className="btn btn-secondary" onClick={() => void downloadCard()}>
+                <button type="button" className="btn btn-secondary" disabled={SAVING_OFF} onClick={() => void downloadCard()}>
                   Download image
                 </button>
                 {shareable && pdfAsFile && canShareFiles([new File([card.blob], cardName, { type: 'image/png' }), pdfAsFile]) ? (

@@ -52,15 +52,28 @@ function serviceWorker(): Plugin {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  // npm run build:demo — the app on bundled sample data, for a preview that
+  // runs anywhere (src/demo/api.ts). Relative paths so it works under any
+  // folder; fonts inlined so it needs nothing from other hosts.
+  const demo = mode === 'demo'
   // The admin/ Next.js app serves /api/v1/*. Proxying it keeps the browser on
   // one origin in development, so no CORS setup is needed locally.
   const proxy = {
     '/api': { target: env.API_PROXY_TARGET || 'http://localhost:4000', changeOrigin: true },
   }
   return {
-    plugins: [react(), serviceWorker()],
+    base: demo ? './' : '/',
+    plugins: demo ? [react()] : [react(), serviceWorker()],
     // react-pdf is the one large chunk; it's split out and only loaded when a report is exported.
-    build: { chunkSizeWarningLimit: 1400 },
+    build: demo
+      ? {
+          chunkSizeWarningLimit: 1400,
+          outDir: 'dist-demo',
+          // Page fonts (.woff2) go inline, since a preview host may not serve
+          // fonts from files; the PDF engine fetches its .woff files.
+          assetsInlineLimit: (file: string) => (file.endsWith('.woff2') ? true : file.endsWith('.woff') ? false : undefined),
+        }
+      : { chunkSizeWarningLimit: 1400 },
     server: { port: 5180, proxy },
     preview: { port: 5180, proxy },
     test: {

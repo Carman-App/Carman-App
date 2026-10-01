@@ -51,6 +51,20 @@ identifies itself with the `x-carma-account-id` header, set from
 `VITE_DEV_ACCOUNT_ID`. `getCurrentAccountId()` in `src/api/client.ts` is the
 one place to swap in real authentication.
 
+## Preview without a server
+
+```bash
+npm run build:demo      # dist-demo/: the app on bundled sample data
+npm run preview:demo    # serve it locally
+```
+
+The demo build answers the app's API calls from `src/demo/data.json`
+instead of a server. That file is admin's seeded demo data. The build keeps
+its place in memory rather than the address bar, and it can't save files, so
+it runs inside other pages as a shared preview. To refresh the sample data
+after changing the seed, run admin with the seed applied and then
+`npm run demo:capture`.
+
 ## Check
 
 ```bash
@@ -92,6 +106,7 @@ npm run build
 - `src/data/` — API queries, with an offline copy of the records in
   IndexedDB. Report parameters live in the URL, and saved setups are kept
   here too.
+- `src/demo/` — the demo build's stand-in for the API, and its sample data.
 - `sw/service-worker.js` — the offline service worker. The plugin in
   `vite.config.ts` fills in the build's file list.
 - In `admin/`, two endpoints each return everything a report needs in one

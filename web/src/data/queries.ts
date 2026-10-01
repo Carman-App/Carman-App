@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 import { api, NetworkError } from '../api/client.ts'
+import { demoToday } from '../demo/api.ts'
 import type { RawAccount, RawGarage, RawGarageReportData, RawWorkshop, RawWorkshopReportData } from '../api/types.ts'
 import { idbGet, idbPut, STORES } from './idb.ts'
 
@@ -72,8 +73,9 @@ export function useOnline(): boolean {
   return useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
 }
 
-/** Today as "YYYY-MM-DD" in the reader's time zone. */
+/** Today as "YYYY-MM-DD" in the reader's time zone — in the demo build, the day its sample data was captured. */
 export function localToday(): string {
+  if (import.meta.env.MODE === 'demo') return demoToday()
   return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
 

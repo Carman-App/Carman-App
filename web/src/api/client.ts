@@ -6,25 +6,10 @@
  * on failure with the HTTP status set.
  */
 
-export class ApiError extends Error {
-  status: number
-  code: string
+import { demoRequest } from '../demo/api.ts'
+import { ApiError, NetworkError } from './errors.ts'
 
-  constructor(status: number, code: string, message: string) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.code = code
-  }
-}
-
-/** The request never reached the server (offline, server down, DNS). */
-export class NetworkError extends Error {
-  constructor(message = 'Could not reach the Carma server.') {
-    super(message)
-    this.name = 'NetworkError'
-  }
-}
+export { ApiError, NetworkError }
 
 /**
  * SINGLE SWAP POINT for identity. There is no end-user auth yet, so every
@@ -50,6 +35,8 @@ function baseUrl(): string {
 }
 
 async function request<T>(path: string, init: { method?: 'GET' | 'POST'; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+  // The demo build answers from its sample data; this branch is dropped from every other build.
+  if (import.meta.env.MODE === 'demo') return demoRequest<T>(path, init.method ?? 'GET')
   let res: Response
   try {
     res = await fetch(`${baseUrl()}${path.replace(/^\//, '')}`, {
