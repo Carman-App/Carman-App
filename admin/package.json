@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "create-admin": "tsx scripts/create-admin.ts",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:reports": "tsx prisma/seed-reports.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1117.0",

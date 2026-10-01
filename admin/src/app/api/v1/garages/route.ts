@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     const garages = await prisma.garage.findMany({
       where: {
-        OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id } } }],
+        OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id, removedAt: null } } }],
       },
       orderBy: { createdAt: "desc" },
     });

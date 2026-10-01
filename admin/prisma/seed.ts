@@ -132,6 +132,7 @@ async function main() {
           litres: 45,
           odometerAtEntry: 84400,
           place: "Total Ngong Road",
+          enteredByAccountId: account.id,
           enteredByName: "Wallace R",
         },
         {
@@ -141,6 +142,7 @@ async function main() {
           litres: 48,
           odometerAtEntry: 83000,
           place: "Shell Karen",
+          enteredByAccountId: account.id,
           enteredByName: "Wallace R",
         },
       ],
@@ -155,6 +157,7 @@ async function main() {
           odometerAtEntry: 80000,
           description: "Full service — oil, filters, brake pads",
           place: "Toyota Kenya Service Centre",
+          enteredByAccountId: account.id,
           enteredByName: "Wallace R",
         },
       ],

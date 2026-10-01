@@ -132,7 +132,7 @@ export async function POST(
     }
 
     const input = parsed.data;
-    const record = await createRecord(vehicleId, input);
+    const record = await createRecord(vehicleId, account.id, input);
 
     await writeAuditLog({
       actorId: account.id,
@@ -149,7 +149,10 @@ export async function POST(
 
 type CreateRecordInput = ReturnType<typeof createRecordSchema.parse>;
 
-async function createRecord(vehicleId: string, input: CreateRecordInput) {
+// enteredByAccountId is stamped from the authenticated caller (never the
+// payload) so attribution survives a later rename of enteredByName — the
+// web report keys former-member marking off it (SHARE-07).
+async function createRecord(vehicleId: string, accountId: string, input: CreateRecordInput) {
   switch (input.type) {
     case "fuel":
       return prisma.fuelRecord.create({
@@ -160,6 +163,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           litres: input.litres,
           odometerAtEntry: input.odometerAtEntry,
           place: input.place,
+          enteredByAccountId: accountId,
           enteredByName: input.enteredByName,
           notes: input.notes,
         },
@@ -173,6 +177,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           odometerAtEntry: input.odometerAtEntry,
           description: input.description,
           place: input.place,
+          enteredByAccountId: accountId,
           enteredByName: input.enteredByName,
           notes: input.notes,
         },
@@ -186,6 +191,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           odometerAtEntry: input.odometerAtEntry,
           description: input.description,
           place: input.place,
+          enteredByAccountId: accountId,
           enteredByName: input.enteredByName,
           notes: input.notes,
         },
@@ -199,6 +205,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           odometerAtEntry: input.odometerAtEntry,
           category: input.category as ExpenseCategory,
           place: input.place,
+          enteredByAccountId: accountId,
           enteredByName: input.enteredByName,
           notes: input.notes,
         },
@@ -209,6 +216,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           vehicleId,
           date: new Date(input.date),
           odometerKm: input.odometerKm,
+          enteredByAccountId: accountId,
           enteredByName: input.enteredByName,
           notes: input.notes,
         },

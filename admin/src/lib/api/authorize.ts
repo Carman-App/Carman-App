@@ -7,6 +7,9 @@ import { GarageRole, type WorkshopRole } from "@/generated/prisma/enums";
  * Resource-authorization helpers shared by /api/v1/* routes. Each function
  * throws ForbiddenError (mapped to a 403 by the route) when the calling
  * account doesn't have the relationship it claims.
+ *
+ * A GarageMember with `removedAt` set is a former member (GAR-02 keeps the
+ * row for history instead of deleting it) and grants no access.
  */
 
 export async function requireGarageMembership(accountId: string, garageId: string) {
@@ -14,7 +17,7 @@ export async function requireGarageMembership(accountId: string, garageId: strin
     where: { id: garageId },
     select: {
       ownerId: true,
-      members: { where: { accountId }, select: { id: true } },
+      members: { where: { accountId, removedAt: null }, select: { id: true } },
     },
   });
   if (!garage) throw new ForbiddenError("Garage not found.");
@@ -34,7 +37,7 @@ export async function requireGarageOwner(accountId: string, garageId: string) {
     where: { id: garageId },
     select: {
       ownerId: true,
-      members: { where: { accountId }, select: { id: true, role: true } },
+      members: { where: { accountId, removedAt: null }, select: { id: true, role: true } },
     },
   });
   if (!garage) throw new ForbiddenError("Garage not found.");
@@ -64,7 +67,7 @@ export async function requireVehicleAccess(accountId: string, vehicleId: string)
       garage: {
         select: {
           ownerId: true,
-          members: { where: { accountId }, select: { id: true } },
+          members: { where: { accountId, removedAt: null }, select: { id: true } },
         },
       },
       memberships: { where: { accountId }, select: { id: true } },

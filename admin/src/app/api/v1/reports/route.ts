@@ -6,7 +6,7 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { createReportSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
-import { ReportScope } from "@/generated/prisma/enums";
+import { ReportFormat, ReportScope } from "@/generated/prisma/enums";
 
 // POST /api/v1/reports — generate a report scoped to a vehicle or a garage
 // for a period. Actual PDF/file generation is out of scope for this pass
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
         scope: input.scope as ReportScope,
         scopeId: input.scopeId,
         periodLabel: input.periodLabel,
+        format: input.format as ReportFormat | undefined,
         generatedByAccountId: account.id,
         recipients: input.recipients
           ? { create: input.recipients.map((r) => ({ email: r.email, name: r.name })) }

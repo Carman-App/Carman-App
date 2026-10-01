@@ -9,6 +9,7 @@ import {
   BuildStageStatus,
   EstimateDecisionType,
   ReportScope,
+  ReportFormat,
   Region,
   ProfileType,
   JobLineKind,
@@ -221,6 +222,9 @@ export const createReportSchema = z.object({
   scope: z.enum(enumValues(ReportScope)),
   scopeId: z.string().min(1),
   periodLabel: z.string().trim().min(1).max(100),
+  // DATA-04 — optional so existing callers keep the PDF default. The web
+  // report (web/) renders real PDF and CSV files and declares which one.
+  format: z.enum(enumValues(ReportFormat)).optional(),
   recipients: z
     .array(
       z.object({
