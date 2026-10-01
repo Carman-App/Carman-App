@@ -51,8 +51,11 @@ export function readExpense(sp: URLSearchParams): ExpenseRoute {
       people: sp.getAll('who'),
       places: sp.getAll('at'),
       categories: sp.getAll('cat').filter((c): c is CategoryKey => (CATEGORY_ORDER as string[]).includes(c)),
+      mentioning: sp.get('q') ?? '',
       excludeIds: sp.getAll('x'),
       hideAmounts: sp.get('hide') === '1',
+      distanceOnly: sp.get('dist') === '1',
+      ratePerKm: sp.get('rate') ?? '',
       note: sp.get('note') ?? '',
       contact: sp.get('contact') ?? '',
     },
@@ -67,8 +70,12 @@ export function writeExpense({ garageId, params }: ExpenseRoute): URLSearchParam
   for (const w of params.people) sp.append('who', w)
   for (const a of params.places) sp.append('at', a)
   for (const c of params.categories) sp.append('cat', c)
+  // Untrimmed, so a space typed between two words survives the round trip.
+  if (params.mentioning) sp.set('q', params.mentioning)
   for (const x of params.excludeIds) sp.append('x', x)
   if (params.hideAmounts) sp.set('hide', '1')
+  if (params.distanceOnly) sp.set('dist', '1')
+  if (params.distanceOnly && params.ratePerKm) sp.set('rate', params.ratePerKm)
   if (params.note) sp.set('note', params.note)
   if (params.contact) sp.set('contact', params.contact)
   return sp

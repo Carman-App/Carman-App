@@ -1,4 +1,5 @@
 import type { Rec } from './dataset.ts'
+import type { Fmt } from './fmt.ts'
 import { daysBetween } from './period.ts'
 
 /**
@@ -34,12 +35,16 @@ export type Distance =
   | { ok: true; first: Reading; last: Reading; km: number; readings: number }
   | { ok: false; reason: string; readings: number }
 
+/** How reasons print readings — the document's own conventions when given (SYS-11). */
+type ReadingFmt = Pick<Fmt, 'km' | 'dateLong'>
+const RAW: ReadingFmt = { km: (n) => `${n} km`, dateLong: (iso) => iso }
+
 /**
  * Distance covered between the first and last readings inside [start, end].
  * Spend is later matched to exactly that window, so the figure never divides
  * a whole period's cost by part of its distance.
  */
-export function distanceInPeriod(all: Reading[], start: string, end: string): Distance {
+export function distanceInPeriod(all: Reading[], start: string, end: string, fmt: ReadingFmt = RAW): Distance {
   const inside = all.filter((r) => r.date >= start && r.date <= end)
   const n = inside.length
   if (n === 0) return { ok: false, readings: 0, reason: 'there are no odometer readings in the period' }
@@ -58,7 +63,7 @@ export function distanceInPeriod(all: Reading[], start: string, end: string): Di
       return {
         ok: false,
         readings: n,
-        reason: `the odometer readings go backwards (${inside[i - 1]!.km} km, then ${inside[i]!.km} km on ${inside[i]!.date}), so the distance can't be trusted`,
+        reason: `the odometer readings go backwards (${fmt.km(inside[i - 1]!.km)}, then ${fmt.km(inside[i]!.km)} on ${fmt.dateLong(inside[i]!.date)}), so the distance can’t be trusted`,
       }
     }
   }
@@ -70,7 +75,7 @@ export function distanceInPeriod(all: Reading[], start: string, end: string): Di
   }
   const km = last.km - first.km
   if (km < MIN_DISTANCE_KM) {
-    return { ok: false, readings: n, reason: `only ${km} km was recorded in the period, too little for a per-kilometre figure` }
+    return { ok: false, readings: n, reason: `only ${fmt.km(km)} was recorded in the period, too little for a per-kilometre figure` }
   }
   return { ok: true, first, last, km, readings: n }
 }
@@ -84,4 +89,42 @@ export function spendInWindow(items: Rec[], vehicleId: string, d: Extract<Distan
     total += r.amount
   }
   return total
+}
+
+/** An odometer observation with the record it came from (SYS-03) — the first one entered when two records carry the same reading. */
+export type SourcedReading = Reading & { rec: Rec }
+
+export function sourcedReadings(records: Rec[], vehicleId: string): SourcedReading[] {
+  const byKey = new Map<string, SourcedReading>()
+  for (const r of records) {
+    if (r.vehicleId !== vehicleId || r.odometerKm == null) continue
+    const key = `${r.date}|${r.odometerKm}`
+    const current = byKey.get(key)
+    if (!current || (r.createdAt ?? '') < (current.rec.createdAt ?? '')) byKey.set(key, { date: r.date, km: r.odometerKm, rec: r })
+  }
+  return [...byKey.values()].sort((a, b) => (a.date === b.date ? a.km - b.km : a.date < b.date ? -1 : 1))
+}
+
+export type Mileage =
+  | { ok: true; readings: SourcedReading[]; first: SourcedReading; last: SourcedReading; km: number }
+  | { ok: false; readings: SourcedReading[]; problem: 'none' | 'one' }
+  | { ok: false; readings: SourcedReading[]; problem: 'backwards'; before: SourcedReading; after: SourcedReading }
+
+/**
+ * Distance for a mileage claim (OWN-13): the closing reading in the period
+ * minus the opening one. Unlike cost per kilometre, two readings are enough
+ * — the distance between two readings is a fact, not an estimate — but a
+ * reading lower than the one before it means one of them is wrong, so the
+ * figure is withheld rather than guessed.
+ */
+export function mileageInPeriod(all: SourcedReading[], start: string, end: string): Mileage {
+  const readings = all.filter((r) => r.date >= start && r.date <= end)
+  if (readings.length === 0) return { ok: false, readings, problem: 'none' }
+  if (readings.length === 1) return { ok: false, readings, problem: 'one' }
+  for (let i = 1; i < readings.length; i += 1) {
+    if (readings[i]!.km < readings[i - 1]!.km) return { ok: false, readings, problem: 'backwards', before: readings[i - 1]!, after: readings[i]! }
+  }
+  const first = readings[0]!
+  const last = readings[readings.length - 1]!
+  return { ok: true, readings, first, last, km: last.km - first.km }
 }

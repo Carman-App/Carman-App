@@ -44,7 +44,7 @@ export function deletePreset(id: string) {
   )
 }
 
-type Memory = { contact?: string; garageId?: string; workshopId?: string; textScale?: number }
+type Memory = { contact?: string; garageId?: string; workshopId?: string; textScale?: number; ratePerKm?: string }
 
 export function remember<K extends keyof Memory>(key: K, value: Memory[K]) {
   write(MEMORY_KEY, { ...read<Memory>(MEMORY_KEY, {}), [key]: value })

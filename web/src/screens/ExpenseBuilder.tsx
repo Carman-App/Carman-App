@@ -8,7 +8,11 @@ import { localToday, useGarageData } from '../data/queries.ts'
 import { CATEGORY_LABEL, CATEGORY_ORDER, normalizeGarageData, recordTitle, vehicleName, type CategoryKey } from '../report/dataset.ts'
 import { expenseBuilderInfo, type ExpenseParams } from '../report/expense.ts'
 import { makeFmt } from '../report/fmt.ts'
+import { mileageProblem, parseRate } from '../report/mileage.ts'
 import { resolvePeriod, type PeriodPreset } from '../report/period.ts'
+
+/** A mileage claim has to stay on one page, so its note stays to a line or two (OWN-13). */
+const NOTE_MAX_ONE_PAGE = 160
 
 const PERIODS: { preset: PeriodPreset; label: string }[] = [
   { preset: 'thisMonth', label: 'This month' },
@@ -38,6 +42,11 @@ export function ExpenseBuilder() {
   const [presetName, setPresetName] = useState('')
   const [showAllPlaces, setShowAllPlaces] = useState(false)
   const [kept, setKept] = useState<string[]>([])
+  // Open when a link arrives with filters on; after that it's the reader's to open and close.
+  const [filtersOpen, setFiltersOpen] = useState(() => {
+    const p = route.params
+    return p.people.length + p.places.length + p.categories.length > 0 || p.mentioning.trim() !== ''
+  })
 
   // The contact line is remembered on this device and offered again next time.
   const params = useMemo(() => {
@@ -65,29 +74,39 @@ export function ExpenseBuilder() {
     setSp(next, { replace: true })
   }
   const builtIns: { name: string; hint: string; apply: () => void }[] = [
-    { name: 'Monthly close', hint: 'Last month, whole garage, every record', apply: () => go({ ...params, vehicleId: null, period: { preset: 'lastMonth' }, people: [], places: [], categories: [], excludeIds: [] }) },
-    { name: 'Tax year', hint: 'The last complete tax year', apply: () => go({ ...params, period: { preset: 'lastTaxYear' }, excludeIds: [] }) },
+    { name: 'Monthly close', hint: 'Last month, whole garage, every record', apply: () => go({ ...params, vehicleId: null, period: { preset: 'lastMonth' }, people: [], places: [], categories: [], mentioning: '', distanceOnly: false, excludeIds: [] }) },
+    { name: 'Tax year', hint: 'The last complete tax year', apply: () => go({ ...params, period: { preset: 'lastTaxYear' }, distanceOnly: false, excludeIds: [] }) },
     {
       name: 'Service history for a buyer',
       hint: 'One vehicle, all records, amounts left out',
-      apply: () => go({ ...params, vehicleId: params.vehicleId ?? data?.vehicles[0]?.id ?? null, period: { preset: 'allTime' }, people: [], places: [], categories: [], hideAmounts: true, excludeIds: [] }),
+      apply: () => go({ ...params, vehicleId: params.vehicleId ?? data?.vehicles[0]?.id ?? null, period: { preset: 'allTime' }, people: [], places: [], categories: [], mentioning: '', hideAmounts: true, distanceOnly: false, excludeIds: [] }),
+    },
+    {
+      name: 'Mileage claim',
+      hint: 'One vehicle, last month, distance only',
+      apply: () =>
+        go({ ...params, vehicleId: params.vehicleId ?? data?.vehicles[0]?.id ?? null, period: { preset: 'lastMonth' }, distanceOnly: true, ratePerKm: params.ratePerKm || recall('ratePerKm') || '', excludeIds: [] }),
     },
   ]
 
   const period = data ? resolvePeriod(params.period, { today, region: data.conventions.region }) : null
   // Groups not yet decided: neither kept as real nor with a record left out.
   const openDuplicates = info ? info.duplicates.filter((g) => !kept.includes(g.key) && !g.records.some((r) => params.excludeIds.includes(r.id))).length : 0
-  const activeFilters = params.people.length + params.places.length + params.categories.length
+  const activeFilters = params.people.length + params.places.length + params.categories.length + (params.mentioning.trim() ? 1 : 0)
+  // A mileage record is distance only: spending filters and duplicates don't apply to it.
+  const distanceMode = params.distanceOnly && params.vehicleId != null
+  const rate = parseRate(params.ratePerKm)
   const placeOptions = info ? (showAllPlaces ? info.places : info.places.slice(0, 12)) : []
 
   return (
     <>
       <div className="page-head">
         <p className="eyebrow">Expense report</p>
-        <h1 className="page-title">What did it cost, and who spent it?</h1>
+        <h1 className="page-title">{distanceMode ? 'How far did it go?' : 'What did it cost, and who spent it?'}</h1>
         <p className="page-lede">
-          Choose a period and what to cover. The report includes the sections your records can support, says what it leaves out, and states every
-          filter — so it can be handed to anyone.
+          {distanceMode
+            ? 'A mileage record: the opening and closing odometer for the period and the distance between them, on one page. What the vehicle cost stays out of it.'
+            : 'Choose a period and what to cover. The report includes the sections your records can support, says what it leaves out, and states every filter — so it can be handed to anyone.'}
         </p>
       </div>
 
@@ -170,7 +189,7 @@ export function ExpenseBuilder() {
             <fieldset className="field">
               <legend>What to cover</legend>
               <div className="chips">
-                <ToggleChip on={!params.vehicleId} onClick={() => update({ vehicleId: null })} sub={data ? `${data.vehicles.length}` : undefined}>
+                <ToggleChip on={!params.vehicleId} onClick={() => update({ vehicleId: null, distanceOnly: false })} sub={data ? `${data.vehicles.length}` : undefined}>
                   Whole garage
                 </ToggleChip>
                 {data?.vehicles.map((v) => (
@@ -210,15 +229,32 @@ export function ExpenseBuilder() {
             </fieldset>
           </div>
 
+          {distanceMode ? null : (
           <div className="panel">
-            <details open={activeFilters > 0}>
+            <details open={filtersOpen} onToggle={(e) => setFiltersOpen(e.currentTarget.open)}>
               <summary style={{ cursor: 'pointer', fontWeight: 500 }}>
                 Narrow it down {activeFilters > 0 ? `· ${activeFilters} filter${activeFilters === 1 ? '' : 's'} on` : ''}
               </summary>
               <p className="field-hint">Filters combine, and every one you choose is printed on the report — a filtered report can never pass for a complete one.</p>
 
+              <div className="field" style={{ marginTop: 14 }}>
+                <label className="field-label" htmlFor="mentioning">
+                  Records that mention
+                </label>
+                <input
+                  id="mentioning"
+                  className="input"
+                  type="search"
+                  maxLength={60}
+                  placeholder="A part or job — e.g. brake pads, battery"
+                  value={params.mentioning}
+                  onChange={(e) => update({ mentioning: e.target.value })}
+                />
+                <p className="field-hint">Isolates one part or job — for a warranty claim, say. Searches what was written on each record.</p>
+              </div>
+
               {info && info.people.length > 0 ? (
-                <fieldset className="field" style={{ marginTop: 14 }}>
+                <fieldset className="field">
                   <legend>Entered by</legend>
                   <div className="chips">
                     {info.people.map((p) => (
@@ -259,30 +295,85 @@ export function ExpenseBuilder() {
                 </div>
               </fieldset>
               {activeFilters > 0 ? (
-                <button type="button" className="link-button" style={{ marginTop: 12 }} onClick={() => update({ people: [], places: [], categories: [] })}>
+                <button type="button" className="link-button" style={{ marginTop: 12 }} onClick={() => update({ people: [], places: [], categories: [], mentioning: '' })}>
                   Clear filters
                 </button>
               ) : null}
             </details>
           </div>
+          )}
 
           <div className="panel">
             <fieldset className="field">
               <legend>For the person reading it</legend>
-              <label className="check">
-                <input type="checkbox" checked={params.hideAmounts} onChange={(e) => update({ hideAmounts: e.target.checked })} />
+              {distanceMode ? null : (
+                <label className="check">
+                  <input type="checkbox" checked={params.hideAmounts} onChange={(e) => update({ hideAmounts: e.target.checked })} />
+                  <span>
+                    Leave amounts out
+                    <small>Show what was done and when, not what it cost — for a buyer who needs proof of care, not prices. Stated on the report.</small>
+                  </span>
+                </label>
+              )}
+              <label className="check" style={{ marginTop: distanceMode ? 0 : 12 }}>
+                <input
+                  type="checkbox"
+                  checked={distanceMode}
+                  disabled={!params.vehicleId}
+                  onChange={(e) => update({ distanceOnly: e.target.checked, ratePerKm: e.target.checked ? params.ratePerKm || recall('ratePerKm') || '' : params.ratePerKm })}
+                />
                 <span>
-                  Leave amounts out
-                  <small>Show what was done and when, not what it cost — for a buyer who needs proof of care, not prices. Stated on the report.</small>
+                  Distance only — for a mileage claim
+                  <small>
+                    {params.vehicleId
+                      ? 'Opening and closing odometer and the distance between them, on one page. What the vehicle cost is left out.'
+                      : 'Choose one vehicle above first: a mileage claim is for one vehicle.'}
+                  </small>
                 </span>
               </label>
             </fieldset>
+            {distanceMode ? (
+              <div className="field">
+                <label className="field-label" htmlFor="rate">
+                  Rate per km in {data?.conventions.currency ?? 'your currency'} (optional)
+                </label>
+                <input
+                  id="rate"
+                  className="input"
+                  inputMode="decimal"
+                  maxLength={12}
+                  placeholder="e.g. 30"
+                  value={params.ratePerKm}
+                  aria-describedby="rate-hint"
+                  onChange={(e) => {
+                    remember('ratePerKm', e.target.value)
+                    update({ ratePerKm: e.target.value })
+                  }}
+                />
+                <p id="rate-hint" className={`field-hint${params.ratePerKm.trim() && rate == null ? ' tone-warning' : ''}`}>
+                  {params.ratePerKm.trim() && rate == null
+                    ? 'Enter a plain amount, like 30 or 24.50 — until then the record shows the distance only.'
+                    : 'Your employer’s rate. It’s printed as yours, with the amount the distance comes to.'}
+                </p>
+              </div>
+            ) : null}
             <div className="field">
               <label className="field-label" htmlFor="note">
                 A note on the first page (optional)
               </label>
-              <textarea id="note" className="textarea" maxLength={600} placeholder="Why you're sending it — e.g. Service history for the Prado, as discussed." value={params.note} onChange={(e) => update({ note: e.target.value })} />
-              <p className="field-hint">Printed as your words, signed with your name — clearly not Carma’s.</p>
+              <textarea
+                id="note"
+                className="textarea"
+                maxLength={distanceMode ? NOTE_MAX_ONE_PAGE : 600}
+                placeholder={distanceMode ? 'e.g. Mileage for August, client visits.' : 'Why you’re sending it — e.g. Service history for the Prado, as discussed.'}
+                value={params.note}
+                onChange={(e) => update({ note: e.target.value })}
+              />
+              <p className="field-hint">
+                {distanceMode
+                  ? 'A line or two at most — the record has to fit on one page. Printed as your words, signed with your name.'
+                  : 'Printed as your words, signed with your name — clearly not Carma’s.'}
+              </p>
             </div>
             <div className="field">
               <label className="field-label" htmlFor="contact">
@@ -303,7 +394,7 @@ export function ExpenseBuilder() {
             </div>
           </div>
 
-          {info && fmt && info.duplicates.length > 0 ? (
+          {info && fmt && info.duplicates.length > 0 && !distanceMode ? (
             <div className="panel" id="duplicates">
               <h2 className="field-label">Check before you send — possible duplicates</h2>
               <p className="field-hint" style={{ marginTop: 0 }}>
@@ -346,7 +437,34 @@ export function ExpenseBuilder() {
           <div className="panel" aria-live="polite">
             {garageQuery.isLoading ? <Loading /> : null}
             {garageQuery.isError ? <ErrorState error={garageQuery.error} onRetry={() => void garageQuery.refetch()} /> : null}
-            {info && fmt && data ? (
+            {info && fmt && data && distanceMode && info.mileage ? (
+              <>
+                <p className="eyebrow">{vehicleName(data.vehicles.find((v) => v.id === params.vehicleId) ?? data.vehicles[0]!)} · mileage</p>
+                <p className="summary-figure">{info.mileage.ok ? fmt.km(info.mileage.km) : 'No distance'}</p>
+                <p className="summary-meta">
+                  {fmt.count(info.mileage.readings.length, 'odometer reading')} · {info.period.label}
+                </p>
+                {info.mileage.ok && rate != null ? (
+                  <p className="summary-meta">
+                    {(() => {
+                      const f = makeFmt(data.conventions, { fractionDigits: rate % 100 !== 0 ? 2 : 0 })
+                      return `${f.moneyCode(rate * info.mileage.km)} at ${f.moneyCode(rate)} per km`
+                    })()}
+                  </p>
+                ) : null}
+                {!info.mileage.ok ? (
+                  <p className="summary-meta tone-warning" style={{ marginTop: 8 }}>
+                    {mileageProblem(info.mileage, fmt)}
+                  </p>
+                ) : null}
+                <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 16 }} onClick={() => navigate(`/expense/report?${query}`)}>
+                  Build the mileage record
+                </button>
+                <p className="field-hint" style={{ textAlign: 'center' }}>
+                  You’ll see the page before anything is sent.
+                </p>
+              </>
+            ) : info && fmt && data ? (
               <>
                 <p className="eyebrow">{params.vehicleId ? vehicleName(data.vehicles.find((v) => v.id === params.vehicleId) ?? data.vehicles[0]!) : data.garage.name}</p>
                 <p className="summary-figure">{params.hideAmounts ? `${info.recordCount} records` : fmt.moneyCode(info.total)}</p>

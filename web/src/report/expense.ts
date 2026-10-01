@@ -17,12 +17,15 @@ import {
 import { findDuplicates, type DuplicateGroup } from './duplicates.ts'
 import { makeFmt, type Fmt } from './fmt.ts'
 import { fingerprint } from './hash.ts'
+import { entryMarks } from './marks.ts'
 import type { BarRow, Block, Column, Omission, ReportDoc, Row, ScopeLine, Section } from './model.ts'
 import { shares, sum } from './money.ts'
 import { distanceInPeriod, readingsFor, spendInWindow } from './odometer.ts'
 import { daysBetween, previousPeriod, resolvePeriod, type Period, type PeriodSpec } from './period.ts'
+import { buildMileageReport, mileageFor } from './mileage.ts'
+import type { Mileage } from './odometer.ts'
 import { adherence, isService, maintenanceGaps, nextService, serviceIntervalFor, type IntervalBasis } from './service.ts'
-import { fileSafe, listText, roundSignificant, scrubAmounts } from './text.ts'
+import { fileSafe, foldText, listText, roundSignificant, scrubAmounts } from './text.ts'
 
 /**
  * The expense report: one document whose sections switch on when the
@@ -39,9 +42,15 @@ export type ExpenseParams = {
   /** Place names; '' stands for "not recorded". Empty = everywhere. */
   places: string[]
   categories: CategoryKey[]
+  /** Only records whose title, description or notes mention this — one part or job (OWN-10). '' = no filter. */
+  mentioning: string
   /** Records the sender left out as duplicates (SYS-15). */
   excludeIds: string[]
   hideAmounts: boolean
+  /** Distance only, for a mileage claim (OWN-13) — one vehicle. */
+  distanceOnly: boolean
+  /** The sender's rate per km for that claim, as typed; '' = none. */
+  ratePerKm: string
   note: string
   contact: string
 }
@@ -52,8 +61,11 @@ export const DEFAULT_EXPENSE_PARAMS: ExpenseParams = {
   people: [],
   places: [],
   categories: [],
+  mentioning: '',
   excludeIds: [],
   hideAmounts: false,
+  distanceOnly: false,
+  ratePerKm: '',
   note: '',
   contact: '',
 }
@@ -88,6 +100,10 @@ export type ExpenseSelection = {
   filteredByPerson: boolean
   filteredByPlace: boolean
   filteredByCategory: boolean
+  /** The search the records were narrowed to, as typed (trimmed); '' when none. */
+  mentioning: string
+  /** Any filter that leaves out some of the vehicle's records — the report then covers those records, not the vehicle. */
+  narrowed: boolean
 }
 
 const byDate = (a: Rec, b: Rec) =>
@@ -107,10 +123,12 @@ export function selectExpense(data: OwnerDataset, params: ExpenseParams, today: 
   const places = new Set(params.places)
   const categories = new Set(params.categories)
   const excludeIds = new Set(params.excludeIds)
+  const needle = foldText(params.mentioning)
   const passes = (r: Rec) =>
     (people.size === 0 || people.has(person(r).key)) &&
     (places.size === 0 || places.has(r.place ?? '')) &&
-    (categories.size === 0 || (r.category != null && categories.has(r.category)))
+    (categories.size === 0 || (r.category != null && categories.has(r.category))) &&
+    (needle === '' || foldText(`${recordTitle(r)} ${r.description ?? ''} ${r.notes ?? ''}`).includes(needle))
 
   const scoped = allInScope.filter((r) => r.type !== 'odometer').sort(byDate)
   const inPeriod = scoped.filter((r) => r.date >= period.start && r.date <= period.end)
@@ -134,7 +152,14 @@ export function selectExpense(data: OwnerDataset, params: ExpenseParams, today: 
     filteredByPerson: people.size > 0,
     filteredByPlace: places.size > 0,
     filteredByCategory: categories.size > 0,
+    mentioning: needle === '' ? '' : params.mentioning.trim().replace(/\s+/g, ' '),
+    narrowed: people.size > 0 || places.size > 0 || categories.size > 0 || needle !== '',
   }
+}
+
+/** The vehicle a mileage record is for — distance only needs exactly one. */
+export function distanceVehicle(params: ExpenseParams, sel: ExpenseSelection): Vehicle | null {
+  return params.distanceOnly && params.vehicleId ? (sel.vehicles[0] ?? null) : null
 }
 
 /** What the builder shows before anything is generated. */
@@ -145,6 +170,8 @@ export type ExpenseBuilderInfo = {
   people: { key: string; name: string; former: boolean; count: number }[]
   places: { name: string; count: number }[]
   duplicates: DuplicateGroup[]
+  /** Set when the report is a mileage record. */
+  mileage: Mileage | null
 }
 
 export function expenseBuilderInfo(data: OwnerDataset, params: ExpenseParams, today: string): ExpenseBuilderInfo {
@@ -166,6 +193,10 @@ export function expenseBuilderInfo(data: OwnerDataset, params: ExpenseParams, to
     places: [...places.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     // Duplicates among what would be reported (before the sender's exclusions).
     duplicates: findDuplicates([...sel.items, ...sel.excluded]),
+    mileage: (() => {
+      const vehicle = distanceVehicle(params, sel)
+      return vehicle ? mileageFor(data, vehicle, sel) : null
+    })(),
   }
 }
 
@@ -175,6 +206,8 @@ export function expenseBuilderInfo(data: OwnerDataset, params: ExpenseParams, to
 
 export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ctx: BuildContext): ReportDoc {
   const sel = selectExpense(data, params, ctx.today)
+  const mileageVehicle = distanceVehicle(params, sel)
+  if (mileageVehicle) return buildMileageReport(data, params, ctx, sel, mileageVehicle)
   const { period, items } = sel
   const single = params.vehicleId ? (sel.vehicles[0] ?? null) : null
   const project = single ? [...data.projects].reverse().find((p) => p.vehicleId === single.id) ?? null : null
@@ -215,7 +248,13 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
       })
     }
     if (items.length === 0) {
-      blocks.push({ kind: 'note', tone: 'warning', text: 'No spending is recorded in this period. That is a statement about the records, not a claim that nothing was spent.' })
+      blocks.push({
+        kind: 'note',
+        tone: 'warning',
+        text: sel.narrowed
+          ? 'No records in this period match the filters listed on the cover.'
+          : 'No spending is recorded in this period. That is a statement about the records, not a claim that nothing was spent.',
+      })
     } else if (thin) {
       blocks.push({ kind: 'note', tone: 'warning', text: `Only ${fmt.count(items.length, 'record')} in this period, so figures that need more records (comparisons, per-kilometre costs, projections) are left out.` })
     }
@@ -227,8 +266,10 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
     const recs = items.filter((r) => r.category === key)
     return { key, count: recs.length, amount: sum(recs.map((r) => r.amount)) }
   })
-  if (!hide && items.length > 0) {
-    const ranked = [...byCategory].sort((a, b) => b.amount - a.amount || CATEGORY_ORDER.indexOf(a.key) - CATEGORY_ORDER.indexOf(b.key))
+  const presentCategories = byCategory.filter((c) => c.count > 0)
+  if (!hide && items.length > 0 && (!sel.narrowed || presentCategories.length >= 2)) {
+    // "None recorded" is only true of an unfiltered report; in a narrowed one the category was filtered out.
+    const ranked = [...(sel.narrowed ? presentCategories : byCategory)].sort((a, b) => b.amount - a.amount || CATEGORY_ORDER.indexOf(a.key) - CATEGORY_ORDER.indexOf(b.key))
     const { pct, roundedSum } = shares(ranked.map((c) => c.amount), total)
     const max = Math.max(1, ...ranked.map((c) => c.amount))
     const blocks: Block[] = [
@@ -283,7 +324,7 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
   // -- Cost per kilometre (OWN-03, OWN-13) ------------------------------------
   if (single && !hide && items.length > 0) {
     const reason = perKmBlocked(sel)
-    const distance = reason ? null : distanceInPeriod(readingsFor(data.records, single.id), period.start, period.end)
+    const distance = reason ? null : distanceInPeriod(readingsFor(data.records, single.id), period.start, period.end, fmt)
     if (reason || !distance?.ok) {
       omitted.push({ title: 'Cost per kilometre', reason: `Withheld because ${reason ?? (distance && !distance.ok ? distance.reason : '')}.` })
     } else {
@@ -322,15 +363,15 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
   if (multiVehicle && items.length > 0) add(byVehicleSection(data, sel, fmt, hide, total))
 
   // -- Who spent it (SHARE-01/02/07) ----------------------------------------------
-  if (data.members.length > 1 && items.length > 0) {
-    const groups = new Map<string, { person: Person; count: number; amount: number }>()
-    for (const r of items) {
-      const p = sel.person(r)
-      const g = groups.get(p.key) ?? { person: p, count: 0, amount: 0 }
-      g.count += 1
-      g.amount += r.amount
-      groups.set(p.key, g)
-    }
+  const groups = new Map<string, { person: Person; count: number; amount: number }>()
+  for (const r of items) {
+    const p = sel.person(r)
+    const g = groups.get(p.key) ?? { person: p, count: 0, amount: 0 }
+    g.count += 1
+    g.amount += r.amount
+    groups.set(p.key, g)
+  }
+  if (data.members.length > 1 && items.length > 1 && (groups.size > 1 || !sel.filteredByPerson)) {
     const ranked = [...groups.values()].sort((a, b) => (hide ? b.count - a.count : b.amount - a.amount) || a.person.name.localeCompare(b.person.name))
     const { pct } = shares(ranked.map((g) => g.amount), total)
     const max = Math.max(1, ...ranked.map((g) => (hide ? g.count : g.amount)))
@@ -423,10 +464,26 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
   }
 
   // -- Service history and coverage (OWN-08/09, WNTY-01/02) ---------------------
-  if (single) add(serviceSection(data, sel, single, fmt, hide, ctx.today))
-
   // -- What is due next (OWN-07, FLEET-09) ------------------------------------
-  add(dueSection(data, sel, fmt, hide, total, ctx.today))
+  // Both describe the whole vehicle or garage. A report narrowed to some records
+  // leaves them out and says why, rather than mixing the two scopes (and
+  // showing more than the task needs).
+  {
+    const history = single ? serviceSection(data, sel, single, fmt, hide, ctx.today) : null
+    const due = dueSection(data, sel, fmt, hide, total, ctx.today)
+    if (!sel.narrowed) {
+      if (history) add(history)
+      add(due)
+    } else {
+      const whole = single ? 'the whole vehicle' : 'the whole garage'
+      if (history && history.blocks.length > 0) {
+        omitted.push({ title: 'Service history', reason: `Left out because the report is narrowed to some records, and a history has to show every service.` })
+      }
+      if (due.blocks.length > 0) {
+        omitted.push({ title: 'What is due next', reason: `Left out because the report is narrowed to some records, and it describes ${whole}.` })
+      }
+    }
+  }
 
   // -- Build stages (PROJ-01..04) ----------------------------------------------
   if (single && project) {
@@ -464,6 +521,7 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
   }
   if (sel.filteredByPlace) scope.push({ label: 'Places', value: `Only ${listText(params.places.map((p) => p || 'records with no place'))}` })
   if (sel.filteredByCategory) scope.push({ label: 'Categories', value: `Only ${listText(params.categories.map((c) => CATEGORY_LABEL[c].toLowerCase()))}` })
+  if (sel.mentioning) scope.push({ label: 'Mentioning', value: `Only records whose description or notes mention “${sel.mentioning}”. Everything else in the period is left out` })
   if (sel.excluded.length > 0) {
     scope.push({
       label: 'Left out',
@@ -492,6 +550,7 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
     people: [...params.people].sort(),
     places: [...params.places].sort(),
     categories: [...params.categories].sort(),
+    mentioning: foldText(params.mentioning),
     excluded: [...params.excludeIds].sort(),
     hide,
   })
@@ -528,7 +587,7 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
     notes,
     showContents: sections.length >= 7 || items.length > 40,
     filename: fileSafe(
-      `Carma expense report - ${single ? vehicleShort(single) : data.garage.name}${sel.filteredByPerson ? ' - filtered' : ''} - ${period.start} to ${period.end}.pdf`,
+      `Carma expense report - ${single ? vehicleShort(single) : data.garage.name}${sel.mentioning ? ` - ${sel.mentioning.slice(0, 40)}` : ''}${sel.filteredByPerson ? ' - filtered' : ''} - ${period.start} to ${period.end}.pdf`,
     ),
     fingerprint: print,
     identity,
@@ -557,6 +616,7 @@ function changeCell(fmt: Fmt, now: number, before: number) {
 function perKmBlocked(sel: ExpenseSelection): string | null {
   if (sel.filteredByPerson) return 'the report is limited to some people, and distance can’t be split by who entered the spend'
   if (sel.filteredByPlace) return 'the report is limited to some places, and distance can’t be split by where money was spent'
+  if (sel.mentioning) return `the report is limited to records mentioning “${sel.mentioning}”, and distance can’t be split by item`
   if (sel.items.length < 3) return 'there are too few records in the period'
   return null
 }
@@ -566,7 +626,7 @@ function byVehicleSection(data: OwnerDataset, sel: ExpenseSelection, fmt: Fmt, h
   const rows = sel.vehicles.map((v) => {
     const recs = sel.items.filter((r) => r.vehicleId === v.id)
     const amount = sum(recs.map((r) => r.amount))
-    const distance = blocked ? null : distanceInPeriod(readingsFor(data.records, v.id), sel.period.start, sel.period.end)
+    const distance = blocked ? null : distanceInPeriod(readingsFor(data.records, v.id), sel.period.start, sel.period.end, fmt)
     const ok = distance?.ok ? distance : null
     const spend = ok ? spendInWindow(sel.items, v.id, ok) : 0
     const fuel = ok ? spendInWindow(sel.items, v.id, ok, (r) => r.category === 'fuel') : 0
@@ -1002,14 +1062,8 @@ function recordsSection(
     ...(hide ? [] : [{ key: 'amount', label: 'Amount', align: 'right' as const, width: 1.1 }]),
   ]
   const rows: Row[] = items.map((r, i) => {
-    const marks: string[] = []
+    const marks = entryMarks(r, fmt)
     const p = sel.person(r)
-    if (r.editedAt) marks.push(`Edited ${fmt.stampDate(r.editedAt)}`)
-    if (r.createdAt) {
-      const entered = fmt.stampIso(r.createdAt)
-      const lag = daysBetween(r.date, entered)
-      if (lag >= 2) marks.push(`Entered ${fmt.dateLong(entered)}, ${fmt.count(lag, 'day')} after the event`)
-    }
     const dups = duplicateOf.get(r.id)
     if (dups && dups.length > 0) marks.push(`Possible duplicate of #${dups.join(', #')}`)
     const detail = detailFor(r, hide, fmt.currency) ?? null
@@ -1039,7 +1093,8 @@ function recordsSection(
   ]
   const ids = new Set(sel.vehicles.map((v) => v.id))
   const deleted = data.deletedRecords.filter((r) => ids.has(r.vehicleId) && r.date >= sel.period.start && r.date <= sel.period.end)
-  if (deleted.length > 0) {
+  // Deletions reconcile the whole period's total; a narrowed report has no such total, and they can't be filtered.
+  if (deleted.length > 0 && !sel.narrowed) {
     blocks.push({
       kind: 'note',
       tone: 'muted',

@@ -112,4 +112,6 @@ export type ReportDoc = {
   /** Parameters that identify "the same report" across generations. */
   identity: string
   recordCount: number
+  /** Pages the reader's system will accept, when there's a limit (a mileage claim: one). */
+  pageLimit?: number
 }

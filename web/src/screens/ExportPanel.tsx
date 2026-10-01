@@ -178,6 +178,11 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
                 <br />
                 {pdfFile ? `${pdfFile.pages} page${pdfFile.pages === 1 ? '' : 's'} · ${formatSize(pdfFile.blob.size)}${pdfFile.blob.size > 1024 * 1024 ? ' — over 1 MB, may be slow on WhatsApp' : ' — small enough for WhatsApp'}` : 'Preparing…'}
               </p>
+              {pdfFile && doc.pageLimit != null && pdfFile.pages > doc.pageLimit ? (
+                <p className="file-facts tone-warning" role="alert">
+                  This runs to {pdfFile.pages} pages, and expense systems often take only {doc.pageLimit}. Shorten the note on the first page to bring it back to one.
+                </p>
+              ) : null}
             </div>
             <button type="button" className="btn btn-primary" disabled={!pdfFile} onClick={() => void downloadPdf()}>
               Download PDF

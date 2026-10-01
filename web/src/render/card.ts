@@ -19,7 +19,7 @@ const GROTESK = '"Space Grotesk", system-ui, sans-serif'
 const MONO = '"Space Mono", ui-monospace, monospace'
 
 /** Scope lines worth carrying on the card: what it covers and any filter. */
-const CARD_SCOPE = new Set(['Vehicle', 'Vehicles', 'Entered by', 'Places', 'Categories', 'Left out', 'Amounts', 'Mechanics', 'Customer'])
+const CARD_SCOPE = new Set(['Vehicle', 'Vehicles', 'Contents', 'Rate', 'Entered by', 'Places', 'Categories', 'Mentioning', 'Left out', 'Amounts', 'Mechanics', 'Customer'])
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, width: number, maxLines: number): string[] {
   const words = text.split(/\s+/)

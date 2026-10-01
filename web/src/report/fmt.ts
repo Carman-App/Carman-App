@@ -40,6 +40,8 @@ export type Fmt = {
   date(iso: string): string
   /** "YYYY-MM-DD" → "7 Aug 2025" (or "Aug 7, 2025" where that's the convention). */
   dateLong(iso: string): string
+  /** "YYYY-MM-DD" → "7 Aug" — for a date whose year is already plain from its line. */
+  dayMonth(iso: string): string
   /** "YYYY-MM-DD" → "August 2025". */
   monthYear(iso: string): string
   /** ISO timestamp → calendar date in the reader's time zone, "1 Oct 2026". */
@@ -72,6 +74,7 @@ export function makeFmt(conv: Conventions, opts: { fractionDigits: 0 | 2; timeZo
   const intNf = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
   const rateNf = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const longDate = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const dayMonth = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' })
   const monthYear = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const stampDate = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone })
   const stamp = new Intl.DateTimeFormat(locale, {
@@ -117,6 +120,7 @@ export function makeFmt(conv: Conventions, opts: { fractionDigits: 0 | 2; timeZo
       return conv.dateFormat.replace('YYYY', y).replace('MM', m).replace('DD', day)
     },
     dateLong: (iso) => longDate.format(utcDate(iso)),
+    dayMonth: (iso) => dayMonth.format(utcDate(iso)),
     monthYear: (iso) => monthYear.format(utcDate(iso)),
     stampDate: (ts) => stampDate.format(new Date(ts)),
     stamp: (ts) => stamp.format(new Date(ts)),

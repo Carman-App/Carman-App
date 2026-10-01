@@ -16,6 +16,11 @@ export function roundSignificant(minor: number, digits: number): number {
   return Math.round(major / magnitude) * magnitude * 100
 }
 
+/** Lower-cased, accent-free and single-spaced, so "Brake  Pads" finds "brake pads". */
+export function foldText(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
 export function listText(items: string[]): string {
   if (items.length <= 1) return items[0] ?? ''
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`

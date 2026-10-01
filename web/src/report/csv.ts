@@ -1,5 +1,6 @@
 import { recordDetail, recordTitle, vehicleName, type OwnerDataset } from './dataset.ts'
-import { selectExpense, type ExpenseParams } from './expense.ts'
+import { distanceVehicle, selectExpense, type ExpenseParams } from './expense.ts'
+import { mileageFor } from './mileage.ts'
 import { makeFmt } from './fmt.ts'
 import { minorToDecimalString } from './money.ts'
 import { scrubAmounts } from './text.ts'
@@ -26,6 +27,29 @@ function toCsv(header: string[], rows: (string | number | null | undefined)[][])
 
 export function expenseCsv(data: OwnerDataset, params: ExpenseParams, today: string): string {
   const sel = selectExpense(data, params, today)
+  const mileageVehicle = distanceVehicle(params, sel)
+  if (mileageVehicle) {
+    // A mileage record's rows are its odometer readings — every one in the period, including any the PDF folds away.
+    const m = mileageFor(data, mileageVehicle, sel)
+    const role = (r: (typeof m.readings)[number]) => (m.ok ? (r === m.first ? 'opening' : r === m.last ? 'closing' : '') : '')
+    return toCsv(
+      ['reading_number', 'date', 'odometer_km', 'role', 'recorded_with', 'record_id', 'vehicle', 'plate', 'entered_by', 'former_member', 'entered_at', 'edited_at'],
+      m.readings.map((r, i) => [
+        i + 1,
+        r.date,
+        r.km,
+        role(r),
+        r.rec.type,
+        r.rec.id,
+        vehicleName(mileageVehicle),
+        mileageVehicle.plate ?? '',
+        r.rec.enteredByName,
+        sel.person(r.rec).former ? 'yes' : 'no',
+        r.rec.createdAt,
+        r.rec.editedAt,
+      ]),
+    )
+  }
   const vehicles = new Map(data.vehicles.map((v) => [v.id, v]))
   const header = [
     'record_id',

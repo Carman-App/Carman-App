@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { expenseCsv, workCsv } from './csv.ts'
 import { normalizeGarageData } from './dataset.ts'
 import { DEFAULT_EXPENSE_PARAMS, buildExpenseReport, expenseBuilderInfo, type ExpenseParams } from './expense.ts'
-import { TODAY, garagePayload, workshopPayload } from './fixtures.test-util.ts'
+import { readingsFit } from './mileage.ts'
+import { TODAY, fuel, garagePayload, workshopPayload } from './fixtures.test-util.ts'
 import type { Block, ReportDoc } from './model.ts'
 import { DEFAULT_WORK_PARAMS, buildWorkReport, type WorkParams } from './work.ts'
 import { normalizeWorkshopData } from './workDataset.ts'
@@ -190,6 +191,28 @@ describe('expense report — filters are never silent (SYS-02, RECIP-07/10)', ()
     expect(doc.scope.find((l) => l.label === 'Left out')!.value).toContain('1 possible duplicate the sender chose to leave out')
   })
 
+  it('never calls a filtered-out category "none recorded"', () => {
+    const fuelOnly = car1({ categories: ['fuel'] })
+    expect(ids(fuelOnly)).not.toContain('categories')
+    expect(JSON.stringify(fuelOnly)).not.toContain('None recorded')
+    const two = car1({ categories: ['fuel', 'service'] })
+    expect(blocks(two, 'categories', 'bars')[0]!.rows.map((r) => r.label)).toEqual(['Fuel', 'Service'])
+    // Unfiltered, an empty category is a true statement about the records.
+    expect(JSON.stringify(blocks(car1(), 'categories', 'bars')[0])).toContain('None recorded')
+  })
+
+  it('leaves whole-vehicle sections out of a narrowed report, and says why', () => {
+    const narrowed = car1({ mentioning: 'brake pads' })
+    expect(ids(narrowed)).toEqual(['total', 'records'])
+    expect(narrowed.omitted.map((o) => o.title)).toEqual(['Cost per kilometre', 'Service history', 'What is due next'])
+    expect(narrowed.omitted[1]!.reason).toBe('Left out because the report is narrowed to some records, and a history has to show every service.')
+    // Deletions reconcile the full period's total, which a narrowed report doesn't have.
+    expect(JSON.stringify(narrowed)).not.toContain('deleted after entry')
+    expect(JSON.stringify(car1())).toContain('deleted after entry')
+    // One person's records don't need a breakdown by person.
+    expect(ids(car1({ people: ['acct:acct-member'] }))).not.toContain('people')
+  })
+
   it('says a period is empty rather than looking cheap (SYS-04)', () => {
     const doc = car1({ period: { preset: 'thisMonth' } })
     expect(doc.recordCount).toBe(0)
@@ -279,5 +302,164 @@ describe('work report', () => {
   it('exports one row per job', () => {
     const csv = workCsv(work, { ...DEFAULT_WORK_PARAMS, period: { preset: 'lastMonth' } }, TODAY, 'UTC')
     expect(csv.trim().split('\r\n')).toHaveLength(4)
+  })
+})
+
+describe('expense report — one part or job (OWN-10)', () => {
+  const doc = car1({ mentioning: '  BRAKE   pads ' })
+
+  it('keeps only the records that mention it, and says so on the cover', () => {
+    const rows = blocks(doc, 'records', 'table')[0]!.rows
+    expect(rows.map((r) => text(r.cells.item))).toEqual(['Brake pads'])
+    expect(doc.scope.find((l) => l.label === 'Mentioning')?.value).toMatch(/^Only records whose description or notes mention “BRAKE pads”/)
+    expect(doc.filename).toContain(' - BRAKE pads - ')
+  })
+
+  it('withholds cost per kilometre, which can’t be split by item', () => {
+    expect(ids(doc)).not.toContain('per-km')
+    expect(doc.omitted.find((o) => o.title === 'Cost per kilometre')?.reason).toContain('mentioning “BRAKE pads”')
+  })
+
+  it('finds a line item written inside a service', () => {
+    expect(car1({ mentioning: 'oil filter' }).recordCount).toBe(1)
+  })
+
+  it('says it is the filter, not the records, when nothing matches', () => {
+    const none = car1({ mentioning: 'turbo' })
+    expect(none.recordCount).toBe(0)
+    expect(blocks(none, 'total', 'note')[0]!.text).toBe('No records in this period match the filters listed on the cover.')
+  })
+
+  it('is part of what makes two reports the same report (SYS-05)', () => {
+    expect(car1({ mentioning: 'Brake pads' }).identity).toBe(doc.identity)
+    expect(car1().identity).not.toBe(doc.identity)
+  })
+
+  it('narrows the CSV the same way', () => {
+    const csv = parseCsv(expenseCsv(garage, { ...DEFAULT_EXPENSE_PARAMS, vehicleId: 'car1', mentioning: 'brake' }, TODAY))
+    expect(csv).toHaveLength(2)
+    expect(csv[1]![0]).toBe('c1-rep-1')
+  })
+})
+
+describe('mileage record — distance only (OWN-13)', () => {
+  const spring = { preset: 'custom' as const, start: '2026-04-01', end: '2026-06-30' }
+  const doc = car1({ distanceOnly: true, period: spring })
+
+  it('states the opening and closing readings and the distance between them', () => {
+    expect(doc.title).toBe('Mileage record')
+    expect(ids(doc)).toEqual(['distance', 'readings'])
+    expect(doc.headline).toMatchObject({ label: 'Distance', value: '2,000 km' })
+    expect(blocks(doc, 'distance', 'figure')[0]).toMatchObject({ label: 'Distance travelled', value: '2,000 km' })
+    const facts = Object.fromEntries(blocks(doc, 'distance', 'facts')[0]!.items.map((f) => [f.label, f.value]))
+    expect(facts['Opening odometer']).toBe('13,000 km on 10 Apr 2026')
+    expect(facts['Closing odometer']).toBe('15,000 km on 10 Jun 2026')
+  })
+
+  it('says which days the readings cover, and that trips are not told apart', () => {
+    expect(blocks(doc, 'distance', 'note').map((n) => n.text)).toEqual([
+      'Only travel between the first and last readings in the period is counted. Carma records the odometer, not individual trips, so business and private travel are not told apart.',
+    ])
+    const wholeMonths = car1({ distanceOnly: true, period: { preset: 'custom', start: '2026-03-10', end: '2026-05-10' } })
+    expect(blocks(wholeMonths, 'distance', 'note')[0]!.text).toMatch(/^The readings fall on the first and last days of the period\./)
+  })
+
+  it('lists the readings behind the figure, with who entered each', () => {
+    const rows = blocks(doc, 'readings', 'table')[0]!.rows
+    expect(rows.map((r) => [text(r.cells.km), text(r.cells.source)])).toEqual([
+      ['13,000', 'Fuel fill'],
+      ['14,000', 'Fuel fill'],
+      ['14,400', 'Repair'],
+      ['15,000', 'Fuel fill'],
+    ])
+    expect(rows[2]!.cells.by).toMatchObject({ text: 'Former Three', sub: 'former member' })
+    // A reading entered late says so under its date (TAX-03).
+    const july = car1({ distanceOnly: true, period: { preset: 'custom', start: '2026-07-01', end: '2026-07-31' } })
+    expect(blocks(july, 'readings', 'table')[0]!.rows.map((r) => r.cells.date)).toEqual([
+      { text: '10/07/2026', sub: undefined },
+      { text: '25/07/2026', sub: 'entered 5 Aug' },
+    ])
+  })
+
+  it('leaves spending out entirely, and says so (RECIP-10)', () => {
+    const all = JSON.stringify(doc)
+    expect(all).not.toContain('KES')
+    expect(all).not.toContain('Brake pads')
+    expect(all).not.toContain('Corner Garage')
+    expect(doc.scope.map((l) => l.label)).toEqual(['Vehicle', 'Period', 'Contents', 'Sent by'])
+    expect(doc.scope[2]!.value).toBe('Distance only. Costs, places, who paid and other vehicles are left out')
+    expect(doc.pageLimit).toBe(1)
+  })
+
+  it('applies the sender’s rate and prints it as theirs', () => {
+    const withRate = car1({ distanceOnly: true, period: spring, ratePerKm: ' 30 ' })
+    const facts = Object.fromEntries(blocks(withRate, 'distance', 'facts')[0]!.items.map((f) => [f.label, f.value]))
+    expect(facts['At the sender’s rate']).toBe('2,000 km × KES 30 = KES 60,000')
+    expect(withRate.scope.find((l) => l.label === 'Rate')?.value).toBe('KES 30 per km — set by the sender, not by Carma')
+    expect(withRate.headline.caption).toBe('KES 60,000 at KES 30 per km')
+    expect(withRate.identity).not.toBe(doc.identity)
+    // Cents in the rate show cents everywhere.
+    expect(car1({ distanceOnly: true, period: spring, ratePerKm: '24.5' }).headline.caption).toBe('KES 49,000.00 at KES 24.50 per km')
+    // Anything that isn't a plain amount is left off rather than guessed at.
+    expect(car1({ distanceOnly: true, period: spring, ratePerKm: '30/km' }).scope.find((l) => l.label === 'Rate')).toBeUndefined()
+  })
+
+  it('withholds the distance when a reading goes backwards, and lists every reading', () => {
+    const payload = garagePayload()
+    payload.records.push(fuel('bad', 'car1', '2026-05-20', '100.00', 13500))
+    const broken = buildExpenseReport(normalizeGarageData(payload), { ...DEFAULT_EXPENSE_PARAMS, vehicleId: 'car1', distanceOnly: true, period: spring }, ctx)
+    expect(broken.headline.value).toBe('Withheld')
+    expect(blocks(broken, 'distance', 'note')[0]!.text).toMatch(/^The reading of 13,500 km on 20 May 2026 is lower than the one before it \(14,400 km on 14 May 2026\)/)
+    expect(blocks(broken, 'readings', 'table')[0]!.rows).toHaveLength(5)
+  })
+
+  it('needs two readings, and says so when there is one', () => {
+    const september = car1({ distanceOnly: true, period: { preset: 'lastMonth' } })
+    expect(blocks(september, 'distance', 'note')[0]!.text).toBe(
+      'There is only one odometer reading in the period (18,000 km on 10 Sept 2026). A distance needs an opening and a closing reading.',
+    )
+  })
+
+  it('folds a long run of readings to the opening and closing ones, keeping all of them in the CSV', () => {
+    const payload = garagePayload()
+    payload.records.push(fuel('late', 'car1', '2026-09-20', '100.00', 18300))
+    const data = normalizeGarageData(payload)
+    const params = { ...DEFAULT_EXPENSE_PARAMS, vehicleId: 'car1', distanceOnly: true, period: { preset: 'allTime' as const } }
+    const long = buildExpenseReport(data, params, ctx)
+    const table = blocks(long, 'readings', 'table')[0]!
+    expect(table.rows.map((r) => text(r.cells.n))).toEqual(['1', '15'])
+    expect(table.caption).toBe('The opening and closing readings. The 13 readings between them, each at or above the one before, are in the CSV export.')
+    const csv = parseCsv(expenseCsv(data, params, TODAY))
+    expect(csv).toHaveLength(16)
+    expect(csv[0]!.slice(0, 4)).toEqual(['\ufeffreading_number', 'date', 'odometer_km', 'role'])
+    expect(csv[1]!.slice(1, 4)).toEqual(['2025-06-10', '6000', 'opening'])
+    expect(csv[15]!.slice(1, 4)).toEqual(['2026-09-20', '18300', 'closing'])
+  })
+
+  it('lists every reading only while the page has room for them (one page, OWN-13)', () => {
+    const plain = (n: number) => Array.from({ length: n }, () => [undefined])
+    const late = (n: number) => Array.from({ length: n }, () => ['entered 20 Sept, edited 29 Sept'])
+    const bare = { rate: false, note: '', title: 'Toyota Prado · KAA 001A' }
+    expect(readingsFit(plain(7), bare)).toBe(true)
+    expect(readingsFit(plain(8), bare)).toBe(false)
+    expect(readingsFit(plain(6), { ...bare, rate: true })).toBe(true)
+    expect(readingsFit(plain(7), { ...bare, rate: true })).toBe(false)
+    expect(readingsFit(late(5), bare)).toBe(true)
+    expect(readingsFit(late(6), bare)).toBe(false)
+    expect(readingsFit(late(4), { ...bare, rate: true })).toBe(true)
+    expect(readingsFit(late(5), { ...bare, rate: true })).toBe(false)
+    expect(readingsFit(plain(4), { ...bare, note: 'x'.repeat(100) })).toBe(false)
+    expect(readingsFit(plain(5), { ...bare, title: 'Toyota Land Cruiser Prado 150 Series VX Limited · KAA 001A' })).toBe(true)
+    expect(readingsFit(plain(6), { ...bare, title: 'Toyota Land Cruiser Prado 150 Series VX Limited · KAA 001A' })).toBe(false)
+  })
+
+  it('lays out the same whether or not it was generated before (SYS-05)', () => {
+    const again = buildExpenseReport(garage, { ...DEFAULT_EXPENSE_PARAMS, vehicleId: 'car1', distanceOnly: true, period: spring }, { ...ctx, earlierVersions: [{ generatedAt: '2026-09-30T08:00:00.000Z', fingerprint: doc.fingerprint }] })
+    expect(again.fingerprint).toBe(doc.fingerprint)
+    expect(again.notes).toEqual(doc.notes)
+  })
+
+  it('needs one vehicle — for the whole garage it stays the expense report', () => {
+    expect(expense({ distanceOnly: true }).title).toBe('Expense report')
   })
 })
