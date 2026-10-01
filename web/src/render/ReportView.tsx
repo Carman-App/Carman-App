@@ -206,8 +206,10 @@ function TableView({ columns, rows, footer, caption }: { columns: Column[]; rows
       const sub = cellSub(cell)
       return (
         <td key={col.key} data-label={col.label} data-empty={text === '' && !sub ? 'true' : undefined} className={[isNum(col) ? 'num' : '', toneClass(cellTone(cell))].join(' ').trim() || undefined}>
-          {text}
-          {sub ? <small>{sub}</small> : null}
+          <span className="cell">
+            {text}
+            {sub ? <small>{sub}</small> : null}
+          </span>
         </td>
       )
     })

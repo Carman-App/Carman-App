@@ -45,13 +45,13 @@ export function WorkReport() {
   return (
     <>
       <div className="doc-toolbar">
-        <Link className="btn btn-secondary" to={`/work?${link}`}>
-          ← Change the report
+        <Link className="btn btn-secondary" aria-label="Change the report" to={`/work?${link}`}>
+          ← Change<span className="wide-only"> the report</span>
         </Link>
         <span className="spacer" />
         <TextSize scale={scale} onChange={setScale} />
-        <button type="button" className="btn btn-primary" onClick={() => setExportDoc(doc)}>
-          Check pages and send
+        <button type="button" className="btn btn-primary" aria-label="Check pages and send" onClick={() => setExportDoc(doc)}>
+          Check<span className="wide-only"> pages</span> and send
         </button>
       </div>
       {query.data?.offline ? <OfflineNote savedAt={query.data.savedAt} /> : null}

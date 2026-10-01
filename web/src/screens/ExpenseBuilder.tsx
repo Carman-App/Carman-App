@@ -75,6 +75,8 @@ export function ExpenseBuilder() {
   ]
 
   const period = data ? resolvePeriod(params.period, { today, region: data.conventions.region }) : null
+  // Groups not yet decided: neither kept as real nor with a record left out.
+  const openDuplicates = info ? info.duplicates.filter((g) => !kept.includes(g.key) && !g.records.some((r) => params.excludeIds.includes(r.id))).length : 0
   const activeFilters = params.people.length + params.places.length + params.categories.length
   const placeOptions = info ? (showAllPlaces ? info.places : info.places.slice(0, 12)) : []
 
@@ -302,7 +304,7 @@ export function ExpenseBuilder() {
           </div>
 
           {info && fmt && info.duplicates.length > 0 ? (
-            <div className="panel">
+            <div className="panel" id="duplicates">
               <h2 className="field-label">Check before you send — possible duplicates</h2>
               <p className="field-hint" style={{ marginTop: 0 }}>
                 Same vehicle, same day, similar amount. Nothing is merged for you: keep both, or leave one out — the report will say you did.
@@ -352,6 +354,11 @@ export function ExpenseBuilder() {
                   {params.hideAmounts ? 'Amounts left out' : `${info.recordCount} record${info.recordCount === 1 ? '' : 's'}`} · {info.period.label}
                 </p>
                 {activeFilters > 0 || params.excludeIds.length > 0 ? <p className="summary-meta">Filtered — the report will say how.</p> : null}
+                {openDuplicates > 0 ? (
+                  <p className="summary-meta tone-warning" style={{ marginTop: 8 }}>
+                    {openDuplicates} possible duplicate{openDuplicates === 1 ? '' : 's'} to check — <a href="#duplicates">review</a>
+                  </p>
+                ) : null}
                 <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 16 }} onClick={() => navigate(`/expense/report?${query}`)}>
                   Build the report
                 </button>

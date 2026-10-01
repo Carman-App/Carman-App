@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { renderSummaryCard } from '../render/card.ts'
 import { canShareFiles, downloadBlob, formatSize, shareFiles, useArchiveActions, type ArchiveEntry, type ArchiveFormat } from '../render/export.ts'
 import type { ReportDoc } from '../report/model.ts'
@@ -19,6 +19,9 @@ type Props = {
 }
 
 type Pdf = { blob: Blob; pages: number; url: string }
+
+// pdf.js is large; it loads with the first preview, not with the app.
+const PdfPages = lazy(() => import('../render/PdfPages.tsx'))
 
 export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }: Props) {
   const [pdfFile, setPdfFile] = useState<Pdf | null>(null)
@@ -143,7 +146,18 @@ export function ExportPanel({ doc, generatedAt, route, csv, onRecord, onClose }:
         </div>
         <div className="modal-body">
           {pdfFile ? (
-            <iframe className="pdf-frame" src={`${pdfFile.url}#view=FitH`} title={`Preview of ${doc.filename}, ${pdfFile.pages} pages`} />
+            <Suspense
+              fallback={
+                <div className="pdf-wait" role="status">
+                  <div>
+                    <div className="spinner" aria-hidden="true" />
+                    Drawing the pages…
+                  </div>
+                </div>
+              }
+            >
+              <PdfPages blob={pdfFile.blob} title={doc.filename} />
+            </Suspense>
           ) : (
             <div className="pdf-wait" role="status" aria-live="polite">
               {failed ? (

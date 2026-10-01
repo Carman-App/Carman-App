@@ -143,11 +143,9 @@ textarea {
 /* ---------------------------------------------------------------- shell -- */
 
 .shell-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(8px);
+  /* Not sticky: its height varies as the nav wraps on phones, and the report
+     toolbar below is what needs to stay in reach while reading. */
+  background: var(--bg);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -499,7 +497,7 @@ textarea {
   }
   .builder-side {
     position: sticky;
-    top: 76px;
+    top: 16px;
   }
 }
 
@@ -563,7 +561,7 @@ textarea {
 
 .doc-toolbar {
   position: sticky;
-  top: 52px;
+  top: 0;
   z-index: 10;
   display: flex;
   gap: 8px;
@@ -577,6 +575,28 @@ textarea {
 
 .doc-toolbar .spacer {
   flex: 1;
+}
+
+/* On a phone the toolbar fits one row (two on the narrowest), so the
+   report keeps the screen. */
+@media (max-width: 520px) {
+  .doc-toolbar {
+    gap: 6px;
+  }
+  .doc-toolbar > * {
+    flex-shrink: 0;
+  }
+  .doc-toolbar .btn {
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .doc-toolbar .text-size button {
+    padding: 6px 10px;
+  }
+  .wide-only {
+    display: none;
+  }
 }
 
 .text-size {
@@ -765,7 +785,8 @@ textarea {
   margin-right: 8px;
 }
 
-.doc-section > * + * {
+/* Two classes so it outranks each block's own `margin: 0`. */
+.doc .doc-section > * + * {
   margin-top: 14px;
 }
 
@@ -1073,7 +1094,8 @@ textarea {
     border: 0;
     padding: 1px 0;
     display: grid;
-    grid-template-columns: 7.5em 1fr;
+    /* rem, not em: number cells use a smaller font and must line up. */
+    grid-template-columns: 7rem 1fr;
     gap: 10px;
     text-align: left;
   }
@@ -1215,12 +1237,53 @@ textarea {
   }
 }
 
-.pdf-frame {
-  width: 100%;
-  height: 100%;
-  min-height: 60vh;
-  border: 0;
+.pdf-pages {
   background: var(--surface-2);
+  overflow: auto;
+  min-height: 0;
+  max-height: 100%;
+  padding: 16px;
+}
+
+.pdf-pages-list {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+.pdf-pages figure {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.pdf-pages canvas {
+  max-width: 100%;
+  height: auto;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.pdf-pages figcaption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (max-width: 859px) {
+  .modal-body {
+    overflow: auto;
+  }
+  .pdf-pages {
+    max-height: 62vh;
+  }
+  .export-side {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
 }
 
 .pdf-wait {

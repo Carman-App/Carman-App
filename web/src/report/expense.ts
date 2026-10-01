@@ -204,10 +204,14 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
         : { kind: 'figure', label: 'Spent in this period', value: fmt.moneyCode(total), caption: `${fmt.count(items.length, 'record')} · ${rangeLabel}` },
     ]
     if (single && !hide && period.preset !== 'allTime' && lifetime.length > items.length) {
-      const since = single.createdAt ? fmt.dateLong(single.createdAt.slice(0, 10)) : fmt.dateLong(lifetime[0]!.date)
+      // History is often entered for the time before a vehicle joined Carma,
+      // so "lifetime" starts at whichever came first.
+      const joined = single.createdAt?.slice(0, 10)
+      const firstRecord = lifetime[0]!.date
+      const since = joined && joined < firstRecord ? joined : firstRecord
       blocks.push({
         kind: 'facts',
-        items: [{ label: 'Since joining the garage', value: `${fmt.moneyCode(sum(lifetime.map((r) => r.amount)))} across ${fmt.count(lifetime.length, 'record')} (from ${since})` }],
+        items: [{ label: 'All recorded spend to date', value: `${fmt.moneyCode(sum(lifetime.map((r) => r.amount)))} across ${fmt.count(lifetime.length, 'record')}, since ${fmt.dateLong(since)}` }],
       })
     }
     if (items.length === 0) {
@@ -468,6 +472,8 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
   }
   if (hide) scope.push({ label: 'Amounts', value: 'Left out by the sender. This document shows what was done and when, not what it cost' })
   scope.push({ label: 'Covers', value: 'Costs only — Carma records what vehicles cost, not what they earn. Receipts are not attached' })
+  // A named sender and a route back, on the first page (RECIP-09).
+  scope.push({ label: 'Sent by', value: params.contact.trim() ? `${data.account.name} · ${params.contact.trim()}` : data.account.name })
 
   // -- Notes stated once (RECIP-08, SYS-11, SYS-16, SYS-05) ---------------------
   const notes: string[] = [
@@ -512,8 +518,8 @@ export function buildExpenseReport(data: OwnerDataset, params: ExpenseParams, ct
     contact: { name: data.account.name, detail: params.contact.trim() || undefined },
     generated: { atLabel: fmt.stamp(ctx.generatedAt), by: data.account.name, dataAsOfLabel: fmt.stamp(data.snapshotAt) },
     headline: hide
-      ? { label: 'Records', value: fmt.int(items.length), caption: `${period.label} · ${rangeLabel}` }
-      : { label: 'Spent', value: fmt.moneyCode(total), caption: `${fmt.count(items.length, 'record')} · ${period.label}` },
+      ? { label: 'Records', value: fmt.int(items.length), caption: 'Amounts are left out of this copy' }
+      : { label: 'Spent', value: fmt.moneyCode(total), caption: fmt.count(items.length, 'record') },
     highlights: hide
       ? []
       : topCategories.map((c) => ({ label: CATEGORY_LABEL[c.key], value: fmt.money(c.amount), share: fmt.pct(Math.round((c.amount / Math.max(1, total)) * 100)), fraction: c.amount / topMax })),

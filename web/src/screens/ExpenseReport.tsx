@@ -47,13 +47,13 @@ export function ExpenseReport() {
   return (
     <>
       <div className="doc-toolbar">
-        <Link className="btn btn-secondary" to={`/expense?${query}`}>
-          ← Change the report
+        <Link className="btn btn-secondary" aria-label="Change the report" to={`/expense?${query}`}>
+          ← Change<span className="wide-only"> the report</span>
         </Link>
         <span className="spacer" />
         <TextSize scale={scale} onChange={setScale} />
-        <button type="button" className="btn btn-primary" onClick={() => setExportDoc(doc)}>
-          Check pages and send
+        <button type="button" className="btn btn-primary" aria-label="Check pages and send" onClick={() => setExportDoc(doc)}>
+          Check<span className="wide-only"> pages</span> and send
         </button>
       </div>
       {garageQuery.data?.offline ? <OfflineNote savedAt={garageQuery.data.savedAt} /> : null}

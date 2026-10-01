@@ -568,6 +568,7 @@ export function buildWorkReport(data: WorkDataset, params: WorkParams, ctx: Buil
   if (customer) scope.push({ label: 'Customer', value: `${customer.name}${customer.phone ? `, ${customer.phone}` : ''} — a statement of their account only` })
   if (vehicleLabel) scope.push({ label: 'Vehicle', value: `${vehicleLabel} — work on this vehicle only` })
   scope.push({ label: 'Covers', value: 'Jobs, estimates, invoices and payments recorded in Carma by this workshop. Payments taken outside Carma are not included' })
+  scope.push({ label: 'Sent by', value: `${data.account.name}, ${data.workshop.name}${params.contact.trim() ? ` · ${params.contact.trim()}` : ''}` })
 
   const notes = [`Amounts are in ${fmt.currencyName} (${fmt.currency}) exactly as recorded; every total is the sum of its lines. Shares are rounded to whole per cent.`]
   const identity = JSON.stringify({
@@ -597,7 +598,7 @@ export function buildWorkReport(data: WorkDataset, params: WorkParams, ctx: Buil
     note: params.note.trim() ? { from: data.account.name, text: params.note.trim() } : undefined,
     contact: { name: `${data.account.name}, ${data.workshop.name}`, detail: params.contact.trim() || undefined },
     generated: { atLabel: fmt.stamp(ctx.generatedAt), by: data.account.name, dataAsOfLabel: fmt.stamp(data.snapshotAt) },
-    headline: { label: 'Invoiced', value: fmt.moneyCode(invoiced), caption: `${fmt.count(sel.invoicesInPeriod.length, 'invoice')} · ${period.label}` },
+    headline: { label: 'Invoiced', value: fmt.moneyCode(invoiced), caption: fmt.count(sel.invoicesInPeriod.length, 'invoice') },
     highlights:
       invoiced > 0
         ? [

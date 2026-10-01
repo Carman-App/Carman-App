@@ -57,7 +57,7 @@ describe('expense report — one vehicle', () => {
   })
 
   it('leads with the total and record count (OWN-01)', () => {
-    expect(doc.headline).toMatchObject({ value: 'KES 127,000', caption: '14 records · 2026 to date' })
+    expect(doc.headline).toMatchObject({ value: 'KES 127,000', caption: '14 records' })
     expect(blocks(doc, 'total', 'figure')[0]).toMatchObject({ value: 'KES 127,000' })
   })
 
