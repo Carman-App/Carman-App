@@ -36,7 +36,7 @@ export function ExportForm({ defaultAccountId }: { defaultAccountId?: string }) 
         disabled={pending}
         className="rounded-full bg-carma-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-carma-700 disabled:opacity-60"
       >
-        {pending ? "Generating…" : "Generate export"}
+        {pending ? "Requesting…" : "Request export"}
       </button>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state?.ok && (

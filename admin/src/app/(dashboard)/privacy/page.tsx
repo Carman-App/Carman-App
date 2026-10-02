@@ -49,9 +49,10 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
           subscriptions, notifications), extended deeper: every vehicle under every garage owned or
           belonged to, and every fuel/service/repair/expense/odometer record, document, reminder,
           project, job, inspection, estimate, invoice and payment reachable through those vehicles
-          or workshops. Generation is synchronous — clicking &ldquo;Generate export&rdquo; runs the
-          full traversal immediately, creates a real <code>DataExportRequest</code> row (status{" "}
-          <code>GENERATED</code>) with a per-model record-count summary, and audit-logs the reason.
+          or workshops. Exporting someone else&rsquo;s data needs a second admin (AUD-03): clicking &ldquo;Request
+          export&rdquo; records the request, and when a different admin approves it in Approvals the
+          full traversal runs, creating a <code>DataExportRequest</code> row (status{" "}
+          <code>GENERATED</code>) with a per-model record-count summary and an audit entry.
         </p>
         <p className="rounded border border-dashed border-neutral-200 p-3 text-xs text-amber-600">
           There is no email-delivery step. Resend is a reserved, unconfigured env var

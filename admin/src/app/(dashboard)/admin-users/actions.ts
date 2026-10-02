@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, ADMIN_MANAGEMENT_ROLES } from "@/lib/auth/rbac";
 import { writeAdminAuditLog } from "@/lib/audit";
+import { findPendingApproval, requestApproval } from "@/lib/approvals";
 import { hashPassword } from "@/lib/auth/password";
 import { AdminRole } from "@/generated/prisma/enums";
 
@@ -50,7 +51,7 @@ export async function createAdminUser(
   return { ok: true };
 }
 
-/** AUD-04: change an existing admin's role — "every change itself logged." */
+/** AUD-04: request a role change for an existing admin — applied after a second admin approves (AUD-03). */
 export async function updateAdminRole(formData: FormData): Promise<void> {
   const admin = await requireRole(ADMIN_MANAGEMENT_ROLES);
   const targetId = String(formData.get("adminId") || "");
@@ -67,19 +68,17 @@ export async function updateAdminRole(formData: FormData): Promise<void> {
     return;
   }
   if (target.role === role) return;
+  if (await findPendingApproval("admin.role_change", targetId)) return;
 
-  await prisma.adminUser.update({ where: { id: targetId }, data: { role: role as AdminRole } });
-
-  await writeAdminAuditLog(
-    { adminId: admin.adminId },
-    {
-      action: "admin.user.role_change",
-      entityType: "AdminUser",
-      entityId: targetId,
-      beforeData: { role: target.role },
-      afterData: { role },
-    },
-  );
+  // AUD-03: role changes need a second admin. Applied when a different
+  // admin approves it in Approvals (src/lib/dangerous-actions.ts).
+  await requestApproval(admin, {
+    action: "admin.role_change",
+    entityType: "AdminUser",
+    entityId: targetId,
+    payload: { targetAdminId: targetId, role },
+    reason: `Change ${target.email} from ${target.role} to ${role}`,
+  });
 
   revalidatePath("/admin-users");
 }

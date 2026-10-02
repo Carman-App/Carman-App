@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
       <div>
         <h1 className="text-lg font-semibold text-neutral-900">Admins & roles</h1>
         <p className="text-sm text-neutral-500">
-          Owner-only. Every create/role-change/disable here is written to the audit log (AUD-04).
+          Owner-only. Every create/role-change/disable here is written to the audit log (AUD-04). A role change takes effect once a second admin approves it in Approvals (AUD-03).
         </p>
       </div>
 

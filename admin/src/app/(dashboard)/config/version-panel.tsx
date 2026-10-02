@@ -107,7 +107,7 @@ export function VersionPanel({
                 disabled={publishPending}
                 className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
               >
-                {publishPending ? "Publishing…" : "Publish draft"}
+                {publishPending ? "Requesting…" : "Request publish"}
               </button>
               {publishState?.error && <p className="text-sm text-red-600">{publishState.error}</p>}
               {publishState?.ok && <p className="text-sm text-emerald-600">{publishState.message}</p>}

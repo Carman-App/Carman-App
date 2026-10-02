@@ -91,6 +91,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Admin",
     items: [
+      { href: "/approvals", label: "Approvals", roles: [AdminRole.OWNER, AdminRole.FINANCE] },
       { href: "/audit", label: "Audit log", roles: AUDIT_LOG_ROLES },
       { href: "/admin-users", label: "Admins & roles", roles: ADMIN_MANAGEMENT_ROLES },
       { href: "/security", label: "My security", roles: ALL_ROLES },

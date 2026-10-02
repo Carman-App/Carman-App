@@ -138,3 +138,8 @@ export async function listPendingApprovals(entityType?: string) {
     orderBy: { requestedAt: "desc" },
   });
 }
+
+/** The pending request for the same action on the same thing, if one is already waiting. */
+export async function findPendingApproval(action: string, entityId: string) {
+  return prisma.twoPersonApproval.findFirst({ where: { action, entityId, status: ApprovalStatus.PENDING } });
+}

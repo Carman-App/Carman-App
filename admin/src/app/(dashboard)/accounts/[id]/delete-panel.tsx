@@ -40,7 +40,8 @@ export function DeletePanel({ accountId }: { accountId: string }) {
           minimised form for the regulatory retention period.
         </p>
         <p className="mt-2 text-amber-600">
-          What actually happens today: clicking &ldquo;Yes, delete&rdquo; below only stamps{" "}
+          Deletion needs a second admin (AUD-03): &ldquo;Request deletion&rdquo; records the request, and
+          once a different admin approves it in Approvals it stamps{" "}
           <code>deletedAt</code>/<code>deletedByAdminId</code> on this Account row. Nothing is
           scrubbed, anonymized, or physically removed — not now, and not automatically after the
           {" "}{GRACE_WINDOW_DAYS}-day window either, since no purge job exists (see the Privacy
@@ -64,7 +65,7 @@ export function DeletePanel({ accountId }: { accountId: string }) {
           disabled={pending}
           className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
         >
-          {pending ? "Deleting…" : "Yes, delete"}
+          {pending ? "Requesting…" : "Request deletion"}
         </button>
         <button
           type="button"

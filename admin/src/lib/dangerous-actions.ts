@@ -1,0 +1,148 @@
+import "server-only";
+import { prisma } from "@/lib/prisma";
+import { writeAdminAuditLog } from "@/lib/audit";
+import { buildAccountDataExport } from "@/lib/privacy/export";
+import { publishVersion } from "@/lib/config/versioning";
+import {
+  ACCOUNT_DANGEROUS_ACTION_ROLES,
+  ADMIN_MANAGEMENT_ROLES,
+  CONFIG_PUBLISH_ROLES,
+  PRIVACY_ROLES,
+} from "@/lib/auth/rbac";
+import { AdminRole, DataExportStatus } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
+import type { CurrentSession } from "@/lib/auth/session";
+
+/**
+ * AUD-03 — the dangerous actions that need a second person: account
+ * deletion, a data export of another person's account, config publish and
+ * admin role changes. (Refunds above the threshold and garage handover have
+ * their own flows in billing/ and garages/.)
+ *
+ * The first admin's click only records a request (src/lib/approvals.ts).
+ * A different admin approves from the Approvals queue, and only then does
+ * the matching executor below run, with the exact payload stored at request
+ * time. Executors live here rather than in a "use server" file so none of
+ * them can be called directly from the browser.
+ */
+
+type Approver = Pick<CurrentSession, "adminId">;
+
+export type DangerousAction = {
+  label: string;
+  /** Roles allowed to request and to approve. */
+  roles: AdminRole[];
+  /** One plain sentence describing exactly what will happen. */
+  describe: (payload: Record<string, unknown>) => Promise<string>;
+  execute: (approver: Approver, payload: Record<string, unknown>, reason: string) => Promise<string>;
+  /** Where to look at the result. */
+  href: (payload: Record<string, unknown>) => string;
+};
+
+export const DELETE_GRACE_WINDOW_DAYS = 30;
+
+async function accountName(accountId: string) {
+  const a = await prisma.account.findUnique({ where: { id: accountId }, include: { user: true } });
+  return a ? `${a.user.name} (${a.user.email ?? a.id})` : accountId;
+}
+
+export const DANGEROUS_ACTIONS: Record<string, DangerousAction> = {
+  "account.delete": {
+    label: "Delete an account",
+    roles: ACCOUNT_DANGEROUS_ACTION_ROLES,
+    describe: async (p) => `Delete ${await accountName(String(p.accountId))}. Restorable for ${DELETE_GRACE_WINDOW_DAYS} days, then gone.`,
+    href: (p) => `/accounts/${p.accountId}`,
+    execute: async (approver, p, reason) => {
+      const accountId = String(p.accountId);
+      const account = await prisma.account.findUnique({ where: { id: accountId } });
+      if (!account) throw new Error("Account not found.");
+      if (account.deletedAt) throw new Error("Already deleted.");
+      const now = new Date();
+      await prisma.account.update({ where: { id: accountId }, data: { deletedAt: now, deletedByAdminId: approver.adminId } });
+      await writeAdminAuditLog(approver, {
+        action: "account.delete",
+        entityType: "Account",
+        entityId: accountId,
+        targetAccountId: accountId,
+        reason,
+        beforeData: { deletedAt: null, deletedByAdminId: null },
+        afterData: { deletedAt: now, deletedByAdminId: approver.adminId },
+      });
+      return `Deleted. Restorable for ${DELETE_GRACE_WINDOW_DAYS} days.`;
+    },
+  },
+
+  "privacy.data_export": {
+    label: "Export another person's data",
+    roles: PRIVACY_ROLES,
+    describe: async (p) => `Generate a complete machine-readable export of ${await accountName(String(p.accountId))}.`,
+    href: () => "/privacy",
+    execute: async (approver, p, reason) => {
+      const accountId = String(p.accountId);
+      const payload = await buildAccountDataExport(accountId);
+      if (!payload) throw new Error(`No account found for id "${accountId}".`);
+      const request = await prisma.dataExportRequest.create({
+        data: {
+          accountId,
+          requestedByAdminId: String(p.requestedByAdminId ?? approver.adminId),
+          reason,
+          status: DataExportStatus.GENERATED,
+          recordCounts: payload.recordCounts as Prisma.InputJsonValue,
+        },
+      });
+      await writeAdminAuditLog(approver, {
+        action: "privacy.data_export_generate",
+        entityType: "DataExportRequest",
+        entityId: request.id,
+        targetAccountId: accountId,
+        reason,
+        metadata: { recordCounts: payload.recordCounts },
+      });
+      return "Export generated. Download it from Privacy.";
+    },
+  },
+
+  "config.publish": {
+    label: "Publish a config change",
+    roles: CONFIG_PUBLISH_ROLES,
+    describe: async (p) => {
+      const v = await prisma.configVersion.findUnique({ where: { id: String(p.versionId) } });
+      return v ? `Publish the ${v.objectType.toLowerCase().replace(/_/g, " ")} draft for "${v.objectKey}" to every user.` : "Publish a config draft.";
+    },
+    href: (p) => String(p.revalidate || "/config"),
+    execute: async (_approver, p, reason) => {
+      // publishVersion checks the approver's own role and writes its audit entry.
+      const { accountsTouchedCount } = await publishVersion({ versionId: String(p.versionId), note: String(p.note || reason) });
+      return accountsTouchedCount == null ? "Published." : `Published. Estimated accounts touched: ${accountsTouchedCount}.`;
+    },
+  },
+
+  "admin.role_change": {
+    label: "Change an admin's role",
+    roles: ADMIN_MANAGEMENT_ROLES,
+    describe: async (p) => {
+      const t = await prisma.adminUser.findUnique({ where: { id: String(p.targetAdminId) } });
+      return t ? `Change ${t.name ?? t.email} from ${t.role} to ${String(p.role)}.` : "Change an admin's role.";
+    },
+    href: () => "/admin-users",
+    execute: async (approver, p, reason) => {
+      const targetId = String(p.targetAdminId);
+      const role = String(p.role) as AdminRole;
+      if (!Object.values(AdminRole).includes(role)) throw new Error("Unknown role.");
+      const target = await prisma.adminUser.findUnique({ where: { id: targetId } });
+      if (!target) throw new Error("Admin not found.");
+      if (target.id === approver.adminId) throw new Error("An admin cannot approve a change to their own role.");
+      if (target.role === role) return "No change: the admin already has that role.";
+      await prisma.adminUser.update({ where: { id: targetId }, data: { role } });
+      await writeAdminAuditLog(approver, {
+        action: "admin.user.role_change",
+        entityType: "AdminUser",
+        entityId: targetId,
+        reason,
+        beforeData: { role: target.role },
+        afterData: { role },
+      });
+      return `Role changed to ${role}.`;
+    },
+  },
+};

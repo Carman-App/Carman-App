@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { publishVersion, revertToVersion, discardDraft } from "@/lib/config/versioning";
+import { revertToVersion, discardDraft } from "@/lib/config/versioning";
+import { prisma } from "@/lib/prisma";
+import { requireRole, CONFIG_PUBLISH_ROLES } from "@/lib/auth/rbac";
+import { findPendingApproval, requestApproval } from "@/lib/approvals";
+import { ConfigVersionStatus } from "@/generated/prisma/enums";
 
 export type ActionState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -14,24 +18,28 @@ export type ActionState = { error?: string; ok?: boolean; message?: string } | u
  */
 
 export async function publishDraftAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await requireRole(CONFIG_PUBLISH_ROLES);
   const versionId = String(formData.get("versionId") || "");
   const note = String(formData.get("note") || "").trim();
   const revalidate = String(formData.get("revalidate") || "");
   if (!note) return { error: "A reason is required to publish." };
 
-  try {
-    const { accountsTouchedCount } = await publishVersion({ versionId, note });
-    if (revalidate) revalidatePath(revalidate);
-    return {
-      ok: true,
-      message:
-        accountsTouchedCount == null
-          ? "Published."
-          : `Published. Estimated accounts touched: ${accountsTouchedCount}.`,
-    };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) };
-  }
+  const version = await prisma.configVersion.findUnique({ where: { id: versionId } });
+  if (!version) return { error: "Draft not found." };
+  if (version.status !== ConfigVersionStatus.DRAFT) return { error: `This version is already ${version.status.toLowerCase()}.` };
+  if (await findPendingApproval("config.publish", versionId)) return { error: "This draft is already waiting for a second admin." };
+
+  // AUD-03: publishing config needs a second admin. The draft goes live when
+  // a different admin approves it in Approvals.
+  await requestApproval(admin, {
+    action: "config.publish",
+    entityType: "ConfigVersion",
+    entityId: versionId,
+    payload: { versionId, note, revalidate },
+    reason: note,
+  });
+  if (revalidate) revalidatePath(revalidate);
+  return { ok: true, message: "Publish requested. It goes live when a second admin approves it in Approvals." };
 }
 
 export async function revertToVersionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

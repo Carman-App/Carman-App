@@ -8,6 +8,7 @@ import {
   ACCOUNT_DANGEROUS_ACTION_ROLES,
 } from "@/lib/auth/rbac";
 import { writeAdminAuditLog } from "@/lib/audit";
+import { findPendingApproval, requestApproval } from "@/lib/approvals";
 import { SuspensionReason, VerificationSource, Region } from "@/generated/prisma/enums";
 
 export type ActionState = { error?: string; ok?: boolean; message?: string } | undefined;
@@ -218,28 +219,14 @@ export async function deleteAccount(_prev: ActionState, formData: FormData): Pro
   const account = await prisma.account.findUnique({ where: { id: accountId } });
   if (!account) return { error: "Account not found." };
   if (account.deletedAt) return { error: "Already deleted." };
+  if (await findPendingApproval("account.delete", accountId)) return { error: "A deletion is already waiting for a second admin." };
 
-  const now = new Date();
-  await prisma.account.update({
-    where: { id: accountId },
-    data: { deletedAt: now, deletedByAdminId: admin.adminId },
-  });
-
-  await writeAdminAuditLog(
-    { adminId: admin.adminId },
-    {
-      action: "account.delete",
-      entityType: "Account",
-      entityId: accountId,
-      targetAccountId: accountId,
-      reason,
-      beforeData: { deletedAt: null, deletedByAdminId: null },
-      afterData: { deletedAt: now, deletedByAdminId: admin.adminId },
-    },
-  );
+  // AUD-03: deletion needs a second admin. This records the request; the
+  // account is deleted only when a different admin approves it in Approvals.
+  await requestApproval(admin, { action: "account.delete", entityType: "Account", entityId: accountId, payload: { accountId }, reason });
 
   revalidatePath(`/accounts/${accountId}`);
-  return { ok: true, message: `Deleted. Restorable for ${DELETE_GRACE_WINDOW_DAYS} days.` };
+  return { ok: true, message: `Deletion requested. A second admin approves it in Approvals; then it is restorable for ${DELETE_GRACE_WINDOW_DAYS} days.` };
 }
 
 export async function restoreAccount(_prev: ActionState, formData: FormData): Promise<ActionState> {
