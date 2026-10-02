@@ -98,6 +98,21 @@ export async function mergeSubmission(_prev: ActionState, formData: FormData): P
   const loaded = await loadPending(submissionId);
   if ("error" in loaded) return { error: loaded.error };
 
+  // CFG-04 — "merge into existing... correcting the affected vehicles": a
+  // merge means the make/model as originally entered was wrong/a duplicate
+  // spelling, so every Vehicle row that was saved with that exact (type,
+  // make, model) needs to be corrected to the canonical target — otherwise
+  // the vehicles a submission came from stay stuck showing the uncorrected
+  // value forever, and the merge decision above is purely cosmetic. There is
+  // no submission -> vehicle FK in the schema (submissions don't record which
+  // vehicle they came from), so the match is on the same (type, make, model)
+  // triple the submission itself was keyed by — the only correlation this
+  // schema can support.
+  const correction = await prisma.vehicle.updateMany({
+    where: { type: loaded.submission.vehicleType, make: loaded.submission.make, model: loaded.submission.model },
+    data: { make: mergedIntoMake, model: mergedIntoModel },
+  });
+
   await prisma.userSubmittedVehicleModel.update({
     where: { id: submissionId },
     data: {
@@ -120,14 +135,22 @@ export async function mergeSubmission(_prev: ActionState, formData: FormData): P
       submittedModel: loaded.submission.model,
       mergedIntoMake,
       mergedIntoModel,
+      vehiclesCorrected: correction.count,
     },
     metadata: {
       note:
-        "This records the merge decision only — it does not edit mobile/src/data/vehicleCatalog.ts, which is the " +
-        "actual source the mobile picker reads.",
+        `Corrected ${correction.count} vehicle(s) with (type=${loaded.submission.vehicleType}, make="${loaded.submission.make}", model="${loaded.submission.model}") ` +
+        `to (make="${mergedIntoMake}", model="${mergedIntoModel}"). This does not edit mobile/src/data/vehicleCatalog.ts, which is the ` +
+        "actual source the mobile picker reads — that stays a manual code change either way.",
     },
   });
 
   revalidatePath("/config/vehicle-models");
-  return { ok: true, message: "Merged." };
+  return {
+    ok: true,
+    message:
+      correction.count > 0
+        ? `Merged. ${correction.count} vehicle(s) corrected to "${mergedIntoMake} ${mergedIntoModel}".`
+        : "Merged. No existing vehicles had this exact make/model to correct.",
+  };
 }

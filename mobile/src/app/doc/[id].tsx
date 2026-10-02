@@ -40,6 +40,7 @@ export default function DocumentDetailScreen() {
 
   const days = doc.expiryDate ? daysUntil(doc.expiryDate) : null;
   const statusLabel = days == null ? 'NO EXPIRY SET' : days < 0 ? 'EXPIRED' : `EXPIRES IN ${days} DAY${days === 1 ? '' : 'S'}`;
+  const statusColor = days == null ? Colors.textMuted : days < 0 ? Colors.danger : days <= 30 ? Colors.warning : Colors.accent;
 
   const handleSave = async () => {
     setSaving(true);
@@ -84,7 +85,7 @@ export default function DocumentDetailScreen() {
       <T variant="eyebrow" style={styles.eyebrow}>
         DOCUMENTS
       </T>
-      <T variant="meta" color={Colors.warning}>
+      <T variant="meta" color={statusColor}>
         {statusLabel}
       </T>
       <T variant="display" style={styles.title}>
@@ -120,7 +121,7 @@ export default function DocumentDetailScreen() {
       </T>
 
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

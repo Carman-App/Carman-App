@@ -4,11 +4,13 @@ import { requireAccount } from "@/lib/api/auth";
 import { apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { parsePagination } from "@/lib/api/pagination";
+import { withApiLogging } from "@/lib/api/withLogging";
 
 // GET /api/v1/notifications — the caller's own notification feed, paginated.
 // ?unread=true to only return unread notifications.
-// Chain: auth -> account -> query.
-export async function GET(req: NextRequest) {
+// Chain: auth -> account -> query. Wrapped with structured request
+// logging — exercised by the load test (section 21).
+export const GET = withApiLogging("notifications.list", async (req: NextRequest) => {
   try {
     const account = await requireAccount(req);
 
@@ -27,4 +29,4 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
-}
+});

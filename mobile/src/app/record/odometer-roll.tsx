@@ -11,7 +11,7 @@ import { useAccount, useRecords } from '@/data/hooks';
 import { addRecord } from '@/data/repo';
 import { OdometerQuickAdd } from '@/features/record/OdometerQuickAdd';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
-import { formatDateShort, formatNumber, todayIso } from '@/lib/format';
+import { formatDateShort, formatDistance, getActiveDistanceUnit, todayIso } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 export default function OdometerRollScreen() {
@@ -69,20 +69,20 @@ export default function OdometerRollScreen() {
     <Screen
       footer={
         <Button disabled={!canSave} loading={saving} onPress={handleSave}>
-          Save reading · {formatNumber(reading)} KM
+          Save reading · {formatDistance(reading)}
         </Button>
       }>
       <ModalHeader eyebrow={`ODOMETER · ${vehicle.make} ${vehicle.model}`.toUpperCase()} title="Odometer" />
       <T variant="display">Roll it forward.</T>
       <T variant="eyebrow" style={styles.lastReading}>
-        LAST RECORDED · {formatNumber(original)} KM{lastOdometerRecord ? ` · READ ${formatDateShort(lastOdometerRecord.date)}` : ''}
+        LAST RECORDED · {formatDistance(original)}{lastOdometerRecord ? ` · READ ${formatDateShort(lastOdometerRecord.date)}` : ''}
       </T>
 
       <View style={styles.readingRow}>
-        <T variant="numericLarge">{formatNumber(reading)}</T>
+        <T variant="numericLarge">{formatDistance(reading, { withUnit: false })}</T>
         <View style={styles.unitBadge}>
           <T variant="eyebrowStrong" color={Colors.accent}>
-            KM
+            {getActiveDistanceUnit().toUpperCase()}
           </T>
         </View>
       </View>
@@ -103,7 +103,7 @@ export default function OdometerRollScreen() {
       </T>
 
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

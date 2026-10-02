@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, ADMIN_MANAGEMENT_ROLES } from "@/lib/auth/rbac";
 import { writeAdminAuditLog } from "@/lib/audit";
+import { requestApproval, approveAndExecute, rejectApproval, ApprovalError } from "@/lib/approvals";
 import { hashPassword } from "@/lib/auth/password";
 import { AdminRole } from "@/generated/prisma/enums";
 
 const VALID_ROLES = Object.values(AdminRole) as string[];
 
-export type AdminFormState = { error?: string; ok?: boolean } | undefined;
+export type AdminFormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
 /** AUD-04: create a new admin account with an explicit role and a temporary password. */
 export async function createAdminUser(
@@ -50,38 +51,100 @@ export async function createAdminUser(
   return { ok: true };
 }
 
-/** AUD-04: change an existing admin's role — "every change itself logged." */
-export async function updateAdminRole(formData: FormData): Promise<void> {
+/**
+ * AUD-04/AUD-03: change an existing admin's role — "every change itself
+ * logged", and per AUD-03's cross-cutting rule, "Two-person approval
+ * required for: ... role changes." This now requests approval instead of
+ * writing the role directly — a *different* OWNER must approve (the same
+ * mechanism already used for GAR-07/MON-07/account deletion, see
+ * src/lib/approvals.ts) before anything is written.
+ */
+export async function requestRoleChange(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const admin = await requireRole(ADMIN_MANAGEMENT_ROLES);
   const targetId = String(formData.get("adminId") || "");
   const role = String(formData.get("role") || "");
-  if (!VALID_ROLES.includes(role)) return;
+  const reason = String(formData.get("reason") || "").trim();
+
+  if (!VALID_ROLES.includes(role)) return { error: "Pick a valid role." };
+  if (!reason) return { error: "A reason is required to request a role change." };
 
   const target = await prisma.adminUser.findUnique({ where: { id: targetId } });
-  if (!target) return;
+  if (!target) return { error: "Admin not found." };
   if (target.id === admin.adminId && role !== target.role) {
     // Not an explicit "cannot escape the audit log" case, but changing your
     // own role unsupervised is exactly the kind of self-approval the OWNER
     // row's "Cannot: approve their own two-person action" is guarding
     // against in spirit — require a *different* Owner to do this.
-    return;
+    return { error: "You cannot change your own role — a different Owner must request and approve this." };
   }
-  if (target.role === role) return;
+  if (target.role === role) return { error: "That's already this admin's role." };
 
-  await prisma.adminUser.update({ where: { id: targetId }, data: { role: role as AdminRole } });
+  const existingPending = await prisma.twoPersonApproval.findFirst({
+    where: { entityType: "AdminUser", entityId: targetId, action: "admin.user.role_change", status: "PENDING" },
+  });
+  if (existingPending) return { error: "A role-change request is already pending for this admin." };
 
-  await writeAdminAuditLog(
-    { adminId: admin.adminId },
-    {
-      action: "admin.user.role_change",
-      entityType: "AdminUser",
-      entityId: targetId,
-      beforeData: { role: target.role },
-      afterData: { role },
-    },
-  );
+  await requestApproval(admin, {
+    action: "admin.user.role_change",
+    entityType: "AdminUser",
+    entityId: targetId,
+    payload: { targetId, role },
+    reason,
+  });
 
   revalidatePath("/admin-users");
+  return { ok: true, message: "Role change requested — needs a second OWNER-role admin to approve." };
+}
+
+export async function approveRoleChange(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireRole(ADMIN_MANAGEMENT_ROLES);
+  const approvalId = String(formData.get("approvalId") || "");
+
+  try {
+    await approveAndExecute(admin, approvalId, async (payload) => {
+      const p = payload as { targetId: string; role: string };
+      const target = await prisma.adminUser.findUnique({ where: { id: p.targetId } });
+      if (!target) throw new Error("Admin not found.");
+      if (target.role === p.role) throw new Error("That's already this admin's role.");
+
+      const updated = await prisma.adminUser.update({ where: { id: p.targetId }, data: { role: p.role as AdminRole } });
+
+      // Domain-specific log carrying before/after, in addition to
+      // approveAndExecute's own generic "admin.user.role_change.approve_and_execute" entry.
+      await writeAdminAuditLog(admin, {
+        action: "admin.user.role_change",
+        entityType: "AdminUser",
+        entityId: p.targetId,
+        beforeData: { role: target.role },
+        afterData: { role: p.role },
+      });
+
+      return updated;
+    });
+  } catch (err) {
+    if (err instanceof ApprovalError) return { error: err.message };
+    return { error: err instanceof Error ? err.message : "Could not approve this role change." };
+  }
+
+  revalidatePath("/admin-users");
+  return { ok: true, message: "Role changed." };
+}
+
+export async function rejectRoleChange(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireRole(ADMIN_MANAGEMENT_ROLES);
+  const approvalId = String(formData.get("approvalId") || "");
+  const reason = String(formData.get("reason") || "").trim();
+  if (!reason) return { error: "A reason is required to reject a role-change request." };
+
+  try {
+    await rejectApproval(admin, approvalId, reason);
+  } catch (err) {
+    if (err instanceof ApprovalError) return { error: err.message };
+    return { error: err instanceof Error ? err.message : "Could not reject this request." };
+  }
+
+  revalidatePath("/admin-users");
+  return { ok: true, message: "Role-change request rejected." };
 }
 
 /** AUD-04: disable/enable an admin account (kept, not deleted — the audit trail must stay intact). */

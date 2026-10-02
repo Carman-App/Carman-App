@@ -14,7 +14,7 @@ import { findCategoryByLabel } from '@/features/record/categories';
 import { DateQuickPick } from '@/features/record/DateQuickPick';
 import { OdometerQuickAdd } from '@/features/record/OdometerQuickAdd';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
-import { todayIso } from '@/lib/format';
+import { getActiveCurrency, todayIso } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
 export default function ExpenseEntryScreen() {
@@ -80,7 +80,7 @@ export default function ExpenseEntryScreen() {
       }>
       <ModalHeader eyebrow={`${category.label} · ${vehicle.make} ${vehicle.model}`.toUpperCase()} title={category.label} />
       <View style={styles.form}>
-        <TextField label="AMOUNT" value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder="0" prefix="KES" />
+        <TextField label="AMOUNT" value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder="0" prefix={getActiveCurrency()} />
 
         {category.subtypes && category.subtypes.length > 0 ? (
           <View>
@@ -121,7 +121,7 @@ export default function ExpenseEntryScreen() {
         </View>
 
         {error ? (
-          <T variant="body" color={Colors.danger} center>
+          <T variant="body" color={Colors.error} center>
             {error}
           </T>
         ) : null}

@@ -540,9 +540,26 @@ export async function payInvoice(_invoiceId: string): Promise<void> {
   throw new Error('Paying an invoice from the app is not supported by the API yet (no payment endpoint under /api/v1/invoices).');
 }
 
-export async function respondToAccessRequest(requestId: string, status: AccessRequestStatus): Promise<void> {
+/**
+ * `expiresInDays` is only meaningful for an approval — the real endpoint
+ * (`POST /access-requests/:id/approve`) takes it to set `AccessGrant.expiresAt`
+ * (defaults server-side to 30 days if omitted; see
+ * admin/src/app/api/v1/access-requests/[id]/approve/route.ts). Surfacing it
+ * here is what makes the owner's chosen window (see
+ * `src/app/access-requests/[id].tsx`) actually reach the grant, instead of
+ * silently always taking the server default regardless of what's shown in
+ * the app — spec: "the owner grants it for a limited window."
+ */
+export async function respondToAccessRequest(
+  requestId: string,
+  status: AccessRequestStatus,
+  expiresInDays?: number
+): Promise<void> {
   if (status === 'pending') return;
-  await api.post(`access-requests/${requestId}/${status === 'approved' ? 'approve' : 'deny'}`);
+  await api.post(
+    `access-requests/${requestId}/${status === 'approved' ? 'approve' : 'deny'}`,
+    status === 'approved' && expiresInDays ? { expiresInDays } : undefined
+  );
   await invalidatePrefix('accessRequests');
   await invalidatePrefix('pendingAccessRequests');
 }

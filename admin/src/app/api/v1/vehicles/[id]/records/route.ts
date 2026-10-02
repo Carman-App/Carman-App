@@ -8,6 +8,7 @@ import { parsePagination } from "@/lib/api/pagination";
 import { createRecordSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
 import { getRecordsFeed, getRecordsCount, recordEntityType, type RecordType } from "@/lib/records";
+import { withApiLogging } from "@/lib/api/withLogging";
 import { ExpenseCategory } from "@/generated/prisma/enums";
 import type {
   FuelRecord,
@@ -114,11 +115,11 @@ async function getRecordsOfType(
 // Chain: auth -> account -> membership/ownership -> validate -> create -> audit log.
 // Any garage member (or account with direct vehicle access) may add a
 // record; there is no plan-limit check here — plans cap garages/vehicles/
-// seats/jobs, not history entries.
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+// seats/jobs, not history entries. Wrapped with structured request
+// logging — vehicle record creation is load-tested (section 21).
+export const POST = withApiLogging(
+  "vehicles.records.create",
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const account = await requireAccount(req);
     const { id: vehicleId } = await params;
@@ -145,7 +146,8 @@ export async function POST(
   } catch (error) {
     return handleApiError(error);
   }
-}
+  },
+);
 
 type CreateRecordInput = ReturnType<typeof createRecordSchema.parse>;
 

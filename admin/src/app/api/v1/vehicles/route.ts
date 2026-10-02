@@ -8,6 +8,7 @@ import { parsePagination } from "@/lib/api/pagination";
 import { createVehicleSchema } from "@/lib/api/schemas";
 import { assertCanCreateVehicle } from "@/lib/limits";
 import { writeAuditLog } from "@/lib/audit";
+import { withApiLogging } from "@/lib/api/withLogging";
 import type { Powertrain, VehicleType, VehicleUsage } from "@/generated/prisma/enums";
 
 // GET /api/v1/vehicles?garageId=... — vehicles in a garage the caller
@@ -16,7 +17,9 @@ import type { Powertrain, VehicleType, VehicleUsage } from "@/generated/prisma/e
 // POST, leaving no way to list a garage's vehicles at all, which every
 // vehicle-picking screen (Garage home, record entry, reminders, ...) needs.
 // Chain: auth -> account -> validate -> membership -> query.
-export async function GET(req: NextRequest) {
+// Wrapped with structured request logging (AGENTS.md scalability pass,
+// section 14) — this is one of the endpoints exercised by the load test.
+export const GET = withApiLogging("vehicles.list", async (req: NextRequest) => {
   try {
     const account = await requireAccount(req);
 
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
-}
+});
 
 // POST /api/v1/vehicles — add a vehicle to a garage the caller belongs to.
 // Chain: auth -> account -> garage membership -> plan limit -> validate -> create -> audit log.

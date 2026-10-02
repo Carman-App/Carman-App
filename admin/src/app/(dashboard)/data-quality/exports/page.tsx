@@ -54,7 +54,10 @@ export default async function ExportsPage({
         <h1 className="mt-1 text-lg font-semibold text-neutral-900">Report / export counts</h1>
         <p className="text-sm text-neutral-500">
           {report.totalReports.toLocaleString()} report{report.totalReports === 1 ? "" : "s"} generated since{" "}
-          {formatDate(report.since)}.
+          {formatDate(report.since)}. {report.accountsWithReport.toLocaleString()} of{" "}
+          {report.totalAccounts.toLocaleString()} accounts (
+          {report.accountsWithReportPercent == null ? "—" : `${report.accountsWithReportPercent.toFixed(1)}%`}) built
+          at least one report in this period.
         </p>
       </div>
 

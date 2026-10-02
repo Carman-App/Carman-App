@@ -5,7 +5,6 @@ import { GrowthNav } from "../growth-nav";
 import {
   getWeeklyRetentionGrid,
   getMonthlyRetentionGrid,
-  RETENTION_STRUCTURAL_LIMIT_NOTE,
   SMALL_COHORT_THRESHOLD,
   type RetentionGrid,
 } from "@/lib/growth/retention";
@@ -80,8 +79,10 @@ export default async function RetentionPage() {
 
       <GrowthNav active="/growth/retention" />
 
-      <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-        <strong>Real limitation, not a bug:</strong> {RETENTION_STRUCTURAL_LIMIT_NOTE}
+      <div className="rounded border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+        <strong>Retained</strong> means the account wrote a record (fuel/service/repair/expense/odometer) in that
+        later calendar week/month — opening the app alone does not count. Week/month 0 shows activity in the signup
+        period itself as a baseline.
       </div>
 
       <Section title="Weekly cohorts (most recent 12)">

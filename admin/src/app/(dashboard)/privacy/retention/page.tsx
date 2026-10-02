@@ -10,10 +10,17 @@ export const dynamic = "force-dynamic";
 
 // PRIV-04 — retention windows. RetentionRule is real config; RetentionPurgeLog
 // is a real table that will only ever be written to once a real purge runs.
-// No scheduler exists anywhere in this codebase (same job-queue prerequisite
-// the System surface's OPS-02/03 name for background jobs generally), so
-// "next scheduled purge" below is a *computed*, not an *actually scheduled*,
-// date — nothing executes it.
+// A real Postgres-backed job queue now exists (src/lib/queue/queue.ts, see
+// System's OPS-02/03) — the missing piece isn't "no queue" anymore, it's
+// that (a) no "retention.purge" job type is implemented in that queue's
+// handlers, and (b) nothing ever calls enqueueJob for one on a schedule (no
+// cron/scheduler triggers it — the queue only drains what's already
+// enqueued). So "next scheduled purge" below is a *computed*, not an
+// *actually scheduled*, date — nothing executes it. Deliberately not built
+// in this pass: an actual purge is a real, semantically loaded data-deletion
+// decision per data class (what "purge" means for each RetentionRule beyond
+// the soft-deletes that already exist elsewhere), not a mechanical wiring
+// job — building it needs its own scoped design, not a drive-by addition.
 export default async function RetentionPage() {
   await requireRole(PRIVACY_ROLES);
 
@@ -57,12 +64,13 @@ export default async function RetentionPage() {
       <Section title="Execution status — a real, honest gap">
         <div className="rounded border border-dashed border-neutral-200 p-4 text-sm text-neutral-600">
           <p>
-            Nothing in this codebase actually runs a purge on schedule. That needs the same
-            prerequisite the System surface&rsquo;s OPS-02/03 (background job visibility &amp;
-            retry) name as missing: a real job queue (e.g. BullMQ + Redis, or a Postgres-backed
-            queue like graphile-worker/pg-boss) plus one or more worker processes. Until that
-            exists, the &ldquo;next scheduled purge&rdquo; dates below are a computed projection of
-            what the configured window implies — not a promise anything will happen on that date.
+            Nothing in this codebase actually runs a purge on schedule. A real Postgres-backed job
+            queue exists today (see System → Background jobs, OPS-02/03) — but it has no
+            &ldquo;retention.purge&rdquo; job type, and nothing enqueues one on a schedule (the queue
+            only drains jobs something already enqueued; there is no cron trigger anywhere). Until
+            both of those are built, the &ldquo;next scheduled purge&rdquo; dates below are a computed
+            projection of what the configured window implies — not a promise anything will happen on
+            that date.
           </p>
           <p className="mt-2">
             <code>RetentionPurgeLog.performedByAdminId</code> is null on every row a real scheduled

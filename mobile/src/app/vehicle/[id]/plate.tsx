@@ -8,7 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { updateVehicle } from '@/data/repo';
 import { useVehicle } from '@/data/hooks';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 /**
  * Registration/plate isn't collected during onboarding (prototype screen 07
@@ -48,7 +48,7 @@ export default function VehiclePlateScreen() {
       <T variant="display" style={styles.title}>
         Add your registration
       </T>
-      <T variant="body" color="#6F6C63" style={styles.intro}>
+      <T variant="body" color={Colors.textMuted} style={styles.intro}>
         Not needed to start logging. Worth adding before you sell, share access with a mechanic, or generate a report.
       </T>
 

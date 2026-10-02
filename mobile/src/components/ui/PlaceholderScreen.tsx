@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 type PlaceholderScreenProps = {
   title: string;
@@ -31,7 +31,7 @@ export function PlaceholderScreen({ title, section, note }: PlaceholderScreenPro
         <T variant="heading" center style={styles.title}>
           {title}
         </T>
-        <T variant="body" color="#6F6C63" center style={styles.note}>
+        <T variant="body" color={Colors.textMuted} center style={styles.note}>
           {note ?? 'This screen is coming soon. It is wired into navigation so you can reach it, but the detailed UI has not been built yet.'}
         </T>
         {router.canGoBack() ? <Button variant="secondary" onPress={() => router.back()} style={styles.button}>Back</Button> : null}

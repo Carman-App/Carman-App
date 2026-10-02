@@ -104,6 +104,36 @@ export async function requireWorkshopRole(
   return { role: member.role };
 }
 
+/**
+ * Consent gate for a workshop touching a Carma-linked vehicle's records.
+ * Product spec: "If customer is NOT on Carma: nothing shared... workshop
+ * only sees a customer's history while access is actively granted" — a
+ * workshop must hold a live (unrevoked, unexpired) AccessGrant for a
+ * specific vehicle before it may link work to that vehicle at all. This is
+ * the enforcement point that keeps Carma from being "an owner-dashboard for
+ * workshops": knowing a vehicle's id is not enough.
+ *
+ * Only applies when a workshop is linking to a real Vehicle row — jobs
+ * against a freeform (non-Carma) vehicleDescription never reach this check.
+ */
+export async function requireLiveAccessGrant(workshopId: string, vehicleId: string) {
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      workshopId,
+      vehicleId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
+  });
+  if (!grant) {
+    throw new ForbiddenError(
+      "This workshop does not have an active, unexpired access grant for this vehicle.",
+    );
+  }
+  return grant;
+}
+
 /** Any membership (owner or any staff role) — for read-only workshop endpoints. */
 export async function requireWorkshopMembership(accountId: string, workshopId: string) {
   const workshop = await prisma.workshop.findUnique({

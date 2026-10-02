@@ -8,6 +8,22 @@ import type { RecordType } from '@/types/domain';
  * Fuel, Service, Document and Odometer reading route to their own dedicated
  * screens instead and aren't part of this "generalized expense" list, but are
  * kept here too so `/record/add` has a single source of truth for the list.
+ *
+ * PARTIAL, real, working, with a documented limitation: this is intentionally
+ * NOT wired to the admin `record_categories` ConfigList. That list only has
+ * 5 items (fuel/service/repair/part/insurance) as generic `{code, label,
+ * sortOrder, metadata}` rows, while this array has ~19 entries carrying
+ * mobile-only UI metadata — `route`, `glyph`, `subtypes` — that the config
+ * schema has no equivalent for. A full swap would either 404 on dead routes
+ * for the ~14 categories the admin list doesn't know about, or silently drop
+ * their glyphs/subtypes; neither is an honest integration. Doing a partial
+ * override (using fetched labels for just the 5 overlapping codes) was also
+ * considered and rejected: it would make 5 of 19 rows re-render with
+ * different text after a network round-trip for no real product benefit,
+ * while adding a config dependency to a screen that currently renders
+ * instantly. Revisit this once the admin config shape for record categories
+ * grows routing/icon/subtype fields, or a mobile-side mapping table for the
+ * ~14 orphan categories is deliberately designed — not before.
  */
 export type CategoryConfig = {
   key: string;

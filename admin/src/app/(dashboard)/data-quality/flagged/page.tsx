@@ -11,8 +11,19 @@ import {
 import { RECORD_TYPE_LABELS } from "@/lib/data-quality/record-counts";
 import { Badge } from "@/components/badge";
 import { formatDate, formatMoney } from "@/lib/format";
+import { MaskedMoney } from "@/components/masked-money";
 
 export const dynamic = "force-dynamic";
+
+// PRIV-05 — audit-log entityType per record type, for the reveal action's
+// audit trail (see reveal-actions.ts). Matches the Prisma model names.
+const RECORD_ENTITY_TYPE: Record<string, string> = {
+  fuel: "FuelRecord",
+  service: "ServiceRecord",
+  repair: "RepairRecord",
+  expense: "ExpenseRecord",
+  odometer: "OdometerReading",
+};
 
 export default async function FlaggedRecordsPage() {
   await requireRole(DATA_QUALITY_ROLES);
@@ -83,7 +94,18 @@ export default async function FlaggedRecordsPage() {
                     <Badge value={RECORD_TYPE_LABELS[r.type]} />
                   </td>
                   <td className="whitespace-nowrap px-4 py-2">
-                    {r.amount != null ? formatMoney(r.amount) : "—"}
+                    {r.amount != null ? (
+                      <MaskedMoney
+                        value={formatMoney(r.amount)}
+                        currency="KES"
+                        entityType={RECORD_ENTITY_TYPE[r.type]}
+                        entityId={r.id}
+                        targetAccountId={r.accountId || null}
+                        fieldLabel="flagged amount"
+                      />
+                    ) : (
+                      "—"
+                    )}
                     {r.litres != null ? ` · ${r.litres}L` : ""}
                   </td>
                   <td className="whitespace-nowrap px-4 py-2">

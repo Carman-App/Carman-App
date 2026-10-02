@@ -6,6 +6,9 @@ import {
   resetSignIn,
   unlockAccount,
   manualVerifyEmail,
+  resendGarageInvite,
+  reissueReportLink,
+  rerunFailedExport,
   type ActionState,
 } from "./actions";
 
@@ -98,17 +101,23 @@ export function QuickActionsPanel({
   return (
     <div className="space-y-3 rounded border border-neutral-200 p-4">
       <div>
-        <h3 className="text-sm font-medium text-neutral-800">Support quick-actions</h3>
+        <h3 className="text-sm font-medium text-neutral-800">Support quick-actions (SUP-04)</h3>
         <p className="text-xs text-neutral-500">
-          Resend / reset / unlock have no live channel to act on yet (no OTP, session-lock, or
-          account-lock system exists) — they record the operator&rsquo;s intent to the audit log
-          rather than faking a send. Manual verification is real.
+          Resend code / reset sign-in / unlock / resend invite / re-issue report link have no live
+          send channel yet (no OTP/session-lock system, no email/SMS provider) — each records the
+          operator&rsquo;s intent to the audit log rather than faking a send, though invite/report
+          actions still make a real, useful DB change (a fresh expiry, a freshly queued report).
+          Re-run failed export and manual verification are fully real. Every button here is one
+          logged action.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
         <QuickActionButton accountId={accountId} action={resendVerificationCode} label="Resend verification code" />
         <QuickActionButton accountId={accountId} action={resetSignIn} label="Reset sign-in" />
         <QuickActionButton accountId={accountId} action={unlockAccount} label="Unlock" />
+        <QuickActionButton accountId={accountId} action={resendGarageInvite} label="Resend garage invite" />
+        <QuickActionButton accountId={accountId} action={reissueReportLink} label="Re-issue report link" />
+        <QuickActionButton accountId={accountId} action={rerunFailedExport} label="Re-run failed export" />
       </div>
       <ManualVerifyForm accountId={accountId} alreadyVerified={emailVerified} />
     </div>

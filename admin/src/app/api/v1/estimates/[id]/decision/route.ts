@@ -7,6 +7,7 @@ import { handleApiError, ConflictError, NotFoundError } from "@/lib/api/errors";
 import { estimateDecisionSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
 import { EstimateStatus, type EstimateDecisionType } from "@/generated/prisma/enums";
+import { withIdempotency, resolveIdempotencyKey, hashRequest } from "@/lib/idempotency";
 
 // POST /api/v1/estimates/:id/decision — approve or decline. Records an
 // EstimateDecision row (history) and sets Estimate.status; never mutates an
@@ -14,6 +15,10 @@ import { EstimateStatus, type EstimateDecisionType } from "@/generated/prisma/en
 // (out of scope here, workshop-side), not an edit of this one. Only valid
 // while the estimate is still PENDING.
 // Chain: auth -> account -> resolve estimate -> membership/ownership -> state check -> validate -> create decision + update status -> audit log.
+// Idempotent (AGENTS.md section 7 names this exact mutation): a retried tap
+// on "Approve"/"Decline" (double network submit, client retry) replays the
+// original decision instead of creating a second EstimateDecision row or
+// flipping status twice — see src/lib/idempotency.ts.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -22,46 +27,58 @@ export async function POST(
     const account = await requireAccount(req);
     const { id } = await params;
 
-    const estimate = await prisma.estimate.findUnique({ where: { id } });
-    if (!estimate) {
-      throw new NotFoundError("Estimate not found.");
-    }
-    await requireVehicleAccess(account.id, estimate.vehicleId);
-
-    if (estimate.status !== EstimateStatus.PENDING) {
-      throw new ConflictError(`This estimate was already ${estimate.status.toLowerCase()}.`);
-    }
-
     const body = await req.json().catch(() => null);
     const parsed = estimateDecisionSchema.safeParse(body);
     if (!parsed.success) {
       return apiError(422, "VALIDATION_ERROR", "Invalid decision payload.", parsed.error.flatten());
     }
 
-    const nextStatus =
-      parsed.data.decision === "APPROVED" ? EstimateStatus.APPROVED : EstimateStatus.DECLINED;
+    const { status, body: responseBody } = await withIdempotency(
+      {
+        scope: "estimate.decision",
+        key: resolveIdempotencyKey(req, id),
+        accountId: account.id,
+        requestHash: hashRequest(parsed.data),
+      },
+      async () => {
+        const estimate = await prisma.estimate.findUnique({ where: { id } });
+        if (!estimate) {
+          throw new NotFoundError("Estimate not found.");
+        }
+        await requireVehicleAccess(account.id, estimate.vehicleId);
 
-    const [decision, updatedEstimate] = await prisma.$transaction([
-      prisma.estimateDecision.create({
-        data: {
-          estimateId: id,
-          decision: parsed.data.decision as EstimateDecisionType,
-          decidedByAccountId: account.id,
-          note: parsed.data.note,
-        },
-      }),
-      prisma.estimate.update({ where: { id }, data: { status: nextStatus } }),
-    ]);
+        if (estimate.status !== EstimateStatus.PENDING) {
+          throw new ConflictError(`This estimate was already ${estimate.status.toLowerCase()}.`);
+        }
 
-    await writeAuditLog({
-      actorId: account.id,
-      action: "estimate.decision",
-      entityType: "Estimate",
-      entityId: id,
-      metadata: { decision: parsed.data.decision },
-    });
+        const nextStatus =
+          parsed.data.decision === "APPROVED" ? EstimateStatus.APPROVED : EstimateStatus.DECLINED;
 
-    return apiOk({ decision, estimate: updatedEstimate }, 201);
+        const [decision, updatedEstimate] = await prisma.$transaction([
+          prisma.estimateDecision.create({
+            data: {
+              estimateId: id,
+              decision: parsed.data.decision as EstimateDecisionType,
+              decidedByAccountId: account.id,
+              note: parsed.data.note,
+            },
+          }),
+          prisma.estimate.update({ where: { id }, data: { status: nextStatus } }),
+        ]);
+
+        await writeAuditLog({
+          actorId: account.id,
+          action: "estimate.decision",
+          entityType: "Estimate",
+          entityId: id,
+          metadata: { decision: parsed.data.decision },
+        });
+
+        return { status: 201, body: { decision, estimate: updatedEstimate } };
+      },
+    );
+
+    return apiOk(responseBody, status);
   } catch (error) {
     return handleApiError(error);
   }

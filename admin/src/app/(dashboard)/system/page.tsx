@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { requireRole, SYSTEM_ROLES } from "@/lib/auth/rbac";
 import { Section } from "@/components/detail-view";
 import { formatDateTime } from "@/lib/format";
 import { getDeployInfo } from "@/lib/system/deploy-info";
+import { getJobQueueOverview } from "@/lib/system/jobs";
+import { RetryJobButton } from "./retry-job-button";
 
 // System (OPS-01..07) is introspective platform/ops visibility — OWNER-only
 // (see src/lib/auth/rbac.ts SYSTEM_ROLES). Reads live state at request time.
@@ -33,6 +36,7 @@ export default async function SystemPage() {
   await requireRole(SYSTEM_ROLES);
 
   const deployInfo = getDeployInfo();
+  const jobOverview = await getJobQueueOverview();
 
   return (
     <div className="space-y-8">
@@ -92,27 +96,97 @@ export default async function SystemPage() {
 
       {/* OPS-02 / OPS-03 — Background job visibility + retry */}
       <Section title="Background jobs (visibility & retry)">
-        <NotConnected>
-          <p>
-            No job queue exists in this codebase today (no BullMQ or similar, no worker process, nothing
-            durable tracking queued/running/failed work). Adding one is an architectural decision outside
-            this task&rsquo;s scope, not something to fake here with an in-memory queue or a database table
-            pretending to be one.
+        <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+          Real data from the Postgres-backed <code>BackgroundJob</code> queue (see{" "}
+          <code>src/lib/queue/queue.ts</code>, built in the scalability pass) — today&rsquo;s only two job
+          types are <code>report.generate</code> and <code>notification.dispatch</code>; there is no image-
+          processing job type yet (no image upload pipeline exists). No always-on worker process is deployed
+          — <code>scripts/queue-worker.ts</code> must be run manually alongside <code>npm run dev</code>
+          today, so queued jobs only drain while that script is running.
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"] as const).map((status) => (
+            <div key={status} className="rounded border border-neutral-200 p-3 text-center">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">
+                {status === "PENDING" ? "Queued" : status === "PROCESSING" ? "Running" : status.charAt(0) + status.slice(1).toLowerCase()}
+              </p>
+              <p className="mt-1 text-xl font-semibold text-neutral-900">
+                {jobOverview.countsByStatus[status] ?? 0}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-neutral-500">
+          {jobOverview.retriedCount} job(s) have needed more than one attempt so far (the closest honest
+          reading of &ldquo;retried&rdquo; this queue tracks — there is no separate RETRIED status; a retried
+          job just goes back to PENDING with attempts &gt; 1).
+        </p>
+
+        <div className="rounded border border-neutral-200 p-3 text-sm">
+          <span className="font-medium text-neutral-700">Oldest waiting item: </span>
+          {jobOverview.oldestWaiting ? (
+            <span className="text-neutral-600">
+              <code>{jobOverview.oldestWaiting.type}</code> ({jobOverview.oldestWaiting.id}), due since{" "}
+              {formatDateTime(jobOverview.oldestWaiting.runAt)}, attempt {jobOverview.oldestWaiting.attempts}.
+            </span>
+          ) : (
+            <span className="text-neutral-500">Nothing queued.</span>
+          )}
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-neutral-700">
+            Failed jobs ({jobOverview.recentFailed.length})
           </p>
-          <p>Concretely, this page becoming real needs, in order:</p>
-          <ol className="list-decimal space-y-1 pl-5">
-            <li>
-              A queue library adopted at the app level — e.g. BullMQ backed by Redis, or a Postgres-backed
-              queue (e.g. graphile-worker/pg-boss) if avoiding a new infra dependency is preferred.
-            </li>
-            <li>One or more worker processes that actually run jobs pulled from that queue.</li>
-            <li>
-              Once jobs are enqueued and tracked somewhere durable, this page would list queued / running /
-              failed jobs (type, enqueued time, attempts, last error) with a retry action per job, backed by
-              the queue library&rsquo;s own retry primitive.
-            </li>
-          </ol>
-        </NotConnected>
+          {jobOverview.recentFailed.length === 0 ? (
+            <p className="rounded border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-500">
+              No failed jobs on file.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded border border-neutral-200">
+              <table className="w-full min-w-max text-left text-sm">
+                <thead className="bg-neutral-50 text-neutral-600">
+                  <tr>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Type</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Account</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Attempts</th>
+                    <th className="px-3 py-2 font-medium">Last error</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Last updated</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {jobOverview.recentFailed.map((j) => (
+                    <tr key={j.id} className="hover:bg-neutral-100">
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{j.type}</td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {j.accountId ? (
+                          <Link href={`/accounts/${j.accountId}`} className="hover:underline">
+                            {j.accountName}
+                          </Link>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {j.attempts}/{j.maxAttempts}
+                      </td>
+                      <td className="max-w-sm truncate px-3 py-2 text-xs text-neutral-600" title={j.lastError ?? ""}>
+                        {j.lastError ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-neutral-600">{formatDateTime(j.updatedAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <RetryJobButton jobId={j.id} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </Section>
 
       {/* OPS-04 — Deployment info (genuinely real) */}
@@ -158,15 +232,18 @@ export default async function SystemPage() {
       <Section title="Response times">
         <NotConnected>
           <p>
-            No request-timing instrumentation exists — nothing wraps <code>/api/v1/*</code> routes with
-            timing, so there&rsquo;s no p50/p95/error-latency data to show.
+            Partially real, not fully: the scalability pass added <code>src/lib/logging/logger.ts</code> +{" "}
+            <code>withApiLogging</code>, which now records a real <code>durationMs</code> per request for
+            sign-in and the load-tested record/report/job/estimate/invoice routes — but only as a JSON line to{" "}
+            <code>console.log</code>, not to a queryable table. There is nothing this page can read back to
+            compute a real median/p95, so the number itself still isn&rsquo;t shown here — this is a stated
+            gap in the aggregation, not in the instrumentation (which now partly exists).
           </p>
           <p>
-            Unlike the job queue and error-tracking gaps above, this one is small and scoped: a lightweight
-            timing middleware in <code>src/proxy.ts</code> (or per-route) that records duration + route +
-            status per request, writing to a small dedicated table (or forwarding to an APM tool if one is
-            ever adopted). That&rsquo;s a buildable follow-on someone could pick up directly — it just
-            isn&rsquo;t built yet, so this section stays a stated gap rather than a fabricated chart.
+            Closing this needs one more step: write each logged duration to a small dedicated table (or
+            forward to an APM tool if one is ever adopted) instead of only `console.log`, then aggregate
+            p50/p95 from that table here. That&rsquo;s a small, scoped follow-on — the hard part (measuring
+            duration per request) is already done for the routes listed above.
           </p>
         </NotConnected>
       </Section>

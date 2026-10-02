@@ -12,6 +12,7 @@
  * same as before — they're local UI preference, not server data:
  * `useHydrateOnMount`, `useOnboarded`, `useActiveGarageId` (see `@/data/uiState`).
  */
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/data/api/client';
@@ -46,7 +47,8 @@ import {
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
 import { useActiveGarageId, useHydrateOnMount, useOnboarded } from '@/data/uiState';
-import type { Modification, PartLine, VehicleDocument, VehicleRecord } from '@/types/domain';
+import { setActiveCurrency, setActiveDistanceUnit, setActiveVolumeUnit } from '@/lib/format';
+import { REGION_UNITS, type Modification, type PartLine, type VehicleDocument, type VehicleRecord } from '@/types/domain';
 
 export { useHydrateOnMount, useOnboarded, useActiveGarageId };
 
@@ -59,6 +61,25 @@ export function useAccount() {
     queryKey: qk.account(),
     queryFn: () => api.get<RawAccount>('account').then(toAccount),
   });
+}
+
+/**
+ * Keeps `@/lib/format`'s `formatMoney`/`formatDistance`/`formatVolume` in
+ * sync with the account's region — the one place currency and distance/
+ * volume units are decided (spec: region chosen once at sign-up drives units
+ * for everything after). Mounted once at the app root (`src/app/_layout.tsx`)
+ * so it applies before any screen formats an amount, distance, or volume.
+ */
+export function useSyncAccountCurrency(): void {
+  const { data: account } = useAccount();
+  useEffect(() => {
+    if (account?.region) {
+      const units = REGION_UNITS[account.region];
+      setActiveCurrency(units.currency);
+      setActiveDistanceUnit(units.distance);
+      setActiveVolumeUnit(units.volume);
+    }
+  }, [account?.region]);
 }
 
 // ---------- Garages ----------
@@ -340,6 +361,70 @@ export function useInsights(vehicleId: string | undefined) {
     queryKey: qk.insights(vehicleId),
     queryFn: () => api.get<RawInsights>(`vehicles/${vehicleId}/insights`),
     enabled: !!vehicleId,
+  });
+}
+
+// ---------- Admin-authored reference config ----------
+
+/**
+ * A published (isLive: true) Country row from the admin Config console — see
+ * admin/src/app/api/v1/config/countries/route.ts and
+ * admin/prisma/schema.prisma's Country model. `code` is a free-form ISO
+ * alpha-2 string on the admin side, not constrained to mobile's 66-value
+ * `Region` union, so a fetched row's `code` may or may not match a `Region`
+ * the rest of the app understands (see country.tsx for how that's handled).
+ */
+export type RawConfigCountry = {
+  id: string;
+  code: string;
+  name: string;
+  currencyCode: string;
+  currencySymbol: string;
+  currencySymbolPlacement: 'BEFORE' | 'AFTER';
+  distanceUnit: 'KM' | 'MI';
+  volumeUnit: 'LITRE' | 'GALLON';
+  dateFormat: string;
+  flagEmoji: string | null;
+  isLive: boolean;
+};
+
+/**
+ * Live countries authored in the admin Config console. `staleTime: Infinity`
+ * (never automatically refetched, only on explicit invalidation or app
+ * restart) because this is reference data that changes rarely — at most once
+ * per app session is the literal ask, and Infinity is the most direct way to
+ * express that with TanStack Query. Callers MUST treat loading/error/empty
+ * as "fall back to the hardcoded list" — this hook deliberately does not
+ * throw or swallow errors itself, it just surfaces normal
+ * isLoading/isError/data so each call site can decide its own fallback.
+ */
+export function useConfigCountries() {
+  return useQuery({
+    queryKey: qk.configCountries(),
+    queryFn: () => api.getPaginated<RawConfigCountry>('config/countries', FULL_PAGE).then((r) => r.items),
+    staleTime: Infinity,
+    gcTime: 12 * 60 * 60 * 1000, // 12h — keep it around across a cold app relaunch within the same day
+  });
+}
+
+/** A single active ConfigListItem — see admin/src/app/api/v1/config/lists/[key]/route.ts. */
+export type RawConfigListItem = {
+  id: string;
+  listId: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  metadata: unknown;
+  isActive: boolean;
+};
+
+/** Same rarely-changes reasoning as `useConfigCountries` — see its comment. */
+export function useConfigList(key: string) {
+  return useQuery({
+    queryKey: qk.configList(key),
+    queryFn: () => api.get<RawConfigListItem[]>(`config/lists/${key}`),
+    staleTime: Infinity,
+    gcTime: 12 * 60 * 60 * 1000,
   });
 }
 

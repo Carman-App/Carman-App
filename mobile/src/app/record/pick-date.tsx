@@ -68,7 +68,7 @@ export default function PickDateScreen() {
               disabled={disabled}
               onPress={() => setChosen(iso)}
               style={[styles.dayCell, selected && styles.dayCellSelected]}>
-              <T variant="bodyStrong" color={disabled ? Colors.textFaint : selected ? Colors.white : Colors.text}>
+              <T variant="bodyStrong" color={disabled ? Colors.disabled : selected ? Colors.white : Colors.text}>
                 {day}
               </T>
             </Pressable>

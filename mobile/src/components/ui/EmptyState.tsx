@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 type EmptyStateProps = {
   glyph: string;
@@ -20,7 +20,7 @@ export function EmptyState({ glyph, title, body, children }: EmptyStateProps) {
       <T variant="subheading" center style={styles.title}>
         {title}
       </T>
-      <T variant="body" color="#6F6C63" center style={styles.body}>
+      <T variant="body" color={Colors.textMuted} center style={styles.body}>
         {body}
       </T>
       {children}

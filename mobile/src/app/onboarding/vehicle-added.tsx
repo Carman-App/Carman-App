@@ -9,7 +9,7 @@ import { T } from '@/components/ui/Typography';
 import { useVehicle } from '@/data/hooks';
 import { useOnboardingDraft } from '@/features/onboarding/context';
 import { USAGE_LABEL } from '@/types/domain';
-import { formatNumber } from '@/lib/format';
+import { formatDistance } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 export default function VehicleAddedScreen() {
@@ -38,8 +38,10 @@ export default function VehicleAddedScreen() {
         <T variant="bodyStrong">
           {draft.make} {draft.model} · {draft.year} · {USAGE_LABEL[draft.usage]}
         </T>
+        {/* "· Kenya" is a separate pre-existing hardcoded-region-name issue,
+            unrelated to distance/volume units — out of scope for this pass. */}
         <T variant="meta">
-          {formatNumber(vehicle?.odometerKm ?? draft.odometerKm)} KM · Kenya
+          {formatDistance(vehicle?.odometerKm ?? draft.odometerKm)} · Kenya
         </T>
       </View>
 

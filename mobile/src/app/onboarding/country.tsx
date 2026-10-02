@@ -6,13 +6,20 @@ import { ListRow } from '@/components/ui/ListRow';
 import { ProgressSteps } from '@/components/ui/ProgressSteps';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { useConfigCountries } from '@/data/hooks';
 import { useOnboardingDraft } from '@/features/onboarding/context';
-import { REGION_UNITS, type Region } from '@/types/domain';
+import { REGION_UNITS, type Region, type UnitSystem } from '@/types/domain';
 import { Colors, Spacing } from '@/theme/tokens';
 
 // Matches the prototype's COUNTRY screen exactly: Kenya first (the sensible
 // default — all seed/demo data assumes Kenya), then the rest of the list in
 // the same order the prototype shows them (grouped roughly by region).
+//
+// This hardcoded list stays the fallback AND the type system's source of
+// truth for which 66 regions the rest of the app understands (routing,
+// REGION_UNITS, the `Region` union in @/types/domain) — see the merge
+// comment below for what does and doesn't become "live" once an admin
+// publishes Country data.
 const COUNTRIES: { region: Region; name: string; flag: string }[] = [
   { region: 'KE', name: 'Kenya', flag: '🇰🇪' },
   { region: 'UG', name: 'Uganda', flag: '🇺🇬' },
@@ -84,6 +91,40 @@ const COUNTRIES: { region: Region; name: string; flag: string }[] = [
 
 export default function CountryScreen() {
   const { draft, update } = useOnboardingDraft();
+  const configCountries = useConfigCountries();
+
+  // REAL, live-driven part: for any `Region` where an admin has published a
+  // matching Country row (matched by ISO alpha-2 `code`), override the
+  // display name/flag and units with the live values. NECESSARILY still
+  // bounded by mobile's Region type: a published Country whose `code` isn't
+  // one of the 66 values in `Region` (admin's `code` is a free-form alpha-2
+  // string, not constrained to this union) can't be surfaced here — picking
+  // it would need a `Region` the rest of the app (routing, REGION_UNITS,
+  // Account.region) doesn't know how to handle, which is out of scope for
+  // this change. Loading, error, or zero live rows (nothing authored yet in
+  // a fresh DB) all fall back to the hardcoded list/units below unchanged —
+  // no visible change for anyone until an admin actually publishes country
+  // data that happens to match one of these 66 codes.
+  const liveByCode = new Map(
+    (configCountries.data ?? []).map((c) => [c.code, c] as const),
+  );
+
+  const rows: { region: Region; name: string; flag: string; units: UnitSystem }[] = COUNTRIES.map((c) => {
+    const live = liveByCode.get(c.region);
+    if (!live) {
+      return { region: c.region, name: c.name, flag: c.flag, units: REGION_UNITS[c.region] };
+    }
+    return {
+      region: c.region,
+      name: live.name,
+      flag: live.flagEmoji ?? c.flag,
+      units: {
+        currency: live.currencyCode,
+        distance: live.distanceUnit === 'MI' ? 'mi' : 'km',
+        volume: live.volumeUnit === 'GALLON' ? 'gal' : 'L',
+      },
+    };
+  });
 
   return (
     <Screen
@@ -96,14 +137,13 @@ export default function CountryScreen() {
         SETS YOUR CURRENCY AND UNITS
       </T>
       <View style={styles.list}>
-        {COUNTRIES.map((c) => {
-          const units = REGION_UNITS[c.region];
+        {rows.map((c) => {
           const selected = draft.region === c.region;
           return (
             <ListRow
               key={c.region}
               title={`${c.flag}  ${c.name}`}
-              meta={`${units.currency} · ${units.distance === 'km' ? 'KILOMETRES' : 'MILES'} · ${units.volume === 'L' ? 'LITRES' : 'GALLONS'}`}
+              meta={`${c.units.currency} · ${c.units.distance === 'km' ? 'KILOMETRES' : 'MILES'} · ${c.units.volume === 'L' ? 'LITRES' : 'GALLONS'}`}
               onPress={() => update({ region: c.region })}
               style={selected ? styles.selected : undefined}
             />

@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/format";
 import { requireRole, BILLING_ROLES } from "@/lib/auth/rbac";
 import { BillingNav } from "../billing-nav";
 import { REGION_LABELS, currencyForRegion } from "@/lib/region";
-import { Region, SubscriptionStatus } from "@/generated/prisma/enums";
+import type { Region } from "@/generated/prisma/enums";
 import { ensureFxRatesSeeded, getFxRateMap, convertCentsToReportingCurrency } from "@/lib/money/fx";
 import { formatCents, REPORTING_CURRENCY } from "@/lib/money/currency";
 
@@ -13,40 +13,50 @@ export const dynamic = "force-dynamic";
 // MON-09 — "revenue by country/currency with conversion basis stated (local
 // currency as charged, converted to one reporting currency, rate source+date
 // printed beside the figure)."
+//
+// AGENTS.md scalability pass, section 17: this used to load every
+// ACTIVE/PAST_DUE Subscription row platform-wide (with plan + account +
+// workshop-owner joins) and group/sum them in JS — an unbounded scan that
+// grows with total subscriber count. The grouping and summing now happen in
+// one grouped SQL query (GROUP BY region), so this page's cost scales with
+// the number of distinct regions (a handful), not the number of
+// subscriptions. The region-resolution logic (account's region, or its
+// workshop owner's region when the subscription is workshop-side) and the
+// price figure (Plan.priceCents) are unchanged from the original — this is
+// a query-strategy change, not a behavior change.
+type RegionRevenueRow = { region: Region; gross_cents: string; cnt: string };
+
+async function getRevenueByRegion(): Promise<{ region: Region; grossCents: number; count: number }[]> {
+  const rows = await prisma.$queryRaw<RegionRevenueRow[]>`
+    SELECT
+      COALESCE(a.region, ow.region) AS region,
+      SUM(p."priceCents")::text AS gross_cents,
+      COUNT(*)::text AS cnt
+    FROM subscriptions s
+    JOIN plans p ON p.id = s."planId"
+    LEFT JOIN accounts a ON a.id = s."accountId"
+    LEFT JOIN workshops w ON w.id = s."workshopId"
+    LEFT JOIN accounts ow ON ow.id = w."ownerId"
+    WHERE s.status IN ('ACTIVE', 'PAST_DUE')
+      AND COALESCE(a.region, ow.region) IS NOT NULL
+    GROUP BY COALESCE(a.region, ow.region)
+  `;
+  return rows.map((r) => ({ region: r.region, grossCents: Number(r.gross_cents), count: Number(r.cnt) }));
+}
 
 export default async function RevenuePage() {
   await requireRole(BILLING_ROLES);
   await ensureFxRatesSeeded();
 
-  const subs = await prisma.subscription.findMany({
-    where: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE] } },
-    include: {
-      plan: true,
-      account: { select: { region: true } },
-      workshop: { select: { owner: { select: { region: true } } } },
-    },
-  });
+  const byRegion = await getRevenueByRegion();
   const rates = await getFxRateMap();
 
-  const byRegion = new Map<Region, { region: Region; currency: string; grossCents: number; count: number }>();
-  for (const s of subs) {
-    const region = s.account?.region ?? s.workshop?.owner.region;
-    if (!region) continue;
-    const currency = currencyForRegion(region);
-    const existing = byRegion.get(region);
-    if (existing) {
-      existing.grossCents += s.plan.priceCents;
-      existing.count += 1;
-    } else {
-      byRegion.set(region, { region, currency, grossCents: s.plan.priceCents, count: 1 });
-    }
-  }
-
-  const rows = [...byRegion.values()]
+  const rows = byRegion
     .map((r) => {
-      const rate = rates.get(r.currency);
-      const convertedCents = convertCentsToReportingCurrency(r.grossCents, r.currency, rates);
-      return { ...r, convertedCents, rate };
+      const currency = currencyForRegion(r.region);
+      const rate = rates.get(currency);
+      const convertedCents = convertCentsToReportingCurrency(r.grossCents, currency, rates);
+      return { ...r, currency, convertedCents, rate };
     })
     .sort((a, b) => (b.convertedCents ?? 0) - (a.convertedCents ?? 0));
 

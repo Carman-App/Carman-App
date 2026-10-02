@@ -100,7 +100,7 @@ export function PickerSheet({
               value={query}
               onChangeText={setQuery}
               placeholder={searchPlaceholder}
-              placeholderTextColor={Colors.textFaint}
+              placeholderTextColor={Colors.placeholder}
               style={styles.searchInput}
               autoCorrect={false}
               autoCapitalize="none"
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.disabledTrack,
     marginTop: Spacing.sm,
     marginBottom: Spacing.xxs,
   },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
   rowLabel: {
     flex: 1,

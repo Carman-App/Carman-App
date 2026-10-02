@@ -5,6 +5,7 @@ import { requireGarageMembership } from "@/lib/api/authorize";
 import { apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { parsePagination } from "@/lib/api/pagination";
+import { syncGarageReminders } from "@/lib/reminders/sync";
 
 // GET /api/v1/garages/:id/reminders — reminders across every vehicle in the
 // garage, paginated. ?resolved=true to include resolved reminders too.
@@ -18,6 +19,10 @@ export async function GET(
     const { id: garageId } = await params;
 
     await requireGarageMembership(account.id, garageId);
+
+    // Reconcile every vehicle in the garage against live data before
+    // reading — see @/lib/reminders/sync's module doc.
+    await syncGarageReminders(garageId);
 
     const { page, pageSize, skip, take } = parsePagination(req);
     const includeResolved = req.nextUrl.searchParams.get("resolved") === "true";

@@ -12,6 +12,7 @@ import {
   Region,
   ProfileType,
   JobLineKind,
+  PaymentMethod,
 } from "@/generated/prisma/enums";
 
 function enumValues<T extends Record<string, string>>(e: T) {
@@ -244,10 +245,24 @@ export const createWorkshopSchema = z.object({
   name: z.string().trim().min(1).max(200),
 });
 
+// Note: no client-suppliable `linkedAccountId` here — a workshop can't claim
+// a customer is linked to a Carma account by just naming an id. Linkage only
+// ever happens through the verified invite lookup at
+// POST /api/v1/workshops/:id/customers/:customerId/invite (matched by email).
 export const createWorkshopCustomerSchema = z.object({
   name: z.string().trim().min(1).max(200),
   phone: z.string().trim().max(50).optional(),
-  linkedAccountId: z.string().min(1).optional(),
+  email: z.email().optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+export const inviteWorkshopCustomerSchema = z.object({
+  email: z.email(),
+});
+
+export const recordPaymentSchema = z.object({
+  amount: z.number().positive(),
+  method: z.enum(enumValues(PaymentMethod)).optional(),
   notes: z.string().trim().max(2000).optional(),
 });
 

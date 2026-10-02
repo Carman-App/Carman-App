@@ -892,6 +892,10 @@ model FuelRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  // Timeline/history reads are always "this vehicle, newest first, not
+  // deleted" — see src/lib/records.ts and vehicles/:id/records.
+  @@index([vehicleId, date])
+  @@index([vehicleId, deletedAt])
   @@map("fuel_records")
 }
 
@@ -913,6 +917,8 @@ model ServiceRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date])
+  @@index([vehicleId, deletedAt])
   @@map("service_records")
 }
 
@@ -934,6 +940,8 @@ model RepairRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date])
+  @@index([vehicleId, deletedAt])
   @@map("repair_records")
 }
 
@@ -955,6 +963,8 @@ model ExpenseRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date])
+  @@index([vehicleId, deletedAt])
   @@map("expense_records")
 }
 
@@ -972,6 +982,7 @@ model OdometerReading {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date])
   @@map("odometer_readings")
 }
 
@@ -1041,6 +1052,7 @@ model Document {
   documentType DocumentType @relation(fields: [documentTypeId], references: [id])
 
   @@index([vehicleId])
+  @@index([vehicleId, deletedAt])
   @@map("documents")
 }
 
@@ -1171,9 +1183,24 @@ model WorkshopCustomer {
   workshopId      String
   name            String
   phone           String?
+  // Needed to look the customer up against an existing Carma User (keyed by
+  // email — see User.email) when inviting them; a phone number alone can't
+  // be matched to an account since no Carma identity collects one today.
+  email           String?
   linkedAccountId String?
   notes           String?
   createdAt       DateTime @default(now())
+
+  // Invite-to-Carma path (product spec: "a walk-in the workshop has
+  // served... INVITABLE to Carma"). Set when a workshop member sends an
+  // invite via POST /api/v1/workshops/:id/customers/:customerId/invite,
+  // regardless of whether a matching account was found — see that route for
+  // the honest "no match yet" case. linkedAccountId above is only ever set
+  // once a real matching Account is found; it is never client-suppliable
+  // directly (removed from createWorkshopCustomerSchema) so a workshop can't
+  // claim linkage to an account without going through this verified lookup.
+  invitedAt         DateTime?
+  invitedByAccountId String?
 
   workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   jobs     Job[]
@@ -1207,6 +1234,10 @@ model Job {
   @@index([workshopId])
   @@index([vehicleId])
   @@index([status])
+  // Job board queries filter by workshop AND status together (e.g. "this
+  // workshop's IN_PROGRESS jobs") — a compound index avoids the planner
+  // falling back to a full scan of one of the two single-column indexes.
+  @@index([workshopId, status])
   @@map("jobs")
 }
 
@@ -1299,6 +1330,8 @@ model Estimate {
   @@index([jobId])
   @@index([vehicleId])
   @@index([workshopId])
+  // Workshop-side "pending estimates" queues filter by workshop + status.
+  @@index([workshopId, status])
   @@map("estimates")
 }
 
@@ -1356,6 +1389,9 @@ model Invoice {
   @@index([jobId])
   @@index([vehicleId])
   @@index([workshopId])
+  // Workshop-side "unpaid invoices" / outstanding-balance queries filter by
+  // workshop + status — see src/app/(dashboard) balance/aggregate views.
+  @@index([workshopId, status])
   @@map("invoices")
 }
 
@@ -1384,6 +1420,8 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+  // Date-range payment reporting (reconciliation, revenue-by-period).
+  @@index([paidAt])
   @@map("payments")
 }
 
@@ -1433,6 +1471,9 @@ model AccessGrant {
 
   @@index([vehicleId])
   @@index([workshopId])
+  // "Does this workshop currently have a live grant on this vehicle" checks
+  // filter by vehicle + revoked state together.
+  @@index([vehicleId, revokedAt])
   @@map("access_grants")
 }
 
@@ -1496,6 +1537,11 @@ model Notification {
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
+  // The notification feed is always "this account, newest first" or "this
+  // account, unread" — compound indexes match both access patterns without
+  // falling back to the single-column [accountId] index plus a sort.
+  @@index([accountId, createdAt])
+  @@index([accountId, readAt])
   @@map("notifications")
 }
 
@@ -1531,6 +1577,10 @@ model AuditLog {
   @@index([targetAccountId])
   @@index([action])
   @@index([createdAt])
+  // AUD-02 "export everything done to one account" is a date-ranged filter
+  // on targetAccountId — a compound index avoids intersecting two separate
+  // indexes for what is the single most common audit-log query shape.
+  @@index([targetAccountId, createdAt])
   @@map("audit_logs")
 }
 
@@ -2410,3 +2460,111 @@ model RetentionPurgeLog {
 
 // PRIV-05 (masking + reveal-with-reason access logging) reuses the existing
 // AuditLog table (see src/lib/audit.ts) exactly like AUD-06 — no new model.
+
+// ============================================================================
+// Scalability infrastructure (see AGENTS.md scalability pass /
+// SCALABILITY_AUDIT.md) — a Postgres-backed queue, idempotency-key store,
+// and rate-limit bucket store. These are real, working implementations for a
+// single-region modular monolith, not placeholders:
+// - src/lib/queue/queue.ts (BackgroundJob) — report generation and
+//   notification dispatch are enqueued here instead of running inline.
+//   scripts/queue-worker.ts is a dev-only polling consumer; a dedicated
+//   always-on worker process is the Stage 2 upgrade once there's real
+//   worker hosting to deploy it to.
+// - src/lib/idempotency.ts (IdempotencyKey) — critical mutations (estimate
+//   decision, access grant/request actions, report generation) survive a
+//   retried request without duplicating side effects.
+// - src/lib/rateLimit.ts (RateLimitBucket) — fixed-window counters for
+//   auth/2FA and other rate-limited endpoints.
+// All three are genuinely correct at single-instance/single-region scale.
+// They stop being sufficient once Next.js runs as more than one instance:
+// Postgres round-trips add latency a shared Redis wouldn't, and nothing here
+// gives cross-instance pub/sub — that's the documented Stage 2 trigger, not
+// a flaw in this implementation.
+// ============================================================================
+
+enum BackgroundJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model BackgroundJob {
+  id          String              @id @default(cuid())
+  type        String // e.g. "report.generate", "notification.dispatch"
+  payload     Json                @db.JsonB
+  status      BackgroundJobStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  // Earliest time this job may be claimed — "now" for an immediate job, a
+  // future time for scheduled retry backoff.
+  runAt       DateTime            @default(now())
+  // Claimed-by-worker fields, set atomically by claimNextJob() so two
+  // pollers never process the same row twice. A lock older than the claim
+  // timeout with no completedAt is treated as abandoned and reclaimed.
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  result      Json?               @db.JsonB
+  // Optional caller-supplied dedupe key so enqueueing the "same" job twice
+  // (e.g. a retried request) doesn't create two queue rows.
+  dedupeKey   String?             @unique
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  completedAt DateTime?
+
+  @@index([status, runAt])
+  @@index([type])
+  @@map("background_jobs")
+}
+
+enum IdempotencyKeyStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model IdempotencyKey {
+  id String @id @default(cuid())
+
+  // Caller-scoped uniqueness: the same literal key from two different
+  // accounts/scopes must not collide — see src/lib/idempotency.ts.
+  scope     String // e.g. "estimate.decision", "access_grant.revoke", "report.generate"
+  key       String
+  accountId String?
+
+  // Hash of the request body this key was first used with. Reusing the same
+  // idempotency key with a DIFFERENT payload is a client bug, not a
+  // legitimate retry, and is rejected rather than silently replayed.
+  requestHash String?
+
+  status         IdempotencyKeyStatus @default(IN_PROGRESS)
+  responseStatus Int?
+  responseBody   Json?                @db.JsonB
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  // TTL cleanup — see src/lib/idempotency.ts's opportunistic sweep.
+  expiresAt   DateTime
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+model RateLimitBucket {
+  id String @id @default(cuid())
+
+  // Fixed-window counter key, e.g. "login:ip:1.2.3.4:2026-08-31T12:05".
+  // Encoding the window boundary directly in the key means "increment or
+  // create" is a single upsert with no separate window-rollover logic.
+  bucketKey   String   @unique
+  count       Int      @default(0)
+  windowStart DateTime
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_buckets")
+}

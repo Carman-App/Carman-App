@@ -31,8 +31,8 @@ export default function RecordSavedScreen() {
       }>
       <ModalHeader eyebrow="RECORD SAVED" onClose={done} closeLabel="DONE" />
       <View style={styles.center}>
-        <IconGlyph glyph="check" size={88} bg={Colors.positiveSoft} fg={Colors.positive} />
-        <T variant="eyebrowStrong" color={Colors.positive} style={styles.saved}>
+        <IconGlyph glyph="check" size={88} bg={Colors.accentSoft} fg={Colors.accent} />
+        <T variant="eyebrowStrong" color={Colors.accent} style={styles.saved}>
           SAVED
         </T>
         <T variant="numericLarge">{formatMoney(Number(amount) || 0)}</T>

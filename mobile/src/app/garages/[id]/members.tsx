@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   rowBordered: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
   row: {
     flexDirection: 'row',

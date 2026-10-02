@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { isoWeekKey, weekStart, getAccountRecordTimestamps } from "./definitions";
+import { isoWeekKey, weekStart, getAccountRecordTimestamps, getVehicleAddedAccountIds } from "./definitions";
 
 // GROW-01 — "signup -> verified -> garage created -> vehicle added -> first
 // record -> second record in a different ISO week. Count and % surviving
@@ -39,11 +39,9 @@ export async function getSignupFunnelByCohort(): Promise<FunnelCohortRow[]> {
       .then((rows) => new Set(rows.map((r) => r.id))),
     // "Vehicle added" = they personally added a vehicle to a garage they own
     // (the natural next funnel step after "garage created"), not merely
-    // holding a membership on someone else's vehicle — see definitions.ts
-    // header note on this file's scope.
-    prisma.account
-      .findMany({ where: { garagesOwned: { some: { vehicles: { some: {} } } } }, select: { id: true } })
-      .then((rows) => new Set(rows.map((r) => r.id))),
+    // holding a membership on someone else's vehicle. Shared with
+    // definitions.ts's getActivatedAccountIds so the two never drift apart.
+    getVehicleAddedAccountIds(),
     getAccountRecordTimestamps(),
   ]);
 

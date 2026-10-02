@@ -8,7 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { useRecord, useVehicle } from '@/data/hooks';
 import { deleteRecord, updateRecord } from '@/data/repo';
-import { formatDateLong, formatPlate } from '@/lib/format';
+import { formatDateLong, formatPlate, formatVolume, getActiveCurrency } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -36,7 +36,7 @@ export default function EditRecordScreen() {
   const what = useMemo(() => {
     if (!record) return '';
     const label = TYPE_LABEL[record.type] ?? 'Record';
-    return record.type === 'fuel' && record.litres ? `${label} · ${record.litres} L` : label;
+    return record.type === 'fuel' && record.litres ? `${label} · ${formatVolume(record.litres)}` : label;
   }, [record]);
 
   const changed = !!record && (Number(amount) !== record.amount || date !== record.date || detail !== (record.place ?? record.notes ?? ''));
@@ -113,7 +113,7 @@ export default function EditRecordScreen() {
 
       <View style={styles.form}>
         <TextField label="WHAT" value={what} onChangeText={() => {}} />
-        <TextField label="AMOUNT" value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" prefix="KES" />
+        <TextField label="AMOUNT" value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" prefix={getActiveCurrency()} />
         <TextField label="DATE" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" helper={date ? formatDateLong(date) : undefined} />
         <TextField label="DETAIL" value={detail} onChangeText={setDetail} placeholder="Place or notes" multiline />
 
@@ -133,7 +133,7 @@ export default function EditRecordScreen() {
       </View>
 
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

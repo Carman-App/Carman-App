@@ -11,9 +11,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 
-import { useHydrateOnMount } from '@/data/hooks';
+import { useHydrateOnMount, useSyncAccountCurrency } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
 import { Colors } from '@/theme/tokens';
+
+/** Mounted inside `QueryClientProvider` so `useAccount` (a query hook) can run — keeps `formatMoney` region-aware app-wide. See `useSyncAccountCurrency`'s doc. */
+function CurrencySync() {
+  useSyncAccountCurrency();
+  return null;
+}
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -42,6 +48,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <CurrencySync />
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         {/* Add-record flow: entered as a modal sheet; sub-steps push within it. */}

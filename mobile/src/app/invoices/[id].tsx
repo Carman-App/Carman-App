@@ -54,7 +54,7 @@ export default function InvoiceDetailScreen() {
               INV {invoice.id.toUpperCase()} · {formatDateShort(invoice.createdAt)}
             </T>
             <View style={[styles.statusBadge, invoice.status === 'paid' ? styles.statusPaid : styles.statusUnpaid]}>
-              <T variant="eyebrowStrong" color={invoice.status === 'paid' ? Colors.positive : Colors.danger}>
+              <T variant="eyebrowStrong" color={invoice.status === 'paid' ? Colors.accent : Colors.danger}>
                 {invoice.status === 'paid' ? 'PAID' : 'UNPAID'}
               </T>
             </View>
@@ -107,7 +107,7 @@ export default function InvoiceDetailScreen() {
             </T>
 
             {payError ? (
-              <T variant="meta" color={Colors.danger} style={styles.payError}>
+              <T variant="meta" color={Colors.error} style={styles.payError}>
                 {payError}
               </T>
             ) : null}
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   statusPaid: {
-    backgroundColor: Colors.positiveSoft,
+    backgroundColor: Colors.accentSoft,
   },
   statusUnpaid: {
     backgroundColor: Colors.dangerSoft,

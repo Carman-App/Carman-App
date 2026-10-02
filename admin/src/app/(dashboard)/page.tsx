@@ -98,7 +98,7 @@ export default async function PulsePage() {
   const pinnedKeys = pinned && pinned.length > 0 ? pinned : DEFAULT_PINNED_METRICS;
   const restKeys = PULSE_METRIC_KEYS.filter((k) => !pinnedKeys.includes(k));
 
-  const alerts = buildAlerts(snapshots, (key) => linkForMetric(key, admin.role));
+  const alerts = await buildAlerts(snapshots, (key) => linkForMetric(key, admin.role));
   const realAlerts = alerts.filter((a) => a.severity === "real");
   const notWiredAlerts = alerts.filter((a) => a.severity === "not_wired");
 

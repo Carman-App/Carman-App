@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // (Account / Garage / Vehicle / Invoice) ultimately resolves to and links to
 // an Account detail page, since that's the one place an operator needs to
 // end up.
-type ResultKind = "Account" | "Garage" | "Vehicle" | "Invoice";
+type ResultKind = "Account" | "Garage" | "Vehicle" | "Invoice" | "Phone";
 
 type SearchResult = {
   id: string; // unique key for the table row (kind-prefixed)
@@ -28,6 +28,7 @@ const KIND_COLORS: Record<ResultKind, string> = {
   Garage: "border-amber-200 bg-amber-100 text-amber-700",
   Vehicle: "border-violet-200 bg-violet-100 text-violet-700",
   Invoice: "border-emerald-200 bg-emerald-100 text-emerald-700",
+  Phone: "border-rose-200 bg-rose-100 text-rose-700",
 };
 
 function KindLabel({ kind }: { kind: ResultKind }) {
@@ -118,6 +119,40 @@ async function searchEverything(q: string): Promise<SearchResult[]> {
     });
   }
 
+  // ACCT-01 also names "phone". No phone field exists on User/Account (the
+  // mobile app never collects one — see the AGENTS.md note this codebase
+  // already carries), so a literal account-phone search is impossible
+  // without inventing a field nothing writes to. WorkshopCustomer *does*
+  // carry a real phone number though, and when a workshop has linked that
+  // walk-in customer to a real Carma account (linkedAccountId), that phone
+  // genuinely resolves to an account — using data that already exists,
+  // not fabricating any. Typed distinctly ("Phone") so this is obviously a
+  // phone hit, matching ACCT-01's "results typed" requirement, and only
+  // ever surfaced when it actually resolves to an account.
+  const phoneMatches = await prisma.workshopCustomer.findMany({
+    where: { phone: { contains: q, mode: "insensitive" }, linkedAccountId: { not: null } },
+    take: 20,
+  });
+  if (phoneMatches.length > 0) {
+    const linkedAccounts = await prisma.account.findMany({
+      where: { id: { in: phoneMatches.map((c) => c.linkedAccountId as string) } },
+      include: { user: true },
+    });
+    const accountById = new Map(linkedAccounts.map((a) => [a.id, a]));
+    for (const c of phoneMatches) {
+      const linked = c.linkedAccountId ? accountById.get(c.linkedAccountId) : undefined;
+      if (!linked) continue; // linkedAccountId pointed at nothing resolvable — skip rather than show a dead link
+      results.push({
+        id: `phone:${c.id}`,
+        kind: "Phone",
+        matchedField: `Phone: ${c.phone} (via workshop customer record "${c.name}")`,
+        name: linked.user.name,
+        email: linked.user.email,
+        accountId: linked.id,
+      });
+    }
+  }
+
   return results;
 }
 
@@ -147,8 +182,9 @@ export default async function AccountsPage({
         <div>
           <h1 className="text-lg font-semibold text-neutral-900">Accounts</h1>
           <p className="text-sm text-neutral-500">
-            Universal search — account name/email/id, garage name, vehicle plate, or invoice id.
-            Every result links to the owning account.
+            Universal search — account name/email/id, garage name, vehicle plate, invoice id, or a
+            workshop customer phone number that&rsquo;s linked to a real account. Every result links
+            to the owning account.
           </p>
         </div>
         <Link
@@ -169,8 +205,9 @@ export default async function AccountsPage({
         />
         <p className="text-xs text-neutral-500">
           Invoices don&rsquo;t have a human-readable number yet, only an internal id — search
-          matches that id. Phone isn&rsquo;t tracked in this product yet — search can&rsquo;t match
-          it.
+          matches that id. No account/user record stores a phone number directly (the mobile app
+          never collects one), so a phone search only matches when a workshop has recorded that
+          same phone against one of its customers and linked it to a real account.
         </p>
       </form>
 

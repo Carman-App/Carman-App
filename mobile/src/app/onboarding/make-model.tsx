@@ -115,6 +115,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
 });

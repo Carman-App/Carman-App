@@ -1,13 +1,53 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { deleteAccount, restoreAccount, type ActionState } from "./actions";
+import {
+  requestAccountDeletion,
+  approveAccountDeletion,
+  rejectAccountDeletion,
+  restoreAccount,
+  type ActionState,
+} from "./actions";
+import { formatDateTime } from "@/lib/format";
 
 const GRACE_WINDOW_DAYS = 30;
 
-export function DeletePanel({ accountId }: { accountId: string }) {
+export type PendingDeletion = {
+  id: string;
+  requestedAt: Date;
+  requestedByAdminId: string;
+  requestedByLabel: string;
+  reason: string;
+};
+
+// AUD-03: "Two-person approval required for: account deletion ..." — this
+// panel now requests approval instead of deleting immediately, and a
+// *different* OWNER-role admin must approve before anything is written
+// (see src/lib/approvals.ts / accounts/[id]/actions.ts).
+export function DeletePanel({
+  accountId,
+  pendingDeletion,
+  currentAdminId,
+}: {
+  accountId: string;
+  pendingDeletion: PendingDeletion | null;
+  currentAdminId: string;
+}) {
+  if (pendingDeletion) {
+    return (
+      <PendingDeletionCard
+        accountId={accountId}
+        deletion={pendingDeletion}
+        isRequester={pendingDeletion.requestedByAdminId === currentAdminId}
+      />
+    );
+  }
+  return <RequestDeletionForm accountId={accountId} />;
+}
+
+function RequestDeletionForm({ accountId }: { accountId: string }) {
   const [step, setStep] = useState<0 | 1>(0);
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(deleteAccount, undefined);
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(requestAccountDeletion, undefined);
 
   if (step === 0) {
     return (
@@ -26,7 +66,9 @@ export function DeletePanel({ accountId }: { accountId: string }) {
       <input type="hidden" name="accountId" value={accountId} />
       <p className="text-sm text-neutral-800">
         This is an admin-initiated soft delete (there is no self-serve deletion in the mobile app
-        today). It sets a deletion marker; the account is restorable for {GRACE_WINDOW_DAYS} days.
+        today). Requesting it here does not delete anything yet — a <em>different</em> OWNER-role
+        admin must approve (AUD-03). Once approved, it sets a deletion marker; the account is
+        restorable for {GRACE_WINDOW_DAYS} days.
       </p>
 
       <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
@@ -40,7 +82,7 @@ export function DeletePanel({ accountId }: { accountId: string }) {
           minimised form for the regulatory retention period.
         </p>
         <p className="mt-2 text-amber-600">
-          What actually happens today: clicking &ldquo;Yes, delete&rdquo; below only stamps{" "}
+          What actually happens today: once approved, this only stamps{" "}
           <code>deletedAt</code>/<code>deletedByAdminId</code> on this Account row. Nothing is
           scrubbed, anonymized, or physically removed — not now, and not automatically after the
           {" "}{GRACE_WINDOW_DAYS}-day window either, since no purge job exists (see the Privacy
@@ -64,7 +106,7 @@ export function DeletePanel({ accountId }: { accountId: string }) {
           disabled={pending}
           className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
         >
-          {pending ? "Deleting…" : "Yes, delete"}
+          {pending ? "Requesting…" : "Request deletion"}
         </button>
         <button
           type="button"
@@ -76,6 +118,95 @@ export function DeletePanel({ accountId }: { accountId: string }) {
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
+  );
+}
+
+function PendingDeletionCard({
+  accountId,
+  deletion,
+  isRequester,
+}: {
+  accountId: string;
+  deletion: PendingDeletion;
+  isRequester: boolean;
+}) {
+  const [approveState, approveAction, approvePending] = useActionState<ActionState, FormData>(
+    approveAccountDeletion,
+    undefined,
+  );
+  const [rejectState, rejectAction, rejectPending] = useActionState<ActionState, FormData>(
+    rejectAccountDeletion,
+    undefined,
+  );
+  const [showReject, setShowReject] = useState(false);
+
+  return (
+    <div className="space-y-3 rounded border border-red-200 bg-red-50 p-4">
+      <p className="text-sm text-red-800">Pending: delete this account.</p>
+      <p className="text-xs text-neutral-600">
+        Requested {formatDateTime(deletion.requestedAt)} by {deletion.requestedByLabel} — &ldquo;
+        {deletion.reason}&rdquo;
+      </p>
+
+      {isRequester ? (
+        <p className="text-xs text-neutral-500">
+          You requested this — a different OWNER-role admin must approve it (AUD-03: nobody
+          approves their own request).
+        </p>
+      ) : (
+        <form action={approveAction}>
+          <input type="hidden" name="approvalId" value={deletion.id} />
+          <input type="hidden" name="accountId" value={accountId} />
+          <button
+            type="submit"
+            disabled={approvePending}
+            className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
+          >
+            {approvePending ? "Approving…" : "Approve & delete"}
+          </button>
+        </form>
+      )}
+      {approveState?.error && <p className="text-sm text-red-600">{approveState.error}</p>}
+
+      {!showReject ? (
+        <button
+          type="button"
+          onClick={() => setShowReject(true)}
+          className="text-xs text-neutral-500 hover:text-neutral-700"
+        >
+          Reject this request
+        </button>
+      ) : (
+        <form action={rejectAction} className="space-y-2">
+          <input type="hidden" name="approvalId" value={deletion.id} />
+          <input type="hidden" name="accountId" value={accountId} />
+          <textarea
+            name="reason"
+            required
+            rows={2}
+            placeholder="Reason for rejecting (required)"
+            className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={rejectPending}
+              className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:border-red-400 disabled:opacity-60"
+            >
+              {rejectPending ? "Rejecting…" : "Confirm reject"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReject(false)}
+              className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-500"
+            >
+              Cancel
+            </button>
+          </div>
+          {rejectState?.error && <p className="text-sm text-red-600">{rejectState.error}</p>}
+        </form>
+      )}
+    </div>
   );
 }
 

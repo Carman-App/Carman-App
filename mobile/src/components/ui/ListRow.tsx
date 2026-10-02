@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   },
   bordered: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
   left: {
     marginRight: 2,

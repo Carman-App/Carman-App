@@ -13,7 +13,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageMembers, useGarageRecords, usePendingAccessRequests, useVehicles } from '@/data/hooks';
-import { formatDateShort, formatMoney, formatNumber, formatPlate } from '@/lib/format';
+import { formatDateShort, formatDistance, formatMoney, formatPlate, formatVolume } from '@/lib/format';
 import { USAGE_LABEL, type Vehicle } from '@/types/domain';
 import { CategoryColors, Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
 
@@ -153,7 +153,7 @@ export default function GarageScreen() {
                 <View style={styles.spendRow}>
                   <T variant="numericLarge">{formatMoney(total)}</T>
                   {change !== 0 ? (
-                    <T variant="bodyStrong" color={change > 0 ? Colors.danger : Colors.positive}>
+                    <T variant="bodyStrong" color={change > 0 ? Colors.danger : Colors.accent}>
                       {change > 0 ? '↗' : '↘'} {Math.abs(change).toFixed(1)}%
                     </T>
                   ) : null}
@@ -215,7 +215,7 @@ export default function GarageScreen() {
 }
 
 function recordTitle(type: string, litres?: number) {
-  if (type === 'fuel') return litres ? `Fuel · ${litres} L` : 'Fuel';
+  if (type === 'fuel') return litres ? `Fuel · ${formatVolume(litres)}` : 'Fuel';
   if (type === 'service') return 'Service';
   if (type === 'repair') return 'Repair';
   if (type === 'part') return 'Part';
@@ -236,11 +236,11 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
       </T>
       <T variant="meta">{vehicle.year}</T>
       <T variant="bodyStrong" style={styles.vehicleStat}>
-        {formatNumber(vehicle.odometerKm)} KM
+        {formatDistance(vehicle.odometerKm)}
       </T>
       {remainingKm != null ? (
         <T variant="meta" color={Colors.accent}>
-          Service in {formatNumber(remainingKm)}
+          Service in {formatDistance(remainingKm, { withUnit: false })}
         </T>
       ) : null}
     </Pressable>

@@ -1,6 +1,91 @@
 /** Formatting helpers shared across screens. Kept dependency-free (no Intl assumptions beyond what RN/Hermes ships). */
 
-export function formatMoney(amount: number, currency = 'KES'): string {
+// Region drives currency for the whole app (spec: "Region chosen once at
+// sign-up, sets currency ... for everything after" — never re-entered per
+// record). `setActiveCurrency` is called once the account's region loads
+// (see `@/data/hooks`'s `useSyncAccountCurrency`, wired at the app root in
+// `_layout.tsx`) so every `formatMoney` call after that reflects the
+// account's own currency instead of a hardcoded default. 'KES' remains the
+// fallback for the brief window before the account query resolves.
+let activeCurrency = 'KES';
+
+export function setActiveCurrency(currency: string): void {
+  activeCurrency = currency;
+}
+
+/** The account's currency code (e.g. "KES", "UGX") for labels/prefixes that need it outside `formatMoney` (input field prefixes, "PER KM" captions). */
+export function getActiveCurrency(): string {
+  return activeCurrency;
+}
+
+// Region also drives distance/volume units for the whole app, same rationale
+// as `activeCurrency` above (set once at sign-up, never re-entered per
+// record). `setActiveDistanceUnit`/`setActiveVolumeUnit` are called once the
+// account's region loads (see `@/data/hooks`'s `useSyncAccountCurrency`,
+// wired at the app root in `_layout.tsx`) so every `formatDistance`/
+// `formatVolume` call after that reflects the account's own units instead of
+// the hardcoded defaults. 'km'/'L' remain the fallback for the brief window
+// before the account query resolves, and are also Kenya's actual units.
+let activeDistanceUnit: 'km' | 'mi' = 'km';
+let activeVolumeUnit: 'L' | 'gal' = 'L';
+
+export function setActiveDistanceUnit(unit: 'km' | 'mi'): void {
+  activeDistanceUnit = unit;
+}
+
+export function getActiveDistanceUnit(): 'km' | 'mi' {
+  return activeDistanceUnit;
+}
+
+export function setActiveVolumeUnit(unit: 'L' | 'gal'): void {
+  activeVolumeUnit = unit;
+}
+
+export function getActiveVolumeUnit(): 'L' | 'gal' {
+  return activeVolumeUnit;
+}
+
+// Exported (not just used internally by `formatDistance`/`formatVolume`)
+// because a couple of screens display a *rate* over distance/volume — cost
+// per km (Insights, report preview) and price per litre (Fuel entry) — which
+// isn't itself a plain distance/volume value `formatDistance`/`formatVolume`
+// can format, but still needs the same km->mi / L->gal conversion applied
+// (inverted, since a rate goes the other way: cost per mile is cost per km
+// times km-per-mile, not km-per-mile itself) before display in a mi/gal region.
+export const KM_TO_MI = 0.621371;
+export const L_TO_GAL = 0.264172;
+
+/**
+ * Formats a km value for display, converting to miles when the active
+ * account region uses them. Branches on the unit rather than always
+ * multiplying so a km-region account (e.g. Kenya) gets back the exact same
+ * number it would have before unit-awareness existed — no float round-trip
+ * through a `* 1`. Matches the existing "42,000 KM" call-site format.
+ * `opts.withUnit: false` returns just the converted number (no suffix) for
+ * screens that render the unit label separately (e.g. as its own styled
+ * badge next to a large numeric value).
+ */
+export function formatDistance(km: number, opts?: { unit?: 'km' | 'mi'; withUnit?: boolean }): string {
+  const unit = opts?.unit ?? activeDistanceUnit;
+  const value = unit === 'mi' ? km * KM_TO_MI : km;
+  const formatted = formatNumber(value);
+  return opts?.withUnit === false ? formatted : `${formatted} ${unit.toUpperCase()}`;
+}
+
+/**
+ * Formats a litres value for display, converting to gallons when the active
+ * account region uses them. Same no-op-for-base-unit branching and
+ * `opts.withUnit` behavior as `formatDistance`. Matches the existing "42 L"
+ * call-site format.
+ */
+export function formatVolume(litres: number, opts?: { unit?: 'L' | 'gal'; withUnit?: boolean }): string {
+  const unit = opts?.unit ?? activeVolumeUnit;
+  const value = unit === 'gal' ? litres * L_TO_GAL : litres;
+  const formatted = formatNumber(value);
+  return opts?.withUnit === false ? formatted : `${formatted} ${unit.toUpperCase()}`;
+}
+
+export function formatMoney(amount: number, currency = activeCurrency): string {
   const rounded = Math.round(amount);
   const parts = Math.abs(rounded).toString().split('').reverse();
   const grouped: string[] = [];

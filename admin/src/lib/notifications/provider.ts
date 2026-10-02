@@ -3,14 +3,24 @@
  *
  * No real provider is wired up yet — that needs credentials the user
  * hasn't provided. `notify()` below always persists a Notification row
- * (so the in-app notification feed works today) and calls whatever
- * `NotificationProvider` is configured; the default is a no-op, so
- * delivery is silently skipped until a real provider is dropped in.
+ * synchronously (so the in-app notification feed is immediately consistent
+ * — a fast, cheap local insert, never worth deferring) and then ENQUEUES
+ * delivery via the background job queue instead of calling the provider
+ * inline (AGENTS.md section 11: "never make the main request wait on an
+ * external provider; handle provider failure/retry safely"). The queue
+ * worker (scripts/queue-worker.ts) is what actually calls
+ * `notificationProvider.send()`, with the queue's existing retry/backoff
+ * (see src/lib/queue/queue.ts) covering provider failure once a real
+ * provider is configured. Today that provider is still a no-op, so this
+ * change is architectural (the request path never blocks on send, and a
+ * future flaky provider gets retried) rather than visibly different in
+ * dev.
  */
 
 import { prisma } from "@/lib/prisma";
 import type { NotificationType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { enqueueJob } from "@/lib/queue/queue";
 
 export type OutboundNotification = {
   accountId: string;
@@ -33,9 +43,14 @@ export class NoopNotificationProvider implements NotificationProvider {
 
 export const notificationProvider: NotificationProvider = new NoopNotificationProvider();
 
-/** Persist the notification and hand it to the configured provider. */
+/**
+ * Persist the notification (immediate — powers the in-app feed) and enqueue
+ * provider delivery (deferred — see module comment above). Never throws on
+ * the enqueue step failing to reach a provider; that's the queue/worker's
+ * problem to retry, not this request's.
+ */
 export async function notify(notification: OutboundNotification): Promise<void> {
-  await prisma.notification.create({
+  const row = await prisma.notification.create({
     data: {
       accountId: notification.accountId,
       type: notification.type,
@@ -44,5 +59,9 @@ export async function notify(notification: OutboundNotification): Promise<void> 
       metadata: (notification.metadata as Prisma.InputJsonValue) ?? undefined,
     },
   });
-  await notificationProvider.send(notification);
+  await enqueueJob(
+    "notification.dispatch",
+    { notificationId: row.id },
+    { dedupeKey: `notification.dispatch:${row.id}` },
+  );
 }

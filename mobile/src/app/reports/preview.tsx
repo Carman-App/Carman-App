@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageReminders, useGarageRecords, useReminders, useVehicles } from '@/data/hooks';
-import { formatDateWithYear, formatMoney, formatPlate, todayIso } from '@/lib/format';
+import { formatDateWithYear, formatMoney, formatPlate, formatVolume, getActiveCurrency, getActiveDistanceUnit, KM_TO_MI, todayIso } from '@/lib/format';
 import type { Vehicle, VehicleRecord } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -29,7 +29,7 @@ const CATEGORY_GROUPS: { key: string; label: string; match: (r: VehicleRecord) =
 ];
 
 function recordLabel(r: VehicleRecord) {
-  if (r.type === 'fuel') return r.litres ? `Fuel · ${r.litres} L` : 'Fuel';
+  if (r.type === 'fuel') return r.litres ? `Fuel · ${formatVolume(r.litres)}` : 'Fuel';
   if (r.type === 'service') return 'Service';
   if (r.type === 'repair') return 'Repair';
   if (r.type === 'part') return 'Part';
@@ -89,6 +89,13 @@ export default function ReportPreviewScreen() {
         : 'Unplanned repairs outweigh planned maintenance in this period — worth a closer look.';
 
   const costPerKm = isVehicleScope && singleVehicle && singleVehicle.odometerKm > 0 ? total / singleVehicle.odometerKm : null;
+  // A rate (currency per km), not a plain distance value, so `formatDistance`
+  // doesn't apply — converted the same way `formatDistance` would (branch on
+  // the active unit, no-op for km) but inverted: per-mile is per-km divided
+  // by km-per-mile, not multiplied. See Insights' matching "cost per km" card.
+  const distanceUnit = getActiveDistanceUnit();
+  const costPerDistance = costPerKm != null ? (distanceUnit === 'mi' ? costPerKm / KM_TO_MI : costPerKm) : null;
+  const distanceUnitLabel = distanceUnit === 'mi' ? 'mile' : 'kilometre';
 
   const byVehicle = useMemo(() => {
     if (isVehicleScope) return [];
@@ -143,14 +150,46 @@ export default function ReportPreviewScreen() {
   const today = todayIso();
   const filenameTag = isVehicleScope ? (singleVehicle?.plate ?? 'VEHICLE').replace(/\s+/g, '') : 'GARAGE';
   const filename = `CARMA-${filenameTag}-${today.slice(0, 4)}.PDF`;
+  const currency = getActiveCurrency();
+
+  /**
+   * There's no PDF/CSV generation in this app yet (no `expo-print` or
+   * similar — see AGENTS.md scope: don't add new provider/infra
+   * dependencies for this pass), so "leaves the app" is implemented with
+   * React Native's built-in `Share` API (no extra dependency) rather than a
+   * generated file. Both footer buttons previously had no `onPress` at all
+   * — this at least gets a real report out of the app via the OS share
+   * sheet (message/mail/notes/etc.) instead of doing nothing when tapped.
+   */
+  const handleShare = async () => {
+    const lines = [
+      `CARMA ${isVehicleScope && singleVehicle ? `${singleVehicle.make} ${singleVehicle.model} (${formatPlate(singleVehicle.plate)})` : garage?.name ?? 'GARAGE'} EXPENSE REPORT`,
+      `${formatDateWithYear(startD)} - ${formatDateWithYear(endD)}`,
+      '',
+      `Total spent: ${formatMoney(total, currency)}`,
+      `Records: ${records.length}`,
+      `Per month: ${formatMoney(perMonth, currency)}`,
+      '',
+      'By category:',
+      ...categoryBreakdown.map((c) => `  ${c.label}: ${formatMoney(c.amount, currency)} (${c.pct}%)`),
+      '',
+      'What is due next:',
+      ...(dueReminders.length ? dueReminders.map((r) => `  ${r.description}`) : ['  Nothing due.']),
+    ];
+    try {
+      await Share.share({ message: lines.join('\n'), title: filename });
+    } catch {
+      Alert.alert('Could not share', 'Something went wrong opening the share sheet. Try again.');
+    }
+  };
 
   return (
     <Screen scroll contentStyle={styles.content} footer={
       <View style={styles.footerRow}>
-        <Button variant="secondary" style={styles.footerBtn}>
+        <Button variant="secondary" style={styles.footerBtn} onPress={handleShare}>
           Export
         </Button>
-        <Button style={styles.footerBtn}>Share</Button>
+        <Button style={styles.footerBtn} onPress={handleShare}>Share</Button>
       </View>
     }>
       <Pressable onPress={() => router.back()}>
@@ -163,7 +202,7 @@ export default function ReportPreviewScreen() {
         {() => (
           <>
       <Card style={styles.letterhead}>
-        <T variant="eyebrowStrong">CARMA</T>
+        <T variant="eyebrowStrong" color={Colors.text}>CARMA</T>
         <T variant="heading" style={styles.garageName}>
           EXPENSE REPORT
         </T>
@@ -228,16 +267,16 @@ export default function ReportPreviewScreen() {
         </T>
       </Card>
 
-      <SectionHeader title="Cost per kilometre" />
+      <SectionHeader title={`Cost per ${distanceUnitLabel}`} />
       <Card style={styles.sectionCard}>
-        {costPerKm != null ? (
+        {costPerDistance != null ? (
           <>
-            <T variant="numericLarge">{costPerKm.toFixed(2)}</T>
-            <T variant="meta">KES PER KM</T>
+            <T variant="numericLarge">{costPerDistance.toFixed(2)}</T>
+            <T variant="meta">{getActiveCurrency()} PER {distanceUnit.toUpperCase()}</T>
           </>
         ) : (
           <T variant="meta" color={Colors.textMuted}>
-            {isVehicleScope ? 'ODOMETER NOT SET FOR THIS VEHICLE.' : 'COST PER KILOMETRE IS WITHHELD ON A GARAGE REPORT.'}
+            {isVehicleScope ? 'ODOMETER NOT SET FOR THIS VEHICLE.' : `COST PER ${distanceUnitLabel.toUpperCase()} IS WITHHELD ON A GARAGE REPORT.`}
           </T>
         )}
       </Card>
@@ -340,7 +379,7 @@ export default function ReportPreviewScreen() {
       </Card>
 
       <T variant="meta" center style={styles.footerText}>
-        GENERATED {formatDateWithYear(today)} · FIGURES ARE ROUNDED TO THE SHILLING.
+        GENERATED {formatDateWithYear(today)} · FIGURES ARE ROUNDED TO THE NEAREST {getActiveCurrency()}.
       </T>
       <T variant="meta" center style={styles.filename}>
         {filename}

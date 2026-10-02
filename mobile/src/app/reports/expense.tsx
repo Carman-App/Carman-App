@@ -112,7 +112,7 @@ export default function ExpenseReportConfigScreen() {
         </T>
       </Pressable>
 
-      <T variant="eyebrowStrong" style={styles.eyebrow}>
+      <T variant="eyebrowStrong" color={Colors.textMuted} style={styles.eyebrow}>
         EXPENSE REPORT
       </T>
       <T variant="display" style={styles.title}>

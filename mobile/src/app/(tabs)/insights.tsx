@@ -9,7 +9,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageRecords, useInsights, useVehicles } from '@/data/hooks';
-import { formatMoney, formatPlate } from '@/lib/format';
+import { formatMoney, formatPlate, getActiveCurrency, getActiveDistanceUnit, KM_TO_MI } from '@/lib/format';
 import type { VehicleRecord } from '@/types/domain';
 import { CategoryColors, Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -94,7 +94,7 @@ export default function InsightsScreen() {
 
   return (
     <Screen scroll contentStyle={styles.content}>
-      <T variant="eyebrowStrong">INSIGHTS</T>
+      <T variant="eyebrowStrong" color={Colors.textMuted}>INSIGHTS</T>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scopeRow} contentContainerStyle={{ gap: Spacing.xs }}>
         <Chip label="Whole garage" selected={scope === 'garage'} onPress={() => setScope('garage')} />
@@ -189,27 +189,36 @@ export default function InsightsScreen() {
         )}
       </QueryBoundary>
 
-      <SectionHeader title="What a kilometre costs" />
+      <SectionHeader title={`What a ${getActiveDistanceUnit() === 'mi' ? 'mile' : 'kilometre'} costs`} />
       <Card style={styles.kmCard}>
         {singleVehicle ? (
           <QueryBoundary query={insightsQuery} isEmpty={() => false} compact>
-            {(insights) => (
-              <>
-                <T variant="numericLarge">{insights.costPerKm != null ? insights.costPerKm.toFixed(2) : '—'}</T>
-                <T variant="meta">
-                  KES PER KM · LIFETIME · {singleVehicle.make} {singleVehicle.model}
-                </T>
-                {insights.costPerKm == null ? (
-                  <T variant="meta" color={Colors.textMuted}>
-                    Not enough odometer history yet to work this out.
+            {(insights) => {
+              // `costPerKm` is a rate (currency per km), not a plain distance
+              // value — `formatDistance` doesn't apply here. Converted the
+              // same way as `formatDistance` would (branch on the active
+              // unit, no-op for km) but inverted, since a per-mile rate is
+              // per-km divided by km-per-mile, not multiplied.
+              const distanceUnit = getActiveDistanceUnit();
+              const costPerDistance = insights.costPerKm != null ? (distanceUnit === 'mi' ? insights.costPerKm / KM_TO_MI : insights.costPerKm) : null;
+              return (
+                <>
+                  <T variant="numericLarge">{costPerDistance != null ? costPerDistance.toFixed(2) : '—'}</T>
+                  <T variant="meta">
+                    {getActiveCurrency()} PER {distanceUnit.toUpperCase()} · LIFETIME · {singleVehicle.make} {singleVehicle.model}
                   </T>
-                ) : null}
-              </>
-            )}
+                  {costPerDistance == null ? (
+                    <T variant="meta" color={Colors.textMuted}>
+                      Not enough odometer history yet to work this out.
+                    </T>
+                  ) : null}
+                </>
+              );
+            }}
           </QueryBoundary>
         ) : (
           <T variant="body" color={Colors.textMuted}>
-            Pick a single vehicle above to see its cost per kilometre.
+            Pick a single vehicle above to see its cost per {getActiveDistanceUnit() === 'mi' ? 'mile' : 'kilometre'}.
           </T>
         )}
       </Card>

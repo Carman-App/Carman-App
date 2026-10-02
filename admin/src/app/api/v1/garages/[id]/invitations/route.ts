@@ -6,6 +6,7 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { createGarageInvitationSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
+import { assertCanAddGarageSeat } from "@/lib/limits";
 import type { GarageRole } from "@/generated/prisma/enums";
 
 const INVITATION_TTL_DAYS = 7;
@@ -29,6 +30,8 @@ export async function POST(
     if (!parsed.success) {
       return apiError(422, "VALIDATION_ERROR", "Invalid invitation payload.", parsed.error.flatten());
     }
+
+    await assertCanAddGarageSeat(garageId);
 
     const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
 

@@ -13,8 +13,8 @@ import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 function StatusTag({ label, goes }: { label: string; goes: boolean }) {
   return (
-    <View style={[styles.tag, { backgroundColor: goes ? Colors.positiveSoft : Colors.surfaceMuted }]}>
-      <T variant="eyebrow" color={goes ? Colors.positive : Colors.textMuted}>
+    <View style={[styles.tag, { backgroundColor: goes ? Colors.accentSoft : Colors.surfaceMuted }]}>
+      <T variant="eyebrow" color={goes ? Colors.accent : Colors.textMuted}>
         {label}
       </T>
     </View>

@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { useVehicle } from '@/data/hooks';
+import { getActiveCurrency } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
 export default function SellWhoScreen() {
@@ -55,7 +56,7 @@ export default function SellWhoScreen() {
           onChangeText={(v) => setSalePrice(v.replace(/[^0-9]/g, ''))}
           placeholder="0"
           keyboardType="number-pad"
-          prefix="KES"
+          prefix={getActiveCurrency()}
           helper="OPTIONAL. FOR YOUR OWN RECORD ONLY."
         />
       </View>

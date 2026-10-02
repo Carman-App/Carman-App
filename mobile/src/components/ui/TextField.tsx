@@ -31,7 +31,7 @@ export function TextField({
       {label ? <T variant="eyebrow">{label}</T> : null}
       <View style={[styles.field, multiline && styles.multiline]}>
         {prefix ? (
-          <T variant="numeric" color={Colors.textFaint}>
+          <T variant="numeric" color={Colors.textMuted}>
             {prefix}
           </T>
         ) : null}
@@ -39,7 +39,7 @@ export function TextField({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={Colors.textFaint}
+          placeholderTextColor={Colors.placeholder}
           keyboardType={keyboardType}
           multiline={multiline}
           autoFocus={autoFocus}

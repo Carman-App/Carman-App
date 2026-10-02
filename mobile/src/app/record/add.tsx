@@ -9,7 +9,7 @@ import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { RECORD_CATEGORIES, type CategoryConfig } from '@/features/record/categories';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
-import { formatNumber } from '@/lib/format';
+import { formatDistance } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
 export default function AddRecordScreen() {
@@ -38,7 +38,7 @@ export default function AddRecordScreen() {
 
   return (
     <Screen scroll contentStyle={styles.content}>
-      <ModalHeader eyebrow={`ADD TO ${vehicle.make} ${vehicle.model} · ${formatNumber(vehicle.odometerKm)} KM`.toUpperCase()} />
+      <ModalHeader eyebrow={`ADD TO ${vehicle.make} ${vehicle.model} · ${formatDistance(vehicle.odometerKm)}`.toUpperCase()} />
       <T variant="display" style={styles.title}>
         What happened?
       </T>

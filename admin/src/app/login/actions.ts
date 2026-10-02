@@ -18,6 +18,9 @@ import {
 } from "@/lib/auth/twofactor";
 import { writeAuditLog } from "@/lib/audit";
 import { AuditActorType } from "@/generated/prisma/enums";
+import { getRequestIp } from "@/lib/auth/session";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
+import { logApiRequest, newRequestId } from "@/lib/logging/logger";
 
 export type LoginState = {
   error?: string;
@@ -35,25 +38,51 @@ function safeNext(next: string): string {
  * setting it up).
  */
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
+  // Structured logging (section 14) for this server action — can't use
+  // withApiLogging (that wraps a Route Handler's Response; this returns
+  // LoginState or throws Next's internal redirect signal instead), so this
+  // logs directly at each outcome. Never logs the password itself.
+  const requestId = newRequestId();
+  const start = Date.now();
+  const log = (status: number, extra: Record<string, unknown> = {}) =>
+    logApiRequest({ requestId, route: "login", method: "POST", status, durationMs: Date.now() - start, ...extra });
+
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const next = safeNext(String(formData.get("next") || "/"));
 
   if (!email || !password) {
+    log(422);
     return { error: "Enter your email and password." };
+  }
+
+  // Rate limit by both IP and target email — either alone is gameable (many
+  // emails from one IP, or one email spread across many IPs via a botnet),
+  // so a credential-stuffing attempt trips whichever bucket it hits first.
+  const ip = (await getRequestIp()) ?? "unknown";
+  const [ipCheck, emailCheck] = await Promise.all([
+    checkRateLimit(RATE_LIMITS.ADMIN_LOGIN, `ip:${ip}`),
+    checkRateLimit(RATE_LIMITS.ADMIN_LOGIN, `email:${email}`),
+  ]);
+  if (!ipCheck.allowed || !emailCheck.allowed) {
+    log(429);
+    return { error: "Too many sign-in attempts. Please wait a minute and try again." };
   }
 
   const admin = await prisma.adminUser.findUnique({ where: { email } });
   if (!admin || admin.disabledAt) {
+    log(401);
     return { error: "Invalid email or password." };
   }
 
   const valid = await verifyPassword(password, admin.passwordHash);
   if (!valid) {
+    log(401, { accountId: admin.id });
     return { error: "Invalid email or password." };
   }
 
   await createPending2fa({ id: admin.id, email: admin.email });
+  log(200, { accountId: admin.id, adminId: admin.id });
 
   const qs = `?next=${encodeURIComponent(next)}`;
   if (admin.twoFactorEnabled) {
@@ -76,6 +105,11 @@ export async function verifyTwoFactor(
   const pending = await getPending2fa();
   if (!pending) {
     redirect("/login");
+  }
+
+  const twoFactorCheck = await checkRateLimit(RATE_LIMITS.ADMIN_2FA_VERIFY, `admin:${pending.adminId}`);
+  if (!twoFactorCheck.allowed) {
+    return { error: "Too many code attempts. Please wait a minute and try again." };
   }
 
   const admin = await prisma.adminUser.findUnique({ where: { id: pending.adminId } });

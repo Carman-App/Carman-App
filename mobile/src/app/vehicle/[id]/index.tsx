@@ -11,7 +11,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useEstimates, useInvoices, useProject, useRecords, useVehicle } from '@/data/hooks';
-import { formatDateShort, formatMoney, formatNumber, formatPlate } from '@/lib/format';
+import { formatDateShort, formatDistance, formatMoney, formatPlate, formatVolume, getActiveCurrency, getActiveDistanceUnit, KM_TO_MI } from '@/lib/format';
 import { USAGE_LABEL } from '@/types/domain';
 import { CategoryColors, Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
 
@@ -70,6 +70,9 @@ export default function VehicleHubScreen() {
 
   const lifetimeSpend = useMemo(() => records.reduce((sum, r) => sum + r.amount, 0), [records]);
   const perKm = vehicle && vehicle.odometerKm > 0 ? lifetimeSpend / vehicle.odometerKm : 0;
+  // Rate (currency per km), not a plain distance — see Insights' matching card doc.
+  const distanceUnit = getActiveDistanceUnit();
+  const perDistance = distanceUnit === 'mi' ? perKm / KM_TO_MI : perKm;
 
   const lastOdometerRecord = records.find((r) => r.odometerAtEntry != null);
   const remainingKm = vehicle?.nextServiceDueKm ? vehicle.nextServiceDueKm - vehicle.odometerKm : null;
@@ -114,7 +117,7 @@ export default function VehicleHubScreen() {
 
       {pendingEstimate ? (
         <Card style={styles.estimateBanner} onPress={() => router.push(`/estimates/${pendingEstimate.id}`)}>
-          <T variant="eyebrowStrong" color={Colors.warning}>
+          <T variant="eyebrowStrong" color={Colors.accent}>
             ESTIMATE AWAITING YOUR APPROVAL
           </T>
           <T variant="bodyStrong" style={styles.estimateRow}>
@@ -142,7 +145,7 @@ export default function VehicleHubScreen() {
       <View style={styles.spendRow}>
         <T variant="numericLarge">{formatMoney(total)}</T>
         {change !== 0 ? (
-          <T variant="bodyStrong" color={change > 0 ? Colors.danger : Colors.positive}>
+          <T variant="bodyStrong" color={change > 0 ? Colors.danger : Colors.accent}>
             {change > 0 ? '↗' : '↘'} {Math.abs(change).toFixed(1)}%
           </T>
         ) : null}
@@ -158,21 +161,25 @@ export default function VehicleHubScreen() {
       <View style={styles.statGrid}>
         <Card style={styles.statCard}>
           <T variant="eyebrow">ODOMETER</T>
-          <T variant="numeric">{formatNumber(vehicle.odometerKm)}</T>
-          <T variant="meta">KM · READ {lastOdometerRecord ? formatDateShort(lastOdometerRecord.date) : '—'}</T>
+          <T variant="numeric">{formatDistance(vehicle.odometerKm, { withUnit: false })}</T>
+          <T variant="meta">{getActiveDistanceUnit().toUpperCase()} · READ {lastOdometerRecord ? formatDateShort(lastOdometerRecord.date) : '—'}</T>
         </Card>
         <Card style={styles.statCard}>
           <T variant="eyebrow">NEXT SERVICE</T>
-          <T variant="numeric">{vehicle.nextServiceDueKm ? `${formatNumber(vehicle.nextServiceDueKm)} km` : 'NOT SET'}</T>
-          <T variant="meta">{remainingKm != null ? `${formatNumber(remainingKm)} KM AWAY` : ''}</T>
+          <T variant="numeric">
+            {vehicle.nextServiceDueKm
+              ? `${formatDistance(vehicle.nextServiceDueKm, { withUnit: false })} ${getActiveDistanceUnit()}`
+              : 'NOT SET'}
+          </T>
+          <T variant="meta">{remainingKm != null ? `${formatDistance(remainingKm)} AWAY` : ''}</T>
         </Card>
       </View>
 
       <View style={styles.statGrid}>
         <Card style={styles.statCard}>
-          <T variant="eyebrow">PER KM</T>
-          <T variant="numeric">{perKm.toFixed(2)}</T>
-          <T variant="meta">KES</T>
+          <T variant="eyebrow">PER {distanceUnit.toUpperCase()}</T>
+          <T variant="numeric">{perDistance.toFixed(2)}</T>
+          <T variant="meta">{getActiveCurrency()}</T>
         </Card>
         {unpaidInvoice ? (
           <Card style={styles.statCard} onPress={() => router.push(`/invoices/${unpaidInvoice.id}`)}>
@@ -226,7 +233,7 @@ export default function VehicleHubScreen() {
               key={r.id}
               bordered={i < timeline.length - 1}
               title={recordTitle(r.type, r.litres)}
-              subtitle={`${formatNumber(r.odometerAtEntry)} KM`}
+              subtitle={formatDistance(r.odometerAtEntry)}
               onPress={() => router.push(`/record/${r.id}/edit`)}
               style={styles.timelineRow}
               right={
@@ -270,7 +277,7 @@ export default function VehicleHubScreen() {
 }
 
 function recordTitle(type: string, litres?: number) {
-  if (type === 'fuel') return litres ? `Fuel · ${litres} L` : 'Fuel';
+  if (type === 'fuel') return litres ? `Fuel · ${formatVolume(litres)}` : 'Fuel';
   if (type === 'service') return 'Service';
   if (type === 'repair') return 'Repair';
   if (type === 'part') return 'Part';

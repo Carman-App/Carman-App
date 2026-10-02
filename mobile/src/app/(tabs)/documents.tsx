@@ -36,7 +36,7 @@ export default function DocumentsScreen() {
 
   return (
     <Screen scroll contentStyle={styles.content}>
-      <T variant="eyebrowStrong">DOCUMENTS</T>
+      <T variant="eyebrowStrong" color={Colors.textMuted}>DOCUMENTS</T>
       <T variant="display" style={styles.title}>
         Documents
       </T>

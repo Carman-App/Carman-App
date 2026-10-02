@@ -10,6 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { PLACES } from '@/data/placesCatalog';
+import { getActiveDistanceUnit, KM_TO_MI } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
 /**
@@ -38,6 +39,7 @@ export default function PickPlaceScreen() {
   }, [categoryLabel, query]);
 
   const typed = query.trim();
+  const distanceUnit = getActiveDistanceUnit();
 
   return (
     <Screen scroll>
@@ -52,7 +54,10 @@ export default function PickPlaceScreen() {
             key={place.name}
             bordered={i < nearby.length - 1}
             title={place.name}
-            subtitle={`${place.tag} · ${place.road} · ${place.km.toFixed(1)} KM`}
+            // `placesCatalog.ts`'s distances are in km, one decimal place —
+            // `formatDistance` rounds to whole numbers (matches odometer-style
+            // displays elsewhere), so it doesn't fit here; converted locally instead.
+            subtitle={`${place.tag} · ${place.road} · ${(distanceUnit === 'mi' ? place.km * KM_TO_MI : place.km).toFixed(1)} ${distanceUnit.toUpperCase()}`}
             left={<IconGlyph glyph="place" size={36} />}
             onPress={() => router.back()}
             style={styles.row}

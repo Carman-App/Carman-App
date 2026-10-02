@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { REPORTING_CURRENCY } from "./currency";
+import { getOrSetCache, invalidateCache } from "@/lib/cache/inProcessCache";
 
 /**
  * MON-09 — "revenue by country/currency with conversion basis stated (local
@@ -59,8 +60,19 @@ export type FxRateRow = {
   asOfDate: Date;
 };
 
+const FX_RATE_CACHE_KEY = "fxRateMap";
+const FX_RATE_CACHE_TTL_MS = 5 * 60 * 1000; // AGENTS.md scalability pass, section 5: FX rates are exactly the
+// "high-read/low-change reference data" this cache exists for — every
+// billing/revenue/MRR page render reads this, and it changes only via a
+// direct DB edit (no admin UI writes FxRate yet, see ensureFxRatesSeeded's
+// comment above). In-process, per-instance cache is correct at today's
+// single-instance scale (see src/lib/cache/inProcessCache.ts); if an
+// admin-facing FX-rate editor is ever added, that write path MUST call
+// invalidateFxRateCache() in the same action, the same way any future
+// cached-and-editable data must invalidate on write.
+
 export async function getFxRateMap(): Promise<Map<string, FxRateRow>> {
-  const rows = await prisma.fxRate.findMany();
+  const rows = await getOrSetCache(FX_RATE_CACHE_KEY, FX_RATE_CACHE_TTL_MS, () => prisma.fxRate.findMany());
   return new Map(
     rows.map((r) => [
       r.currency,
@@ -72,6 +84,11 @@ export async function getFxRateMap(): Promise<Map<string, FxRateRow>> {
       },
     ]),
   );
+}
+
+/** Call this from any future write path that edits FxRate rows directly (see cache comment above). */
+export function invalidateFxRateCache(): void {
+  invalidateCache(FX_RATE_CACHE_KEY);
 }
 
 /** Returns null (rather than guessing) when no rate is on file for `currency`. */

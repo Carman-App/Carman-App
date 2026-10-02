@@ -95,7 +95,7 @@ export default function BuildStageScreen() {
           </Pressable>
 
           <View style={styles.badge}>
-            <T variant="eyebrowStrong" color={stage.status === 'done' ? Colors.positive : stage.status === 'in-progress' ? Colors.accent : Colors.textMuted}>
+            <T variant="eyebrowStrong" color={stage.status === 'done' ? Colors.accent : stage.status === 'in-progress' ? Colors.progress : Colors.textFaint}>
               {STATUS_LABEL[stage.status]}
             </T>
           </View>

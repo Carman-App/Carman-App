@@ -5,6 +5,7 @@ import { requireVehicleAccess } from "@/lib/api/authorize";
 import { apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { parsePagination } from "@/lib/api/pagination";
+import { syncVehicleReminders } from "@/lib/reminders/sync";
 
 // GET /api/v1/vehicles/:id/reminders — paginated. ?resolved=true to include
 // resolved reminders too (default: unresolved only).
@@ -18,6 +19,10 @@ export async function GET(
     const { id: vehicleId } = await params;
 
     await requireVehicleAccess(account.id, vehicleId);
+
+    // Reconcile against live data before reading — see @/lib/reminders/sync's
+    // module doc for why this happens here instead of a cron job.
+    await syncVehicleReminders(vehicleId);
 
     const { page, pageSize, skip, take } = parsePagination(req);
     const includeResolved = req.nextUrl.searchParams.get("resolved") === "true";

@@ -64,7 +64,7 @@ export default function InviteMemberScreen() {
       </T>
 
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

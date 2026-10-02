@@ -2,6 +2,12 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+// Re-exported for backward compatibility — every existing route imports
+// these from here. The classes themselves now live in api/errors.ts so that
+// module has no transitive dependency on this file's "server-only" import;
+// see the comment in api/errors.ts.
+import { UnauthorizedError, ForbiddenError } from "@/lib/api/errors";
+export { UnauthorizedError, ForbiddenError };
 
 export type RequestAccount = Prisma.AccountGetPayload<{ include: { user: true } }>;
 
@@ -36,20 +42,6 @@ export async function getRequestAccount(req: NextRequest): Promise<RequestAccoun
   }
 
   return account;
-}
-
-export class UnauthorizedError extends Error {
-  constructor(message = "Authentication required.") {
-    super(message);
-    this.name = "UnauthorizedError";
-  }
-}
-
-export class ForbiddenError extends Error {
-  constructor(message = "Not allowed to access this resource.") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
 }
 
 export async function requireAccount(req: NextRequest): Promise<RequestAccount> {

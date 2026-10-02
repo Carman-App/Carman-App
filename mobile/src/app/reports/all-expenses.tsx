@@ -10,7 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageRecords } from '@/data/hooks';
-import { formatDateShort, formatMoney, formatNumber } from '@/lib/format';
+import { formatDateShort, formatDistance, formatMoney, formatVolume } from '@/lib/format';
 import type { VehicleRecord } from '@/types/domain';
 import { Colors, Spacing } from '@/theme/tokens';
 
@@ -132,7 +132,7 @@ function recordTitle(r: VehicleRecord): string {
 
 function recordSubtitle(r: VehicleRecord): string {
   const date = formatDateShort(r.date);
-  if (r.type === 'fuel') return `${date} · ${r.litres ?? '—'} L · ${formatNumber(r.odometerAtEntry)} KM`;
+  if (r.type === 'fuel') return `${date} · ${r.litres != null ? formatVolume(r.litres) : '—'} · ${formatDistance(r.odometerAtEntry)}`;
   if (r.place) return `${date} · ${r.place.toUpperCase()}`;
   return date;
 }

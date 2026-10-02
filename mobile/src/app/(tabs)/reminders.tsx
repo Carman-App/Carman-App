@@ -9,7 +9,7 @@ import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageReminders, useVehicles } from '@/data/hooks';
-import { daysUntil, formatNumber, formatPlate } from '@/lib/format';
+import { daysUntil, formatDistance, formatPlate } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 const COUNT_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
@@ -33,7 +33,7 @@ export default function RemindersScreen() {
 
   return (
     <Screen scroll contentStyle={styles.content}>
-      <T variant="eyebrowStrong">REMINDERS</T>
+      <T variant="eyebrowStrong" color={Colors.textMuted}>REMINDERS</T>
       <T variant="display" style={styles.title}>
         {reminders.length > 0 ? `${spellCount(reminders.length)} thing${reminders.length === 1 ? '' : 's'} are coming up` : 'Nothing due right now'}
       </T>
@@ -47,7 +47,7 @@ export default function RemindersScreen() {
       <QueryBoundary query={remindersQuery} isEmpty={() => false}>
         {() =>
           reminders.length === 0 ? (
-            <EmptyState glyph="reminder" title="All caught up." body="Carma sets reminders from your odometer and from document expiry dates." />
+            <EmptyState glyph="reminder" title="All caught up." body="Carma sets reminders from your odometer, document expiry dates, pending estimates and stalled projects." />
           ) : (
             reminders.map((r) => {
               const v = vehicleById.get(r.vehicleId);
@@ -62,7 +62,7 @@ export default function RemindersScreen() {
                       <T variant="bodyStrong">{r.description}</T>
                       {kmPassed != null ? (
                         <T variant="meta">
-                          DUE AT {formatNumber(r.dueKm!)} KM · {kmPassed >= 0 ? 'PASSED' : ''} {formatNumber(Math.abs(kmPassed))} KM {kmPassed >= 0 ? 'AGO' : 'AWAY'}
+                          DUE AT {formatDistance(r.dueKm!)} · {kmPassed >= 0 ? 'PASSED' : ''} {formatDistance(Math.abs(kmPassed))} {kmPassed >= 0 ? 'AGO' : 'AWAY'}
                         </T>
                       ) : v ? (
                         <T variant="meta">
@@ -72,13 +72,13 @@ export default function RemindersScreen() {
                     </View>
                     {kmPassed != null ? (
                       <View style={[styles.pill, overdue && styles.pillDanger]}>
-                        <T variant="meta" color={overdue ? Colors.danger : Colors.textMuted} style={{ fontFamily: undefined }}>
-                          {overdue ? 'OVERDUE' : `${formatNumber(Math.abs(kmPassed))} KM`}
+                        <T variant="meta" color={overdue ? Colors.error : Colors.textMuted} style={{ fontFamily: undefined }}>
+                          {overdue ? 'OVERDUE' : formatDistance(Math.abs(kmPassed))}
                         </T>
                       </View>
                     ) : days != null ? (
                       <View style={[styles.pill, overdue && styles.pillDanger]}>
-                        <T variant="meta" color={overdue ? Colors.danger : Colors.textMuted} style={{ fontFamily: undefined }}>
+                        <T variant="meta" color={overdue ? Colors.error : Colors.textMuted} style={{ fontFamily: undefined }}>
                           {overdue ? 'OVERDUE' : `${days} DAYS`}
                         </T>
                       </View>
@@ -92,7 +92,7 @@ export default function RemindersScreen() {
       </QueryBoundary>
 
       <T variant="meta" center style={styles.footnote}>
-        CARMA SETS REMINDERS FROM YOUR ODOMETER AND FROM DOCUMENT EXPIRY DATES.
+        CARMA SETS REMINDERS FROM YOUR ODOMETER, DOCUMENT EXPIRY DATES, PENDING ESTIMATES AND STALLED PROJECTS.
       </T>
       <Button variant="secondary" onPress={() => vehicles[0] && router.push(`/vehicle/${vehicles[0].id}`)}>
         + New reminder

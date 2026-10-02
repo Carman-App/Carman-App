@@ -50,7 +50,7 @@ export default function VehicleQrScreen() {
               {pending ? (
                 <Card style={styles.accessCard}>
                   <T variant="bodyStrong">{pending.workshopName}</T>
-                  <T variant="meta" color={Colors.warning} style={styles.awaiting}>
+                  <T variant="meta" color={Colors.textFaint} style={styles.awaiting}>
                     AWAITING YOUR APPROVAL
                   </T>
                   <Button size="md" style={styles.reviewBtn} onPress={() => router.push(`/access-requests/${pending.id}`)}>

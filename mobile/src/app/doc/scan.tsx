@@ -9,13 +9,17 @@ import { ModalHeader } from '@/components/ui/ModalHeader';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { useActiveGarage, useDocument, useVehicles } from '@/data/hooks';
+import { useActiveGarage, useConfigList, useDocument, useVehicles } from '@/data/hooks';
 import { addDocument, updateDocument } from '@/data/repo';
 import { todayIso } from '@/lib/format';
 import type { DocumentType } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
-const TYPES: { key: DocumentType; label: string }[] = [
+// Hardcoded fallback — used while the admin `document_types` ConfigList is
+// loading, errors, or (a fresh/unauthored DB) returns zero items. This maps
+// 1:1 onto the admin list with zero information loss, so once real data is
+// present it's used as a full replacement (see FALLBACK_TYPES usage below).
+const FALLBACK_TYPES: { key: DocumentType; label: string }[] = [
   { key: 'insurance', label: 'Insurance' },
   { key: 'logbook', label: 'Logbook' },
   { key: 'inspection', label: 'Inspection' },
@@ -39,6 +43,15 @@ export default function ScanDocumentScreen() {
 
   const garage = useActiveGarage().data;
   const vehicles = useVehicles(garage?.id).data ?? [];
+
+  // Live document types from the admin `document_types` ConfigList, falling
+  // back to the hardcoded list on loading/error/empty — see FALLBACK_TYPES.
+  const configList = useConfigList('document_types');
+  const TYPES =
+    configList.data && configList.data.length > 0
+      ? configList.data.map((item) => ({ key: item.code as DocumentType, label: item.label }))
+      : FALLBACK_TYPES;
+
   const [type, setType] = useState<DocumentType>('insurance');
   const [title, setTitle] = useState('');
   const [expiry, setExpiry] = useState('');
@@ -99,7 +112,7 @@ export default function ScanDocumentScreen() {
         </T>
 
         {error ? (
-          <T variant="body" color={Colors.danger} center style={styles.error}>
+          <T variant="body" color={Colors.error} center style={styles.error}>
             {error}
           </T>
         ) : null}
@@ -140,7 +153,7 @@ export default function ScanDocumentScreen() {
       <TextField label="Expiry (optional)" value={expiry} onChangeText={setExpiry} placeholder="YYYY-MM-DD" />
 
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

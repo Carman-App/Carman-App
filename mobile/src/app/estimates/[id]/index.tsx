@@ -9,7 +9,7 @@ import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { useEstimate, useVehicle } from '@/data/hooks';
 import { respondToEstimate } from '@/data/repo';
-import { formatDateShort, formatMoney, formatNumber, formatPlate } from '@/lib/format';
+import { formatDateShort, formatDistance, formatMoney, formatPlate, getActiveDistanceUnit } from '@/lib/format';
 import type { Estimate } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -63,7 +63,7 @@ export default function EstimateDetailScreen() {
             </T>
             {estimate.status === 'pending' ? (
               <View style={styles.badge}>
-                <T variant="eyebrowStrong" color={Colors.warning}>
+                <T variant="eyebrowStrong" color={Colors.accent}>
                   AWAITING YOUR APPROVAL
                 </T>
               </View>
@@ -74,7 +74,7 @@ export default function EstimateDetailScreen() {
             </T>
             <T variant="body" color={Colors.textMuted}>
               {estimate.workshopName}
-              {vehicle ? ` · ${formatPlate(vehicle.plate)} · ${formatNumber(vehicle.odometerKm)} km` : ''}
+              {vehicle ? ` · ${formatPlate(vehicle.plate)} · ${formatDistance(vehicle.odometerKm, { withUnit: false })} ${getActiveDistanceUnit()}` : ''}
             </T>
 
             <Card style={styles.linesCard}>
@@ -101,7 +101,7 @@ export default function EstimateDetailScreen() {
             {estimate.status === 'pending' ? (
               <View style={styles.actions}>
                 {error ? (
-                  <T variant="meta" color={Colors.danger} style={styles.error}>
+                  <T variant="meta" color={Colors.error} style={styles.error}>
                     {error}
                   </T>
                 ) : null}
@@ -114,7 +114,7 @@ export default function EstimateDetailScreen() {
               </View>
             ) : (
               <View style={styles.resolvedBlock}>
-                <T variant="eyebrowStrong" color={estimate.status === 'approved' ? Colors.positive : Colors.danger}>
+                <T variant="eyebrowStrong" color={estimate.status === 'approved' ? Colors.accent : Colors.danger}>
                   {estimate.status.toUpperCase()}
                 </T>
               </View>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   badge: {
-    backgroundColor: Colors.warningSoft,
+    backgroundColor: Colors.accentSoft,
     alignSelf: 'flex-start',
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.sm,

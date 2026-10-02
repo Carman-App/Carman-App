@@ -26,10 +26,10 @@ export default function SellDoneScreen() {
       contentStyle={styles.content}
       footer={<Button onPress={() => router.replace('/garage')}>Back to my garage</Button>}>
       <View style={styles.iconWrap}>
-        <IconGlyph glyph="check" size={64} bg={Colors.positiveSoft} fg={Colors.positive} />
+        <IconGlyph glyph="check" size={64} bg={Colors.accentSoft} fg={Colors.accent} />
       </View>
 
-      <T variant="eyebrowStrong" color={Colors.positive} center>
+      <T variant="eyebrowStrong" color={Colors.accent} center>
         HANDED OVER
       </T>
       <T variant="display" center style={styles.title}>

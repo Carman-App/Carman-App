@@ -5,7 +5,13 @@ import { DetailView, Section } from "@/components/detail-view";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/badge";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { requireRole, ACCOUNTS_ROLES, canRunDangerousAccountAction, canRunAccountQuickAction } from "@/lib/auth/rbac";
+import {
+  requireRole,
+  ACCOUNT_BILLING_VIEW_ROLES,
+  canRunDangerousAccountAction,
+  canRunAccountQuickAction,
+} from "@/lib/auth/rbac";
+import { AdminRole } from "@/generated/prisma/enums";
 import { REGION_LABELS, currencyForRegion } from "@/lib/region";
 import { QuickActionsPanel } from "./quick-actions-panel";
 import { SuspendPanel } from "./suspend-panel";
@@ -51,7 +57,12 @@ export default async function AccountDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await requireRole(ACCOUNTS_ROLES);
+  const session = await requireRole(ACCOUNT_BILLING_VIEW_ROLES);
+  // MON-06 fix: FINANCE may enter this page (see ACCOUNT_BILLING_VIEW_ROLES),
+  // but per FINANCE's Cannot-list ("open a user's records, photos or
+  // receipts") every section below except identity + billing history is
+  // hidden from a FINANCE viewer — checked throughout via `isFinanceViewer`.
+  const isFinanceViewer = session.role === AdminRole.FINANCE;
   const { id } = await params;
   const account = await getAccount(id);
   if (!account) notFound();
@@ -224,14 +235,31 @@ export default async function AccountDetailPage({
     take: 10,
   });
 
+  // --- ACCT-07/AUD-03: pending two-person-approved deletion request, if any -
+  const pendingDeletionRow = await prisma.twoPersonApproval.findFirst({
+    where: { entityType: "Account", entityId: account.id, action: "account.delete", status: "PENDING" },
+    orderBy: { requestedAt: "desc" },
+  });
+
   const adminNameIds = [
     account.user.emailVerifiedByAdminId,
     account.suspendedByAdminId,
     account.chasedNoVehicleByAdminId,
     ...auditEntries.map((e) => e.actorId),
     ...recentMerges.map((m) => m.performedByAdminId),
+    pendingDeletionRow?.requestedByAdminId,
   ];
   const adminNames = await getAdminNames(adminNameIds);
+
+  const pendingDeletion = pendingDeletionRow
+    ? {
+        id: pendingDeletionRow.id,
+        requestedAt: pendingDeletionRow.requestedAt,
+        requestedByAdminId: pendingDeletionRow.requestedByAdminId,
+        requestedByLabel: adminNames.get(pendingDeletionRow.requestedByAdminId) ?? pendingDeletionRow.requestedByAdminId,
+        reason: pendingDeletionRow.reason,
+      }
+    : null;
 
   const currentSubscription = account.subscriptions[0] ?? null;
   const canDangerous = canRunDangerousAccountAction(session.role);
@@ -250,6 +278,14 @@ export default async function AccountDetailPage({
           </p>
         )}
       </div>
+
+      {isFinanceViewer && (
+        <p className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+          Finance view — identity and billing history only. Garages, vehicles, workshops, tickets,
+          trust &amp; safety, messaging, and admin-action history are hidden here (FINANCE cannot
+          open a user&rsquo;s records, photos, or receipts).
+        </p>
+      )}
 
       <DetailView
         title="Identity"
@@ -307,45 +343,49 @@ export default async function AccountDetailPage({
         ]}
       />
 
-      <Section title="Garages + role">
-        <DataTable
-          rows={garageRows}
-          href={(r) => `/garages/${r.id}`}
-          emptyLabel="Belongs to no garages."
-          columns={[
-            { header: "Name", cell: (r) => r.name },
-            { header: "Role", cell: (r) => <Badge value={r.role} /> },
-            { header: "Vehicles", cell: (r) => r.vehicleCount },
-            { header: "Location", cell: (r) => r.location },
-            { header: "Created", cell: (r) => formatDate(r.createdAt) },
-          ]}
-        />
-      </Section>
+      {!isFinanceViewer && (
+        <>
+          <Section title="Garages + role">
+            <DataTable
+              rows={garageRows}
+              href={(r) => `/garages/${r.id}`}
+              emptyLabel="Belongs to no garages."
+              columns={[
+                { header: "Name", cell: (r) => r.name },
+                { header: "Role", cell: (r) => <Badge value={r.role} /> },
+                { header: "Vehicles", cell: (r) => r.vehicleCount },
+                { header: "Location", cell: (r) => r.location },
+                { header: "Created", cell: (r) => formatDate(r.createdAt) },
+              ]}
+            />
+          </Section>
 
-      <Section title="Vehicles">
-        <DataTable
-          rows={vehicleRows}
-          href={(r) => `/vehicles/${r.id}`}
-          emptyLabel="No vehicles across any of their garages."
-          columns={[
-            { header: "Vehicle", cell: (r) => `${r.year} ${r.make} ${r.model}` },
-            { header: "Plate", cell: (r) => r.plate },
-            { header: "Garage", cell: (r) => r.garageName },
-          ]}
-        />
-      </Section>
+          <Section title="Vehicles">
+            <DataTable
+              rows={vehicleRows}
+              href={(r) => `/vehicles/${r.id}`}
+              emptyLabel="No vehicles across any of their garages."
+              columns={[
+                { header: "Vehicle", cell: (r) => `${r.year} ${r.make} ${r.model}` },
+                { header: "Plate", cell: (r) => r.plate },
+                { header: "Garage", cell: (r) => r.garageName },
+              ]}
+            />
+          </Section>
 
-      <Section title="Workshops owned">
-        <DataTable
-          rows={account.workshopsOwned}
-          href={(r) => `/workshops/${r.id}`}
-          emptyLabel="Owns no workshops."
-          columns={[
-            { header: "Name", cell: (r) => r.name },
-            { header: "Created", cell: (r) => formatDate(r.createdAt) },
-          ]}
-        />
-      </Section>
+          <Section title="Workshops owned">
+            <DataTable
+              rows={account.workshopsOwned}
+              href={(r) => `/workshops/${r.id}`}
+              emptyLabel="Owns no workshops."
+              columns={[
+                { header: "Name", cell: (r) => r.name },
+                { header: "Created", cell: (r) => formatDate(r.createdAt) },
+              ]}
+            />
+          </Section>
+        </>
+      )}
 
       <Section title="Plan & payment state">
         <DetailView
@@ -378,6 +418,8 @@ export default async function AccountDetailPage({
         <BillingHistorySection accountId={account.id} />
       </Section>
 
+      {!isFinanceViewer && (
+      <>
       <Section title="Device / app version (ACCT-09)">
         <DetailView
           title="Device"
@@ -472,6 +514,8 @@ export default async function AccountDetailPage({
           Full audit history for this account →
         </Link>
       </Section>
+      </>
+      )}
 
       {canQuick && (
         <QuickActionsPanel accountId={account.id} emailVerified={Boolean(account.user.emailVerifiedAt)} />
@@ -534,7 +578,7 @@ export default async function AccountDetailPage({
           </Section>
 
           <Section title="Delete (ACCT-07)">
-            <DeletePanel accountId={account.id} />
+            <DeletePanel accountId={account.id} pendingDeletion={pendingDeletion} currentAdminId={session.adminId} />
           </Section>
         </>
       )}

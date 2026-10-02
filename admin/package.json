@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "create-admin": "tsx scripts/create-admin.ts",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "queue:worker": "tsx scripts/queue-worker.ts",
+    "idor:check": "tsx scripts/idor-check.ts",
+    "load:test": "tsx scripts/load-test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1117.0",
@@ -28,10 +31,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/autocannon": "^7.12.7",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autocannon": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "prisma": "^7.10.0",

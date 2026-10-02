@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PlanSubject, SubscriptionStatus } from "@/generated/prisma/enums";
+import { InvitationStatus, PlanSubject, SubscriptionStatus } from "@/generated/prisma/enums";
 
 /**
  * Plan limit enforcement lives here, in the domain layer — not in the UI.
@@ -61,6 +61,37 @@ export async function assertCanCreateVehicle(garageId: string): Promise<void> {
   if (vehicleCount >= maxVehicles) {
     throw new PlanLimitExceededError(
       `This account's plan allows up to ${maxVehicles} vehicle(s) across its garages; it already has ${vehicleCount}.`,
+    );
+  }
+}
+
+/**
+ * Throws PlanLimitExceededError if adding another seat to a garage would
+ * exceed the owning account's plan (Plan.maxSeats — FREE: 1, PERSONAL: 3,
+ * PRO: 10 per garage per the product spec). A pending invitation counts
+ * against the limit too ("Pending: invited but not yet joined, holds a seat
+ * against the plan's limit") — only a declined/expired invitation or a
+ * removed member frees the seat back up.
+ */
+export async function assertCanAddGarageSeat(garageId: string): Promise<void> {
+  const garage = await prisma.garage.findUnique({
+    where: { id: garageId },
+    select: { ownerId: true },
+  });
+  if (!garage) return;
+
+  const subscription = await getActiveSubscription(PlanSubject.OWNER, garage.ownerId);
+  const maxSeats = subscription?.plan.maxSeats;
+  if (maxSeats == null) return;
+
+  const [memberCount, pendingInviteCount] = await Promise.all([
+    prisma.garageMember.count({ where: { garageId, removedAt: null } }),
+    prisma.garageInvitation.count({ where: { garageId, status: InvitationStatus.PENDING } }),
+  ]);
+  const seatsUsed = memberCount + pendingInviteCount;
+  if (seatsUsed >= maxSeats) {
+    throw new PlanLimitExceededError(
+      `This garage's plan allows up to ${maxSeats} seat(s) (members plus pending invitations); it already has ${seatsUsed}.`,
     );
   }
 }

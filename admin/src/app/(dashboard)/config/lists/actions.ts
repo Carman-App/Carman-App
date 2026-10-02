@@ -68,21 +68,37 @@ export async function upsertListItem(_prev: ActionState, formData: FormData): Pr
   return { ok: true, message: itemId ? "Item updated." : "Item added." };
 }
 
+/**
+ * NOT-03 — "never delete data without a recoverable window and stated
+ * reason": this used to hard-delete the row (`prisma.configListItem.delete`)
+ * with no way back, even though the model already has an `isActive` flag
+ * that exists for exactly this — hiding a list item from apps without
+ * destroying it (mirroring CFG-01's Country.isLive live/hidden toggle).
+ * Deactivating is fully recoverable via the same edit form's "Active"
+ * checkbox; a hard delete wasn't. Fixed to deactivate instead — see
+ * upsertListItem above for the reactivate path.
+ */
 export async function deleteListItem(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireRole(CONFIG_ROLES);
   const itemId = String(formData.get("itemId") || "");
   const item = await prisma.configListItem.findUnique({ where: { id: itemId }, include: { list: true } });
   if (!item) return { error: "Item not found." };
+  if (!item.isActive) return { error: "Already inactive." };
 
-  await prisma.configListItem.delete({ where: { id: itemId } });
+  await prisma.configListItem.update({
+    where: { id: itemId },
+    data: { isActive: false, updatedByAdminId: admin.adminId },
+  });
 
   await writeAdminAuditLog(admin, {
-    action: "config.list_item_delete",
+    action: "config.list_item_deactivate",
     entityType: "ConfigListItem",
     entityId: itemId,
-    beforeData: { listKey: item.list.key, code: item.code, label: item.label },
+    beforeData: { listKey: item.list.key, code: item.code, label: item.label, isActive: true },
+    afterData: { isActive: false },
+    metadata: { note: "Deactivated, not deleted — recoverable via the edit form's Active checkbox." },
   });
 
   revalidatePath(`/config/lists/${item.list.key}`);
-  return { ok: true, message: "Item removed." };
+  return { ok: true, message: "Item deactivated." };
 }

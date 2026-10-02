@@ -1,21 +1,21 @@
 import type { MetricSnapshot, PulseMetricKey } from "./metrics";
 import { findOutOfBandMetrics } from "./metrics";
+import { getStalledJobs } from "@/lib/queue/queue";
 
 /**
- * PULSE-02's alert strip. Only "metric outside its normal band" has a real
- * data source today — the other four alert types the spec names (failed
- * payments, error spikes, stalled background jobs, an account reported)
- * have no underlying table/instrumentation in this codebase yet:
+ * PULSE-02's alert strip. Two of the five named alert types have a real data
+ * source today — "metric outside its normal band" (always did) and "stalled
+ * background jobs" (since the scalability pass added a real Postgres-backed
+ * BackgroundJob queue — see src/lib/queue/queue.ts's getStalledJobs). The
+ * other three still have no underlying table/instrumentation in this
+ * codebase:
  *   - Failed payments: `Payment` has no status field (no FAILED state exists
  *     anywhere — only cash/mobile-money/etc. method + paidAt), so a payment
  *     attempt that failed leaves no row to query at all.
  *   - Error spikes: no error/exception logging exists (see metrics.ts).
- *   - Stalled background jobs: there is no background-job/queue system in
- *     this codebase — the `Job` model is a workshop repair job, not a
- *     queued task, so there is nothing to call "stalled" here.
  *   - Account reported: no reporting/flagging model exists (that's Trust,
  *     Phase Two).
- * These four are still rendered — as a clearly-labelled "not wired up yet"
+ * These three are still rendered — as a clearly-labelled "not wired up yet"
  * row each — so the alert strip's shape is correct and each one is a single
  * line of real work away once its data source exists, per the brief's
  * instruction to "build the alert-strip UI and wire what you can."
@@ -28,10 +28,10 @@ export type Alert = {
   href?: string;
 };
 
-export function buildAlerts(
+export async function buildAlerts(
   snapshots: Record<PulseMetricKey, MetricSnapshot>,
   linkForMetric: (key: PulseMetricKey) => string | undefined,
-): Alert[] {
+): Promise<Alert[]> {
   const alerts: Alert[] = [];
 
   for (const band of findOutOfBandMetrics(snapshots)) {
@@ -45,6 +45,18 @@ export function buildAlerts(
     });
   }
 
+  const stalled = await getStalledJobs();
+  if (stalled.length > 0) {
+    const oldest = stalled[0];
+    const minutesStalled = Math.round((Date.now() - oldest.since.getTime()) / 60000);
+    alerts.push({
+      id: "stalled_jobs",
+      severity: "real",
+      title: `${stalled.length} background job${stalled.length === 1 ? "" : "s"} stalled`,
+      description: `Oldest: "${oldest.type}" (${oldest.status.toLowerCase()}, attempt ${oldest.attempts}/${oldest.maxAttempts}) — waiting ${minutesStalled}+ min with no progress. Check the queue worker (npm run queue:worker) is running.`,
+    });
+  }
+
   const notWired: { id: string; title: string; description: string }[] = [
     {
       id: "failed_payments",
@@ -55,11 +67,6 @@ export function buildAlerts(
       id: "error_spikes",
       title: "Error spikes",
       description: "Not wired up — no error/exception logging exists in this codebase yet.",
-    },
-    {
-      id: "stalled_jobs",
-      title: "Stalled background jobs",
-      description: "Not wired up — there is no background-job/queue system to check for stalls.",
     },
     {
       id: "account_reported",

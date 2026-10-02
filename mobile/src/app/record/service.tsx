@@ -14,7 +14,7 @@ import { addRecord, updateVehicle } from '@/data/repo';
 import { DateQuickPick } from '@/features/record/DateQuickPick';
 import { OdometerQuickAdd } from '@/features/record/OdometerQuickAdd';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
-import { formatDateWithYear, formatMoney, formatNumber, todayIso } from '@/lib/format';
+import { formatDateWithYear, formatDistance, formatMoney, getActiveCurrency, getActiveDistanceUnit, todayIso } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 type LineKind = 'FLUID' | 'PART' | 'LABOUR';
@@ -119,9 +119,9 @@ export default function ServiceEntryScreen() {
         </Button>
       }>
       <ModalHeader eyebrow="SERVICE RECORD" title={`${vehicle.make} ${vehicle.model}`} />
-      <T variant="display">{formatNumber(odometerNum)} km service</T>
+      <T variant="display">{formatDistance(odometerNum)} service</T>
       <T variant="eyebrow" style={styles.subheader}>
-        {formatDateWithYear(date)} · {formatNumber(odometerNum)} KM · {lines.length} ITEM{lines.length === 1 ? '' : 'S'}
+        {formatDateWithYear(date)} · {formatDistance(odometerNum)} · {lines.length} ITEM{lines.length === 1 ? '' : 'S'}
       </T>
 
       <View style={styles.lines}>
@@ -144,7 +144,7 @@ export default function ServiceEntryScreen() {
                 </T>
               </Pressable>
               <View style={styles.lineCost}>
-                <TextField value={line.cost} onChangeText={(v) => updateLine(line.id, { cost: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" prefix="KES" placeholder="0" />
+                <TextField value={line.cost} onChangeText={(v) => updateLine(line.id, { cost: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" prefix={getActiveCurrency()} placeholder="0" />
               </View>
             </View>
           </Card>
@@ -180,14 +180,14 @@ export default function ServiceEntryScreen() {
           </T>
           {nextServiceKm ? (
             <T variant="meta" style={styles.dueHint}>
-              DUE AT {formatNumber(odometerNum + nextServiceKm)} KM
+              DUE AT {formatDistance(odometerNum + nextServiceKm)}
             </T>
           ) : null}
           <View style={styles.chipsRow}>
             {NEXT_SERVICE_OPTIONS.map((opt) => (
               <Chip
                 key={opt}
-                label={`${formatNumber(opt)} km`}
+                label={`${formatDistance(opt, { withUnit: false })} ${getActiveDistanceUnit()}`}
                 selected={nextServiceKm === opt && !showCustomNext}
                 onPress={() => {
                   setNextServiceKm(opt);
@@ -233,7 +233,7 @@ export default function ServiceEntryScreen() {
         </View>
 
         {error ? (
-          <T variant="body" color={Colors.danger} center>
+          <T variant="body" color={Colors.error} center>
             {error}
           </T>
         ) : null}

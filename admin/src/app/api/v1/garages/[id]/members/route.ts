@@ -2,13 +2,17 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAccount } from "@/lib/api/auth";
 import { requireGarageMembership, requireGarageOwner } from "@/lib/api/authorize";
-import { apiError, apiOk } from "@/lib/api/response";
+import { apiError, apiOk, apiOkPaginated } from "@/lib/api/response";
 import { handleApiError, ConflictError, NotFoundError } from "@/lib/api/errors";
 import { addGarageMemberSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
+import { parsePagination } from "@/lib/api/pagination";
+import { assertCanAddGarageSeat } from "@/lib/limits";
 import type { GarageRole } from "@/generated/prisma/enums";
 
-// GET /api/v1/garages/:id/members
+// GET /api/v1/garages/:id/members — paginated for consistency (AGENTS.md
+// scalability pass, section 4), even though garage membership is small in
+// practice.
 // Chain: auth -> account -> membership -> list.
 export async function GET(
   req: NextRequest,
@@ -20,12 +24,14 @@ export async function GET(
 
     await requireGarageMembership(account.id, garageId);
 
-    const members = await prisma.garageMember.findMany({
-      where: { garageId },
-      orderBy: { joinedAt: "asc" },
-    });
+    const { page, pageSize, skip, take } = parsePagination(req);
+    const where = { garageId };
+    const [members, total] = await Promise.all([
+      prisma.garageMember.findMany({ where, orderBy: { joinedAt: "asc" }, skip, take }),
+      prisma.garageMember.count({ where }),
+    ]);
 
-    return apiOk(members);
+    return apiOkPaginated(members, { page, pageSize, total });
   } catch (error) {
     return handleApiError(error);
   }
@@ -61,6 +67,8 @@ export async function POST(
     if (existing) {
       throw new ConflictError("This account is already a member of the garage.");
     }
+
+    await assertCanAddGarageSeat(garageId);
 
     const member = await prisma.garageMember.create({
       data: {

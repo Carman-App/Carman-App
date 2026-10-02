@@ -1,24 +1,22 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { monthBounds } from "@/lib/money/mrr";
-import { isoWeekKey, weekStart, monthKey, isActiveInWeek, ACTIVE_USER_CAVEAT } from "./definitions";
+import { isoWeekKey, weekStart, monthKey, getAccountRecordTimestamps } from "./definitions";
 
-// GROW-03 — weekly and monthly cohort retention grid using the Retained
-// definition (definitions.ts): an Account counted Active in its signup
-// week/month, and Active again in a later week/month K periods after.
+// GROW-03 — weekly and monthly cohort retention grid using the *spec's*
+// Retained definition verbatim: "wrote a record in a later calendar week
+// [/month] than the one they joined. Opening the app is not retention."
 //
-// IMPORTANT, real limitation (see ACTIVE_USER_CAVEAT): Account.lastApiRequestAt
-// is a single timestamp, not a per-period activity log. An account can only
-// ever be "Active" in the one period containing that single value — never in
-// two different periods at once. That makes every K>0 cell in this grid
-// structurally 0 for every cohort, always, regardless of real usage: this
-// isn't a bug in the grid, it's what the schema can support today without a
-// real per-period activity table. The grid is built to the correct shape
-// (so it becomes meaningful the moment a real activity log exists) and the
-// page states this plainly rather than hiding or faking a curve.
-
-export const RETENTION_STRUCTURAL_LIMIT_NOTE =
-  "Every column after week/month 0 will read 0 for every cohort: " + ACTIVE_USER_CAVEAT;
+// Earlier version of this file used Account.lastApiRequestAt (the "Active
+// user" proxy) instead — which is exactly the thing the spec calls out as
+// NOT retention ("opening the app is not retention"), and which is also a
+// single timestamp rather than a history, so every column after week/month 0
+// was structurally 0 for every cohort regardless of real usage. Record
+// writes (FuelRecord/ServiceRecord/RepairRecord/ExpenseRecord/OdometerReading
+// via getAccountRecordTimestamps, definitions.ts) have real per-event
+// timestamps, so an account can genuinely show up as retained in more than
+// one later period. Fixed here to match the stated metric — see NOT-05 (never
+// redefine a metric silently): this comment is that note.
 
 export const SMALL_COHORT_THRESHOLD = 5;
 
@@ -36,20 +34,20 @@ export type RetentionGrid = {
 };
 
 export async function getWeeklyRetentionGrid(maxCohorts = 12, maxOffset = 8): Promise<RetentionGrid> {
-  const accounts = await prisma.account.findMany({
-    where: { deletedAt: null },
-    select: { createdAt: true, lastApiRequestAt: true },
-  });
+  const [accounts, recordTimestamps] = await Promise.all([
+    prisma.account.findMany({ where: { deletedAt: null }, select: { id: true, createdAt: true } }),
+    getAccountRecordTimestamps(), // accountId -> every record timestamp ever, ascending (full history)
+  ]);
 
-  const byCohort = new Map<string, { cohortStart: Date; lastApiRequestAts: (Date | null)[] }>();
+  const byCohort = new Map<string, { cohortStart: Date; accountIds: string[] }>();
   for (const a of accounts) {
     const key = isoWeekKey(a.createdAt);
     let bucket = byCohort.get(key);
     if (!bucket) {
-      bucket = { cohortStart: weekStart(a.createdAt), lastApiRequestAts: [] };
+      bucket = { cohortStart: weekStart(a.createdAt), accountIds: [] };
       byCohort.set(key, bucket);
     }
-    bucket.lastApiRequestAts.push(a.lastApiRequestAt);
+    bucket.accountIds.push(a.id);
   }
 
   const sorted = [...byCohort.entries()].sort((a, b) => b[1].cohortStart.getTime() - a[1].cohortStart.getTime());
@@ -57,12 +55,14 @@ export async function getWeeklyRetentionGrid(maxCohorts = 12, maxOffset = 8): Pr
   const offsets = Array.from({ length: maxOffset + 1 }, (_, i) => i);
 
   const rows: RetentionRow[] = limited.map(([cohortKey, bucket]) => {
-    const cohortSize = bucket.lastApiRequestAts.length;
+    const cohortSize = bucket.accountIds.length;
+    // Which ISO weeks did each account in this cohort write at least one record in?
+    const recordWeeksByAccount = bucket.accountIds.map(
+      (id) => new Set((recordTimestamps.get(id) ?? []).map((ts) => isoWeekKey(ts))),
+    );
     const retainedCount = offsets.map((k) => {
-      const targetWeekStart = new Date(bucket.cohortStart.getTime() + k * 7 * 24 * 60 * 60 * 1000);
-      return bucket.lastApiRequestAts.filter(
-        (ts) => isActiveInWeek(ts, bucket.cohortStart) && isActiveInWeek(ts, targetWeekStart),
-      ).length;
+      const targetWeekKey = isoWeekKey(new Date(bucket.cohortStart.getTime() + k * 7 * 24 * 60 * 60 * 1000));
+      return recordWeeksByAccount.filter((weeks) => weeks.has(targetWeekKey)).length;
     });
     return {
       cohortKey,
@@ -77,41 +77,41 @@ export async function getWeeklyRetentionGrid(maxCohorts = 12, maxOffset = 8): Pr
 }
 
 export async function getMonthlyRetentionGrid(maxCohorts = 6, maxOffset = 5): Promise<RetentionGrid> {
-  const accounts = await prisma.account.findMany({
-    where: { deletedAt: null },
-    select: { createdAt: true, lastApiRequestAt: true },
-  });
+  const [accounts, recordTimestamps] = await Promise.all([
+    prisma.account.findMany({ where: { deletedAt: null }, select: { id: true, createdAt: true } }),
+    getAccountRecordTimestamps(),
+  ]);
 
-  const byCohort = new Map<string, { cohortStart: Date; lastApiRequestAts: (Date | null)[] }>();
+  const byCohort = new Map<string, { cohortStart: Date; accountIds: string[] }>();
   for (const a of accounts) {
     const key = monthKey(a.createdAt);
     let bucket = byCohort.get(key);
     if (!bucket) {
-      bucket = { cohortStart: monthBounds(a.createdAt).start, lastApiRequestAts: [] };
+      bucket = { cohortStart: monthBounds(a.createdAt).start, accountIds: [] };
       byCohort.set(key, bucket);
     }
-    bucket.lastApiRequestAts.push(a.lastApiRequestAt);
+    bucket.accountIds.push(a.id);
   }
 
   const sorted = [...byCohort.entries()].sort((a, b) => b[1].cohortStart.getTime() - a[1].cohortStart.getTime());
   const limited = sorted.slice(0, maxCohorts);
   const offsets = Array.from({ length: maxOffset + 1 }, (_, i) => i);
 
-  function isActiveInMonthOffset(ts: Date | null, cohortStart: Date, offset: number): boolean {
-    if (!ts) return false;
+  function monthKeyForOffset(cohortStart: Date, offset: number): string {
     const targetMonthDate = new Date(Date.UTC(cohortStart.getUTCFullYear(), cohortStart.getUTCMonth() + offset, 1));
-    const { start, end } = monthBounds(targetMonthDate);
-    return ts >= start && ts < end;
+    return monthKey(targetMonthDate);
   }
 
   const rows: RetentionRow[] = limited.map(([cohortKey, bucket]) => {
-    const cohortSize = bucket.lastApiRequestAts.length;
-    const retainedCount = offsets.map(
-      (k) =>
-        bucket.lastApiRequestAts.filter(
-          (ts) => isActiveInMonthOffset(ts, bucket.cohortStart, 0) && isActiveInMonthOffset(ts, bucket.cohortStart, k),
-        ).length,
+    const cohortSize = bucket.accountIds.length;
+    // Which calendar months did each account in this cohort write at least one record in?
+    const recordMonthsByAccount = bucket.accountIds.map(
+      (id) => new Set((recordTimestamps.get(id) ?? []).map((ts) => monthKey(ts))),
     );
+    const retainedCount = offsets.map((k) => {
+      const targetMonthKey = monthKeyForOffset(bucket.cohortStart, k);
+      return recordMonthsByAccount.filter((months) => months.has(targetMonthKey)).length;
+    });
     return {
       cohortKey,
       cohortStart: bucket.cohortStart,

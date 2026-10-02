@@ -150,7 +150,7 @@ export default function GarageViewScreen() {
                 <View style={styles.fieldGap} />
                 <TextField label="TOWN" value={location} onChangeText={setLocation} placeholder="Town" />
                 {detailsError ? (
-                  <T variant="meta" color={Colors.danger} style={styles.detailsError}>
+                  <T variant="meta" color={Colors.error} style={styles.detailsError}>
                     {detailsError}
                   </T>
                 ) : null}
@@ -184,7 +184,7 @@ export default function GarageViewScreen() {
 
               <View style={styles.dangerZone}>
                 {deleteError ? (
-                  <T variant="meta" color={Colors.danger} style={styles.dangerHelper}>
+                  <T variant="meta" color={Colors.error} style={styles.dangerHelper}>
                     {deleteError}
                   </T>
                 ) : null}

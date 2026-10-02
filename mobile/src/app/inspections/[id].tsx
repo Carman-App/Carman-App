@@ -12,7 +12,7 @@ import type { InspectionReport } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 const STATUS_COLOR: Record<string, { fg: string; bg: string }> = {
-  good: { fg: Colors.positive, bg: Colors.positiveSoft },
+  good: { fg: Colors.accent, bg: Colors.accentSoft },
   attention: { fg: Colors.warning, bg: Colors.warningSoft },
   urgent: { fg: Colors.danger, bg: Colors.dangerSoft },
 };
@@ -74,7 +74,7 @@ export default function InspectionReportScreen() {
                 <T variant="meta">MONITOR</T>
               </View>
               <View style={styles.summaryPill}>
-                <T variant="numeric" color={Colors.positive}>
+                <T variant="numeric" color={Colors.accent}>
                   {counts.good}
                 </T>
                 <T variant="meta">GOOD</T>

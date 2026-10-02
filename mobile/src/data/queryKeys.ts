@@ -44,4 +44,9 @@ export const qk = {
   accessRequests: (vehicleId: string | undefined) => ['accessRequests', vehicleId] as const,
 
   notifications: () => ['notifications'] as const,
+
+  // Admin-authored reference config (Country / ConfigList) — see
+  // @/data/hooks's useConfigCountries/useConfigList.
+  configCountries: () => ['configCountries'] as const,
+  configList: (key: string) => ['configList', key] as const,
 };

@@ -10,7 +10,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { useBuildStage } from '@/data/hooks';
 import { addModification } from '@/data/repo';
-import { formatDateShort, todayIso } from '@/lib/format';
+import { formatDateShort, getActiveCurrency, todayIso } from '@/lib/format';
 import type { BuildStage, ModificationArea } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -46,7 +46,7 @@ export default function AddModificationScreen() {
       }>
       <ModalHeader eyebrow="MODIFICATION" />
 
-      <TextField label="AMOUNT" value={cost} onChangeText={setCost} keyboardType="numeric" prefix="KES" helper="PARTS AND LABOUR COMBINED" />
+      <TextField label="AMOUNT" value={cost} onChangeText={setCost} keyboardType="numeric" prefix={getActiveCurrency()} helper="PARTS AND LABOUR COMBINED" />
 
       <View style={styles.field}>
         <TextField label="WHAT CHANGED" value={name} onChangeText={setName} placeholder="e.g. Front coilovers" />

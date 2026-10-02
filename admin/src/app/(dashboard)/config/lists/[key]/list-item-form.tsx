@@ -91,16 +91,19 @@ export function ListItemRow({ listKey, item }: { listKey: string; item: ListItem
             >
               Edit
             </button>
-            <form action={deleteAction}>
-              <input type="hidden" name="itemId" value={item.id} />
-              <button
-                type="submit"
-                disabled={deletePending}
-                className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:border-red-400 disabled:opacity-60"
-              >
-                {deletePending ? "Removing…" : "Remove"}
-              </button>
-            </form>
+            {item.isActive && (
+              <form action={deleteAction}>
+                <input type="hidden" name="itemId" value={item.id} />
+                <button
+                  type="submit"
+                  disabled={deletePending}
+                  title="Hides this item from apps without deleting it — recoverable via Edit."
+                  className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:border-red-400 disabled:opacity-60"
+                >
+                  {deletePending ? "Deactivating…" : "Deactivate"}
+                </button>
+              </form>
+            )}
           </div>
           {deleteState?.error && <p className="mt-1 text-xs text-red-600">{deleteState.error}</p>}
         </td>

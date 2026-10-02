@@ -151,9 +151,20 @@ export async function getActiveGarageIds(range: DateRange): Promise<Set<string>>
 }
 
 // ---------------------------------------------------------------------------
-// Activated account — an Account that has logged at least one Record ever
-// (reached the "first record" step of the GROW-01 funnel).
+// Vehicle added — an Account that owns a garage with at least one Vehicle.
+// Same "vehicle added" step used by the GROW-01 funnel (funnel.ts) — shared
+// here so the Activated-account definition below can't silently drift from
+// the funnel's own "vehicle added" step (NOT-05: never redefine a metric
+// silently).
 // ---------------------------------------------------------------------------
+
+export async function getVehicleAddedAccountIds(): Promise<Set<string>> {
+  const rows = await prisma.account.findMany({
+    where: { garagesOwned: { some: { vehicles: { some: {} } } } },
+    select: { id: true },
+  });
+  return new Set(rows.map((r) => r.id));
+}
 
 /** accountId -> every record timestamp they've logged, ascending. Non-attributable (null accountId) records are excluded — they can't count toward any account's activation. */
 export async function getAccountRecordTimestamps(range?: DateRange): Promise<Map<string, Date[]>> {
@@ -169,8 +180,26 @@ export async function getAccountRecordTimestamps(range?: DateRange): Promise<Map
   return byAccount;
 }
 
+// ---------------------------------------------------------------------------
+// Activated account — per the spec verbatim: "added a vehicle AND logged one
+// record. Signing up alone is not activation." Both halves are required:
+// logging a record alone is possible for a garage member who never added a
+// vehicle themselves (someone else in the garage did), so a record-only check
+// would over-count activation for that account. Fixed to require both halves
+// — previously this only checked "logged a record", which is what NOT-05
+// calls a silently redefined metric.
+// ---------------------------------------------------------------------------
+
 export async function getActivatedAccountIds(): Promise<Set<string>> {
-  return new Set((await getAccountRecordTimestamps()).keys());
+  const [recordAccountIds, vehicleAddedIds] = await Promise.all([
+    getAccountRecordTimestamps(),
+    getVehicleAddedAccountIds(),
+  ]);
+  const activated = new Set<string>();
+  for (const id of recordAccountIds.keys()) {
+    if (vehicleAddedIds.has(id)) activated.add(id);
+  }
+  return activated;
 }
 
 // ---------------------------------------------------------------------------

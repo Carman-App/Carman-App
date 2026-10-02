@@ -1,26 +1,33 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAccount } from "@/lib/api/auth";
-import { apiError, apiOk } from "@/lib/api/response";
+import { apiError, apiOk, apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { createGarageSchema } from "@/lib/api/schemas";
 import { assertCanCreateGarage } from "@/lib/limits";
 import { writeAuditLog } from "@/lib/audit";
+import { parsePagination } from "@/lib/api/pagination";
 import { GarageRole } from "@/generated/prisma/enums";
 
-// GET /api/v1/garages — garages the caller owns or belongs to.
+// GET /api/v1/garages — garages the caller owns or belongs to. In practice
+// bounded by plan limits (a handful per account), but paginated anyway for
+// consistency with every other /api/v1/* list endpoint (AGENTS.md
+// scalability pass, section 4) and so a future no-limit plan can't produce
+// an unbounded response.
 export async function GET(req: NextRequest) {
   try {
     const account = await requireAccount(req);
+    const { page, pageSize, skip, take } = parsePagination(req);
 
-    const garages = await prisma.garage.findMany({
-      where: {
-        OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id } } }],
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const where = {
+      OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id } } }],
+    };
+    const [garages, total] = await Promise.all([
+      prisma.garage.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
+      prisma.garage.count({ where }),
+    ]);
 
-    return apiOk(garages);
+    return apiOkPaginated(garages, { page, pageSize, total });
   } catch (error) {
     return handleApiError(error);
   }

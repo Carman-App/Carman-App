@@ -59,6 +59,21 @@ export const BILLING_ROLES: AdminRole[] = [AdminRole.OWNER, AdminRole.FINANCE];
 /** MON-07 refund/credit is squarely inside FINANCE's "refunds" Can-list — same roles as Billing, distinguished only by the two-person approval above a threshold (see src/lib/approvals.ts). */
 export const MONEY_REFUND_ROLES: AdminRole[] = BILLING_ROLES;
 
+/**
+ * MON-06 fix: FINANCE's own Can-list is "subscriptions, payments, refunds,
+ * exports for the accountant" — that necessarily includes opening one
+ * account's billing history, which every Billing page (refunds/
+ * cancellations/dunning/failed-payments) already links straight to
+ * (`/accounts/:id`). Before this fix that page was gated to ACCOUNTS_ROLES
+ * ([OWNER, SUPPORT]) only, so FINANCE hit a 403 on every one of those links
+ * — MON-06 was unreachable by the one role whose job it names. This constant
+ * lets FINANCE *enter* the account page; the page itself still must render
+ * only identity + billing history for a FINANCE viewer and hide
+ * garages/vehicles/workshops/tickets/trust/messaging/admin-actions, per
+ * FINANCE's Cannot-list ("open a user's records, photos or receipts").
+ */
+export const ACCOUNT_BILLING_VIEW_ROLES: AdminRole[] = [...ACCOUNTS_ROLES, AdminRole.FINANCE];
+
 // --- Phase Two policy (see AGENTS.md "Phase TWO · RUN") --------------------
 // Garages/Vehicles and Workshops/Work read surfaces name individual
 // accounts/vehicles/workshops, so they follow ACCOUNTS_ROLES exactly like
@@ -105,8 +120,22 @@ export const CONFIG_PUBLISH_ROLES: AdminRole[] = [AdminRole.OWNER];
 /** OPS-01..07 — introspective platform/ops visibility (errors, deploys, backups, costs), not customer data — OWNER-only, grouped with the rest of Admin. */
 export const SYSTEM_ROLES: AdminRole[] = [AdminRole.OWNER];
 
-/** PRIV-01..05 — data export, deletion policy, consent, and retention config are compliance-grade and irreversible-adjacent — OWNER-only, mirroring ACCOUNT_DANGEROUS_ACTION_ROLES/TRUST_DANGEROUS_ROLES. PRIV-05's masking/reveal is applied inside Money's existing billing pages and stays gated by BILLING_ROLES there, not this constant. */
+/** PRIV-01..05 — data export, deletion policy, consent, and retention config are compliance-grade and irreversible-adjacent — OWNER-only, mirroring ACCOUNT_DANGEROUS_ACTION_ROLES/TRUST_DANGEROUS_ROLES. PRIV-05's masking/reveal is applied wherever a per-account amount is shown (Money's billing pages, and DATA-03's flagged-records list) and stays gated by MASKED_MONEY_REVEAL_ROLES there, not this constant. */
 export const PRIVACY_ROLES: AdminRole[] = [AdminRole.OWNER];
+
+/**
+ * PRIV-05 — every surface that shows a masked-by-default per-account amount
+ * (src/components/masked-money.tsx) shares one reveal gate: the union of
+ * every role roster that can legitimately reach a page using it. Today
+ * that's Money's billing pages (BILLING_ROLES: OWNER/FINANCE) and DATA-03's
+ * flagged-records list (DATA_QUALITY_ROLES: OWNER/SUPPORT) — a SUPPORT admin
+ * looking at a flagged record needs to be able to reveal it even though
+ * SUPPORT isn't in BILLING_ROLES. READ is excluded from both, so it's
+ * excluded here too, matching "READ cannot reach a named account at all".
+ */
+export const MASKED_MONEY_REVEAL_ROLES: AdminRole[] = [
+  ...new Set([...BILLING_ROLES, ...DATA_QUALITY_ROLES]),
+];
 
 export function canAccessAccounts(role: AdminRole): boolean {
   return ACCOUNTS_ROLES.includes(role);

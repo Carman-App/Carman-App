@@ -11,7 +11,7 @@ import { T } from '@/components/ui/Typography';
 import { fetchProjectById } from '@/data/api/aggregates';
 import { qk } from '@/data/queryKeys';
 import { updateProjectBrief } from '@/data/repo';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getActiveCurrency } from '@/lib/format';
 import type { BuildBriefType, ProjectBuild } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -115,7 +115,7 @@ export default function BuildBriefScreen() {
             <T variant="eyebrow" style={styles.fieldLabel}>
               BUILD BUDGET · {stageCount} STAGE{stageCount === 1 ? '' : 'S'}
             </T>
-            <TextField value={budget} onChangeText={setBudget} keyboardType="numeric" prefix="KES" placeholder="0" />
+            <TextField value={budget} onChangeText={setBudget} keyboardType="numeric" prefix={getActiveCurrency()} placeholder="0" />
 
             <T variant="eyebrow" style={styles.fieldLabel}>
               CONTINGENCY · {contingencyNum}%

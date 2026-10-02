@@ -102,7 +102,7 @@ export default function OdometerScreen() {
         Carma uses your odometer to track maintenance intervals, running costs and history.
       </T>
       {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
+        <T variant="body" color={Colors.error} center style={styles.error}>
           {error}
         </T>
       ) : null}

@@ -6,12 +6,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { queryClient } from '@/data/queryClient';
 import { useVehicle } from '@/data/hooks';
 import { respondToAccessRequest } from '@/data/repo';
-import { formatDateWithYear, formatNumber } from '@/lib/format';
+import { formatDateWithYear, formatDistance, getActiveDistanceUnit } from '@/lib/format';
 import type { AccessRequest } from '@/types/domain';
 import { Colors, Spacing } from '@/theme/tokens';
 
@@ -44,18 +45,25 @@ function useAccessRequest(id: string | undefined) {
   });
 }
 
+// Matches the API's own default (see DEFAULT_GRANT_DAYS in
+// admin/src/app/api/v1/access-requests/[id]/approve/route.ts) so leaving the
+// picker untouched grants exactly what the server would have chosen anyway.
+const WINDOW_OPTIONS = [7, 30, 90] as const;
+const DEFAULT_WINDOW_DAYS = 30;
+
 export default function AccessRequestScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const requestQuery = useAccessRequest(id);
   const { data: vehicle } = useVehicle(requestQuery.data?.vehicleId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [windowDays, setWindowDays] = useState<number>(DEFAULT_WINDOW_DAYS);
 
   const handleAllow = async () => {
     setBusy(true);
     setError(null);
     try {
-      await respondToAccessRequest(id, 'approved');
+      await respondToAccessRequest(id, 'approved', windowDays);
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
@@ -102,7 +110,9 @@ export default function AccessRequestScreen() {
               THEY WILL SEE
             </T>
             <T variant="body">Make, model, year and VIN</T>
-            <T variant="body">Current odometer{vehicle ? ` · ${formatNumber(vehicle.odometerKm)} km` : ''}</T>
+            <T variant="body">
+              Current odometer{vehicle ? ` · ${formatDistance(vehicle.odometerKm, { withUnit: false })} ${getActiveDistanceUnit()}` : ''}
+            </T>
             <T variant="body">Service and repair history</T>
           </Card>
 
@@ -121,13 +131,32 @@ export default function AccessRequestScreen() {
 
           {request.status === 'pending' ? (
             <View style={styles.actions}>
+              <Card style={styles.sectionCard}>
+                <T variant="eyebrow" style={styles.cardHeading}>
+                  ACCESS WINDOW
+                </T>
+                <T variant="body" color={Colors.textMuted}>
+                  Access expires on its own after this many days — no need to remember to revoke it.
+                </T>
+                <View style={styles.windowRow}>
+                  {WINDOW_OPTIONS.map((days) => (
+                    <Chip
+                      key={days}
+                      label={`${days} DAYS`}
+                      selected={windowDays === days}
+                      onPress={() => setWindowDays(days)}
+                    />
+                  ))}
+                </View>
+              </Card>
+
               {error ? (
-                <T variant="meta" color={Colors.danger} style={styles.error}>
+                <T variant="meta" color={Colors.error} style={styles.error}>
                   {error}
                 </T>
               ) : null}
               <Button onPress={handleAllow} loading={busy}>
-                Allow access
+                Allow access for {windowDays} days
               </Button>
               <Button variant="ghost" onPress={handleDecline} disabled={busy}>
                 Decline
@@ -135,7 +164,7 @@ export default function AccessRequestScreen() {
             </View>
           ) : (
             <View style={styles.resolvedBlock}>
-              <T variant="eyebrowStrong" color={request.status === 'approved' ? Colors.positive : Colors.danger}>
+              <T variant="eyebrowStrong" color={request.status === 'approved' ? Colors.accent : Colors.danger}>
                 {request.status.toUpperCase()}
               </T>
             </View>
@@ -167,6 +196,11 @@ const styles = StyleSheet.create({
   },
   cardHeading: {
     marginBottom: Spacing.xxs,
+  },
+  windowRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
   },
   explainer: {
     marginTop: Spacing.sm,

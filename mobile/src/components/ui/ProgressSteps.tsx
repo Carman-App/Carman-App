@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.disabledTrack,
   },
   segmentActive: {
     backgroundColor: Colors.accent,

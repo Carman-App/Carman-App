@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, ADMIN_MANAGEMENT_ROLES, roleLabel, ROLE_DESCRIPTIONS } from "@/lib/auth/rbac";
 import { AdminRole } from "@/generated/prisma/enums";
 import { formatDateTime } from "@/lib/format";
-import { updateAdminRole, toggleAdminDisabled, forceSignOutAnySession } from "./actions";
+import { toggleAdminDisabled, forceSignOutAnySession } from "./actions";
+import { RoleChangeControl, type PendingRoleChange } from "./role-change-panel";
 import CreateAdminForm from "./create-admin-form";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +24,38 @@ export default async function AdminUsersPage() {
   const me = await requireRole(ADMIN_MANAGEMENT_ROLES);
   const admins = await getAdmins();
 
+  // AUD-03: pending two-person-approved role changes, keyed by target admin.
+  const pendingRoleChangeRows = await prisma.twoPersonApproval.findMany({
+    where: { entityType: "AdminUser", action: "admin.user.role_change", status: "PENDING" },
+    orderBy: { requestedAt: "desc" },
+  });
+  const requesterIds = [...new Set(pendingRoleChangeRows.map((a) => a.requestedByAdminId))];
+  const requesters = requesterIds.length
+    ? await prisma.adminUser.findMany({ where: { id: { in: requesterIds } }, select: { id: true, name: true, email: true } })
+    : [];
+  const requesterNames = new Map(requesters.map((r) => [r.id, `${r.name} (${r.email})`]));
+  const pendingRoleChangeByTarget = new Map<string, PendingRoleChange>();
+  for (const row of pendingRoleChangeRows) {
+    if (pendingRoleChangeByTarget.has(row.entityId)) continue; // most recent only, per target
+    const payload = row.payload as { role?: string };
+    pendingRoleChangeByTarget.set(row.entityId, {
+      id: row.id,
+      requestedAt: row.requestedAt,
+      requestedByAdminId: row.requestedByAdminId,
+      requestedByLabel: requesterNames.get(row.requestedByAdminId) ?? row.requestedByAdminId,
+      reason: row.reason,
+      newRole: (payload.role ?? "READ") as AdminRole,
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-neutral-900">Admins & roles</h1>
         <p className="text-sm text-neutral-500">
           Owner-only. Every create/role-change/disable here is written to the audit log (AUD-04).
+          Role changes need a second, different Owner&rsquo;s approval before they take effect
+          (AUD-03) — request one from the Role column, then have another Owner approve it.
         </p>
       </div>
 
@@ -70,27 +97,15 @@ export default async function AdminUsersPage() {
                       {a.name} {isSelf && <span className="text-xs text-neutral-500">(you)</span>}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">{a.email}</td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      <form action={updateAdminRole} className="flex items-center gap-2">
-                        <input type="hidden" name="adminId" value={a.id} />
-                        <select
-                          name="role"
-                          defaultValue={a.role}
-                          disabled={isSelf}
-                          className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-900 disabled:opacity-50"
-                        >
-                          {(Object.values(AdminRole) as AdminRole[]).map((r) => (
-                            <option key={r} value={r}>
-                              {roleLabel(r)}
-                            </option>
-                          ))}
-                        </select>
-                        {!isSelf && (
-                          <button type="submit" className="text-xs text-neutral-600 hover:underline">
-                            Save
-                          </button>
-                        )}
-                      </form>
+                    <td className="px-4 py-2">
+                      <RoleChangeControl
+                        adminId={a.id}
+                        currentRole={a.role}
+                        roleLabel={roleLabel}
+                        isSelf={isSelf}
+                        pending={pendingRoleChangeByTarget.get(a.id) ?? null}
+                        currentAdminId={me.adminId}
+                      />
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">
                       {a.disabledAt ? (

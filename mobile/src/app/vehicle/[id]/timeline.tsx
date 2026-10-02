@@ -10,12 +10,20 @@ import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useGarageMembers, useRecords, useVehicle } from '@/data/hooks';
-import { formatDateShort, formatDateWithYear, formatMoney, formatMonthYear, formatNumber } from '@/lib/format';
-import type { VehicleRecord } from '@/types/domain';
+import { useDocuments, useGarageMembers, useRecords, useVehicle } from '@/data/hooks';
+import { formatDateShort, formatDateWithYear, formatDistance, formatMoney, formatMonthYear, formatVolume } from '@/lib/format';
+import type { VehicleDocument, VehicleRecord } from '@/types/domain';
 import { Colors, Spacing } from '@/theme/tokens';
 
 type Filter = 'all' | 'service' | 'repairs' | 'fuel' | 'docs';
+
+// A single row on the timeline is either a self-entered record or a stored
+// document — merged so "Docs" actually shows documents (insurance, logbook,
+// receipts, ...) instead of misfiring on 'part'/'expense' records, which
+// aren't documents at all. `date` is the sort/group key for both.
+type TimelineEntry =
+  | { kind: 'record'; date: string; record: VehicleRecord }
+  | { kind: 'document'; date: string; document: VehicleDocument };
 
 export default function VehicleTimelineScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,27 +31,38 @@ export default function VehicleTimelineScreen() {
   const vehicle = vehicleQuery.data;
   const recordsQuery = useRecords(id);
   const records = useMemo(() => recordsQuery.data ?? [], [recordsQuery.data]);
+  const documentsQuery = useDocuments(id);
+  const documents = useMemo(() => documentsQuery.data ?? [], [documentsQuery.data]);
   const members = useGarageMembers(vehicle?.garageId).data ?? [];
   const [filter, setFilter] = useState<Filter>('all');
 
   const ownerName = members.find((m) => m.role === 'owner')?.name;
 
+  const entries = useMemo<TimelineEntry[]>(
+    () => [
+      ...records.map((record): TimelineEntry => ({ kind: 'record', date: record.date, record })),
+      ...documents.map((document): TimelineEntry => ({ kind: 'document', date: document.addedAt, document })),
+    ],
+    [records, documents]
+  );
+
   const filtered = useMemo(() => {
-    if (filter === 'service') return records.filter((r) => r.type === 'service');
-    if (filter === 'repairs') return records.filter((r) => r.type === 'repair');
-    if (filter === 'fuel') return records.filter((r) => r.type === 'fuel');
-    if (filter === 'docs') return records.filter((r) => r.type === 'part' || r.type === 'expense');
-    return records;
-  }, [records, filter]);
+    if (filter === 'service') return entries.filter((e) => e.kind === 'record' && e.record.type === 'service');
+    if (filter === 'repairs') return entries.filter((e) => e.kind === 'record' && e.record.type === 'repair');
+    if (filter === 'fuel') return entries.filter((e) => e.kind === 'record' && e.record.type === 'fuel');
+    if (filter === 'docs') return entries.filter((e) => e.kind === 'document');
+    return entries;
+  }, [entries, filter]);
 
   // Grouped by calendar month (newest first), each with a running subtotal —
   // matches the prototype's TIMELINE screen (month header + "KES n,nnn" next to it).
+  // Documents don't carry an amount, so they don't add to the subtotal.
   const monthGroups = useMemo(() => {
-    const map = new Map<string, VehicleRecord[]>();
-    for (const r of filtered) {
-      const key = r.date.slice(0, 7); // YYYY-MM
+    const map = new Map<string, TimelineEntry[]>();
+    for (const e of filtered) {
+      const key = e.date.slice(0, 7); // YYYY-MM
       const list = map.get(key) ?? [];
-      list.push(r);
+      list.push(e);
       map.set(key, list);
     }
     return Array.from(map.entries())
@@ -51,25 +70,29 @@ export default function VehicleTimelineScreen() {
       .map(([month, items]) => ({
         month,
         items,
-        subtotal: items.reduce((sum, r) => sum + r.amount, 0),
+        subtotal: items.reduce((sum, e) => sum + (e.kind === 'record' ? e.record.amount : 0), 0),
       }));
   }, [filtered]);
 
   // Header (make/model, "added to Carma" date) needs the vehicle; the list
-  // needs records — the page is meaningless without both, so they gate
-  // loading/error together.
+  // needs records and documents — the page is meaningless without all three,
+  // so they gate loading/error together.
   const primaryQuery = useMemo(
     () => ({
-      data: vehicle && recordsQuery.data ? ({ vehicle, records: recordsQuery.data } as const) : undefined,
-      isLoading: vehicleQuery.isLoading || recordsQuery.isLoading,
-      isError: vehicleQuery.isError || recordsQuery.isError,
-      error: vehicleQuery.error ?? recordsQuery.error,
+      data:
+        vehicle && recordsQuery.data && documentsQuery.data
+          ? ({ vehicle, records: recordsQuery.data, documents: documentsQuery.data } as const)
+          : undefined,
+      isLoading: vehicleQuery.isLoading || recordsQuery.isLoading || documentsQuery.isLoading,
+      isError: vehicleQuery.isError || recordsQuery.isError || documentsQuery.isError,
+      error: vehicleQuery.error ?? recordsQuery.error ?? documentsQuery.error,
       refetch: () => {
         vehicleQuery.refetch();
         recordsQuery.refetch();
+        documentsQuery.refetch();
       },
     }),
-    [vehicle, recordsQuery, vehicleQuery]
+    [vehicle, recordsQuery, documentsQuery, vehicleQuery]
   );
 
   return (
@@ -84,13 +107,13 @@ export default function VehicleTimelineScreen() {
       </Pressable>
 
       <T variant="eyebrow" style={styles.count}>
-        {records.length === 0 ? 'NO RECORDS YET' : `${records.length} EVENT${records.length === 1 ? '' : 'S'} · SINCE ${formatDateWithYear(vehicle.createdAt).toUpperCase()}`}
+        {entries.length === 0 ? 'NO RECORDS YET' : `${entries.length} EVENT${entries.length === 1 ? '' : 'S'} · SINCE ${formatDateWithYear(vehicle.createdAt).toUpperCase()}`}
       </T>
       <T variant="display" style={styles.title}>
         Timeline
       </T>
 
-      {records.length === 0 ? (
+      {entries.length === 0 ? (
         <EmptyState
           glyph="timeline"
           title="Nothing on the record yet."
@@ -116,25 +139,44 @@ export default function VehicleTimelineScreen() {
                 <T variant="bodyStrong">{formatMoney(subtotal)}</T>
               </View>
               <Card padded={false} style={styles.groupCard}>
-                {items.map((r, i) => (
-                  <ListRow
-                    key={r.id}
-                    bordered={i < items.length - 1}
-                    left={
-                      <View style={styles.dateBadge}>
-                        <T variant="meta" style={styles.dateDay}>
-                          {formatDateShort(r.date).split(' ')[0]}
-                        </T>
-                        <T variant="meta">{formatDateShort(r.date).split(' ')[1]}</T>
-                      </View>
-                    }
-                    title={recordTitle(r.type, r.litres)}
-                    subtitle={recordSubtitle(r, ownerName)}
-                    onPress={() => router.push(`/record/${r.id}/edit`)}
-                    style={styles.row}
-                    right={<T variant="bodyStrong">{formatMoney(r.amount, '')}</T>}
-                  />
-                ))}
+                {items.map((entry, i) => {
+                  const dateBadge = (
+                    <View style={styles.dateBadge}>
+                      <T variant="meta" style={styles.dateDay}>
+                        {formatDateShort(entry.date).split(' ')[0]}
+                      </T>
+                      <T variant="meta">{formatDateShort(entry.date).split(' ')[1]}</T>
+                    </View>
+                  );
+                  if (entry.kind === 'document') {
+                    const d = entry.document;
+                    return (
+                      <ListRow
+                        key={`doc-${d.id}`}
+                        bordered={i < items.length - 1}
+                        left={dateBadge}
+                        title={d.title}
+                        subtitle={documentSubtitle(d)}
+                        onPress={() => router.push(`/doc/${d.id}`)}
+                        style={styles.row}
+                        right={<T variant="meta" color={Colors.textMuted}>DOC</T>}
+                      />
+                    );
+                  }
+                  const r = entry.record;
+                  return (
+                    <ListRow
+                      key={r.id}
+                      bordered={i < items.length - 1}
+                      left={dateBadge}
+                      title={recordTitle(r.type, r.litres)}
+                      subtitle={recordSubtitle(r, ownerName)}
+                      onPress={() => router.push(`/record/${r.id}/edit`)}
+                      style={styles.row}
+                      right={<T variant="bodyStrong">{formatMoney(r.amount, '')}</T>}
+                    />
+                  );
+                })}
               </Card>
             </View>
           ))}
@@ -151,8 +193,21 @@ export default function VehicleTimelineScreen() {
   );
 }
 
+const DOCUMENT_TYPE_LABEL: Record<VehicleDocument['type'], string> = {
+  insurance: 'Insurance',
+  logbook: 'Logbook',
+  inspection: 'Inspection report',
+  invoice: 'Invoice',
+  receipt: 'Receipt',
+};
+
+function documentSubtitle(d: VehicleDocument): string {
+  const kind = DOCUMENT_TYPE_LABEL[d.type].toUpperCase();
+  return d.expiryDate ? `${kind} · EXPIRES ${formatDateShort(d.expiryDate).toUpperCase()}` : kind;
+}
+
 function recordTitle(type: string, litres?: number) {
-  if (type === 'fuel') return litres ? `Fuel · ${litres} L` : 'Fuel';
+  if (type === 'fuel') return litres ? `Fuel · ${formatVolume(litres)}` : 'Fuel';
   if (type === 'service') return 'Service';
   if (type === 'repair') return 'Repair';
   if (type === 'part') return 'Part';
@@ -164,7 +219,7 @@ function recordTitle(type: string, litres?: number) {
  * "ADDED BY X" line when someone other than the garage owner logged it —
  * matching the prototype's TIMELINE row structure. */
 function recordSubtitle(r: VehicleRecord, ownerName?: string): string {
-  const odo = `${formatNumber(r.odometerAtEntry)} KM`;
+  const odo = formatDistance(r.odometerAtEntry);
   let detail: string;
   if (r.type === 'fuel') {
     detail = r.place ? `${r.place.toUpperCase()} · FULL TANK · ${odo}` : `FULL TANK · ${odo}`;

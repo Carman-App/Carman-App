@@ -1,26 +1,32 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAccount } from "@/lib/api/auth";
-import { apiError, apiOk } from "@/lib/api/response";
+import { apiError, apiOk, apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { createWorkshopSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
+import { parsePagination } from "@/lib/api/pagination";
 import { WorkshopRole } from "@/generated/prisma/enums";
 
-// GET /api/v1/workshops — workshops the caller owns or is staff at.
+// GET /api/v1/workshops — workshops the caller owns or is staff at. Paginated
+// for consistency with every other /api/v1/* list endpoint (AGENTS.md
+// scalability pass, section 4) even though in practice bounded to a handful
+// per account today.
 // Chain: auth -> account -> query.
 export async function GET(req: NextRequest) {
   try {
     const account = await requireAccount(req);
+    const { page, pageSize, skip, take } = parsePagination(req);
 
-    const workshops = await prisma.workshop.findMany({
-      where: {
-        OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id } } }],
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const where = {
+      OR: [{ ownerId: account.id }, { members: { some: { accountId: account.id } } }],
+    };
+    const [workshops, total] = await Promise.all([
+      prisma.workshop.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
+      prisma.workshop.count({ where }),
+    ]);
 
-    return apiOk(workshops);
+    return apiOkPaginated(workshops, { page, pageSize, total });
   } catch (error) {
     return handleApiError(error);
   }

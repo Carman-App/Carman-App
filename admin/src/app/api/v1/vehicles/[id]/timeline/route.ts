@@ -6,6 +6,7 @@ import { apiOkPaginated } from "@/lib/api/response";
 import { handleApiError } from "@/lib/api/errors";
 import { parsePagination } from "@/lib/api/pagination";
 import { getRecordsFeed, getRecordsCount } from "@/lib/records";
+import { withApiLogging } from "@/lib/api/withLogging";
 
 type TimelineItem =
   | ({ kind: "FUEL" | "SERVICE" | "REPAIR" | "EXPENSE" | "ODOMETER" } & Awaited<
@@ -25,11 +26,11 @@ type TimelineItem =
 // across all five record types plus documents. Paginated the same way as
 // vehicles/:id/records (over-fetch enough to cover the page, sort, slice —
 // heterogeneous sources can't be paginated at the DB level).
-// Chain: auth -> account -> membership/ownership -> query.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+// Chain: auth -> account -> membership/ownership -> query. Wrapped with
+// structured request logging — exercised by the load test (section 21).
+export const GET = withApiLogging(
+  "vehicles.timeline",
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const account = await requireAccount(req);
     const { id: vehicleId } = await params;
@@ -72,4 +73,5 @@ export async function GET(
   } catch (error) {
     return handleApiError(error);
   }
-}
+  },
+);

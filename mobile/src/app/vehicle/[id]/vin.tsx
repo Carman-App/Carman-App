@@ -8,7 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { updateVehicle } from '@/data/repo';
 import { useVehicle } from '@/data/hooks';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 export default function VehicleVinScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,21 +40,21 @@ export default function VehicleVinScreen() {
       <T variant="display" style={styles.title}>
         Add your VIN
       </T>
-      <T variant="body" color="#6F6C63" style={styles.intro}>
+      <T variant="body" color={Colors.textMuted} style={styles.intro}>
         Your VIN tells Carma exactly which vehicle you own: down to the engine.
       </T>
 
       <View style={styles.bullets}>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
+        <T variant="body" color={Colors.textMuted} style={styles.bullet}>
           • Confirms exact specification
         </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
+        <T variant="body" color={Colors.textMuted} style={styles.bullet}>
           • Identifies compatible parts
         </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
+        <T variant="body" color={Colors.textMuted} style={styles.bullet}>
           • Surfaces manufacturer recalls
         </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
+        <T variant="body" color={Colors.textMuted} style={styles.bullet}>
           • Builds a verifiable history
         </T>
       </View>

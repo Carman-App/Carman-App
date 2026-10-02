@@ -11,7 +11,7 @@ import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useProject, useVehicle } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
-import { formatDateShort, formatMoney, formatNumber } from '@/lib/format';
+import { formatDateShort, formatDistance, formatMoney } from '@/lib/format';
 import { USAGE_LABEL, type Modification, type PartLine } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -127,7 +127,7 @@ export default function VehicleProjectScreen() {
         {vehicle.make} {vehicle.model}
       </T>
       <T variant="body" color={Colors.textMuted}>
-        {vehicle.year} · {vehicle.powertrain ? vehicle.powertrain.toUpperCase() : 'ENGINE N/A'} · {formatNumber(vehicle.odometerKm)} KM
+        {vehicle.year} · {vehicle.powertrain ? vehicle.powertrain.toUpperCase() : 'ENGINE N/A'} · {formatDistance(vehicle.odometerKm)}
       </T>
 
       <View style={styles.photo}>
@@ -136,10 +136,10 @@ export default function VehicleProjectScreen() {
 
       {daysSinceLastEntry != null ? (
         <Card style={styles.stalledBanner}>
-          <T variant="eyebrowStrong" color={Colors.warning}>
+          <T variant="eyebrowStrong" color={Colors.text}>
             {daysSinceLastEntry} DAY{daysSinceLastEntry === 1 ? '' : 'S'} SINCE LAST ENTRY
           </T>
-          <T variant="meta" color={Colors.warning}>
+          <T variant="meta" color={Colors.textMuted}>
             THIS IS THE STRETCH WHERE BUILDS STALL. LOG SOMETHING SMALL.
           </T>
         </Card>
@@ -150,7 +150,7 @@ export default function VehicleProjectScreen() {
       </T>
       <T variant="numericLarge">{formatMoney(forecast)}</T>
       {forecast > project.budget ? (
-        <T variant="meta" color={Colors.warning}>
+        <T variant="meta" color={Colors.danger}>
           OVER BUDGET BY {formatMoney(forecast - project.budget, '')}
           {contingency >= forecast - project.budget ? ' · CONTINGENCY COVERS IT' : ''}
         </T>

@@ -37,7 +37,7 @@ export default function EstimateApprovedScreen() {
         const summary = estimate.notes ?? estimate.lines[0]?.description ?? 'Work';
         return (
           <Screen scroll contentStyle={styles.content}>
-            <T variant="eyebrowStrong" color={Colors.positive}>
+            <T variant="eyebrowStrong" color={Colors.accent}>
               APPROVED
             </T>
             <T variant="display" style={styles.title}>

@@ -99,11 +99,11 @@ export default function SellWhatScreen() {
                   YOU KEEP A READ-ONLY COPY OF THE FULL HISTORY AFTER HANDOVER.
                 </T>
               </View>
-              <Switch value={keepCopy} onValueChange={setKeepCopy} trackColor={{ true: Colors.accent, false: Colors.border }} />
+              <Switch value={keepCopy} onValueChange={setKeepCopy} trackColor={{ true: Colors.accent, false: Colors.disabledTrack }} />
             </Pressable>
 
             {error ? (
-              <T variant="body" color={Colors.danger} center style={styles.error}>
+              <T variant="body" color={Colors.error} center style={styles.error}>
                 {error}
               </T>
             ) : null}

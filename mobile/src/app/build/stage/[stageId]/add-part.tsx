@@ -8,7 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { addPart } from '@/data/repo';
-import { formatDateShort, todayIso } from '@/lib/format';
+import { formatDateShort, getActiveCurrency, todayIso } from '@/lib/format';
 import type { PartStatus } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
@@ -55,7 +55,7 @@ export default function AddPartScreen() {
       }>
       <ModalHeader eyebrow="PART" />
 
-      <TextField label="AMOUNT" value={cost} onChangeText={setCost} keyboardType="numeric" prefix="KES" helper="SINGLE UNIT" />
+      <TextField label="AMOUNT" value={cost} onChangeText={setCost} keyboardType="numeric" prefix={getActiveCurrency()} helper="SINGLE UNIT" />
 
       <View style={styles.field}>
         <TextField label="PART" value={name} onChangeText={setName} placeholder="e.g. Front brake pads" />
