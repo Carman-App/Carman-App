@@ -3,14 +3,17 @@
   // (VS Code asks once to "Allow Automatic Tasks"), then pulls every minute.
   // --ff-only never merges or overwrites: if you have local edits to the same
   // files, it stops and says so instead of touching your work.
+  // After a pull that changes dependencies or the database schema it also
+  // runs `npm install` (admin/, mobile/) and `prisma generate` +
+  // `prisma migrate deploy` (admin/), so new code never runs against old packages.
   "version": "2.0.0",
   "tasks": [
     {
       "label": "Keep code up to date",
       "type": "shell",
-      "command": "while true; do git pull --ff-only --quiet && echo \"$(date +%H:%M) up to date\" || echo \"$(date +%H:%M) could not update: commit or stash your local changes\"; sleep 60; done",
+      "command": "while true; do old=$(git rev-parse HEAD); if git pull --ff-only --quiet; then new=$(git rev-parse HEAD); if [ \"$old\" != \"$new\" ]; then changed=$(git diff --name-only \"$old\" \"$new\"); echo \"$(date +%H:%M) pulled $(git log --oneline -1)\"; if echo \"$changed\" | grep -q '^admin/package'; then echo 'installing admin packages…'; (cd admin && npm install --no-audit --no-fund); fi; if echo \"$changed\" | grep -q '^mobile/package'; then echo 'installing mobile packages…'; (cd mobile && npm install --no-audit --no-fund); fi; if echo \"$changed\" | grep -q '^admin/prisma/'; then echo 'updating the database…'; (cd admin && npx prisma generate && npx prisma migrate deploy); fi; else echo \"$(date +%H:%M) up to date\"; fi; else echo \"$(date +%H:%M) could not update: commit or stash your local changes\"; fi; sleep 60; done",
       "windows": {
-        "command": "while ($true) { git pull --ff-only --quiet; if ($LASTEXITCODE -eq 0) { Write-Host \"$(Get-Date -Format HH:mm) up to date\" } else { Write-Host \"$(Get-Date -Format HH:mm) could not update: commit or stash your local changes\" }; Start-Sleep -Seconds 60 }"
+        "command": "while ($true) { $old = git rev-parse HEAD; git pull --ff-only --quiet; if ($LASTEXITCODE -eq 0) { $new = git rev-parse HEAD; if ($old -ne $new) { $changed = git diff --name-only $old $new; Write-Host \"$(Get-Date -Format HH:mm) pulled $(git log --oneline -1)\"; if ($changed -match '^admin/package') { Write-Host 'installing admin packages...'; Push-Location admin; npm install --no-audit --no-fund; Pop-Location }; if ($changed -match '^mobile/package') { Write-Host 'installing mobile packages...'; Push-Location mobile; npm install --no-audit --no-fund; Pop-Location }; if ($changed -match '^admin/prisma/') { Write-Host 'updating the database...'; Push-Location admin; npx prisma generate; npx prisma migrate deploy; Pop-Location } } else { Write-Host \"$(Get-Date -Format HH:mm) up to date\" } } else { Write-Host \"$(Get-Date -Format HH:mm) could not update: commit or stash your local changes\" }; Start-Sleep -Seconds 60 }"
       },
       "isBackground": true,
       "problemMatcher": [],
