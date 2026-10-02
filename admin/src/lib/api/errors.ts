@@ -2,6 +2,8 @@ import { apiError } from "@/lib/api/response";
 import { UnauthorizedError, ForbiddenError } from "@/lib/api/auth";
 import { PlanLimitExceededError } from "@/lib/limits";
 import { InvalidJobTransitionError } from "@/lib/jobs/state-machine";
+import { RateLimitedError } from "@/lib/rate-limit";
+import { SignInError } from "@/lib/auth/end-user";
 
 /**
  * Central error -> HTTP mapping for every /api/v1/* route, so the JSON error
@@ -41,6 +43,14 @@ export function handleApiError(error: unknown) {
   }
   if (error instanceof InvalidJobTransitionError) {
     return apiError(409, "INVALID_TRANSITION", error.message);
+  }
+  if (error instanceof RateLimitedError) {
+    const res = apiError(429, "RATE_LIMITED", error.message);
+    res.headers.set("Retry-After", String(error.retryAfterSeconds));
+    return res;
+  }
+  if (error instanceof SignInError) {
+    return apiError(error.status, error.status === 503 ? "NOT_CONFIGURED" : "SIGN_IN_FAILED", error.message);
   }
   console.error(error);
   return apiError(500, "INTERNAL_ERROR", "Something went wrong.");

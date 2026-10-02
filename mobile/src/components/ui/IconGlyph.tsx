@@ -73,6 +73,7 @@ import Settings02Icon from '@hugeicons/core-free-icons/Settings02Icon';
 import Shield01Icon from '@hugeicons/core-free-icons/Shield01Icon';
 import ShoppingBag01Icon from '@hugeicons/core-free-icons/ShoppingBag01Icon';
 import Tick02Icon from '@hugeicons/core-free-icons/Tick02Icon';
+import GoogleIcon from '@hugeicons/core-free-icons/GoogleIcon';
 import TireIcon from '@hugeicons/core-free-icons/TireIcon';
 import ToolsIcon from '@hugeicons/core-free-icons/ToolsIcon';
 import TowTruckIcon from '@hugeicons/core-free-icons/TowTruckIcon';
@@ -116,6 +117,7 @@ const ICONS: Record<string, IconSvgElement> = {
   date: Calendar01Icon,
   soon: Clock01Icon,
   check: Tick02Icon,
+  google: GoogleIcon,
   warning: Alert02Icon,
   wallet: CreditCardIcon,
   transfer: ArrowReloadHorizontalIcon,

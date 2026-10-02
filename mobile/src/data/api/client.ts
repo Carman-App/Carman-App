@@ -17,6 +17,8 @@
  */
 
 import Constants from 'expo-constants';
+
+import { clearSession, getSession, loadSession, saveSession, type Session } from '@/data/auth/session';
 import { Platform } from 'react-native';
 
 /** Same shape admin/src/lib/api/response.ts emits for paginated list endpoints. */
@@ -146,25 +148,86 @@ export function apiUrl(path: string, query?: RequestOptions['query']): string {
   return buildUrl(path, query);
 }
 
-/** Headers every API request carries (identity + JSON). */
-export function apiHeaders(): Record<string, string> {
-  return { 'Content-Type': 'application/json', 'x-carma-account-id': getCurrentAccountId() };
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/** Called when the session can no longer be refreshed, so the app can show Welcome. */
+let onSignedOut: (() => void) | null = null;
+export function setSignedOutHandler(fn: () => void) {
+  onSignedOut = fn;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+let refreshing: Promise<Session | null> | null = null;
+
+/** Trades the refresh token for a new pair. One refresh at a time; concurrent callers share it. */
+function refreshAccessToken(): Promise<Session | null> {
+  if (refreshing) return refreshing;
+  const session = getSession();
+  if (!session) return Promise.resolve(null);
+  refreshing = (async () => {
+    try {
+      const res = await fetch(buildUrl('auth/refresh'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: session.refreshToken }),
+      });
+      if (!res.ok) {
+        // 401/403: the session is over. Anything else (5xx, 429): keep it and let the call fail.
+        if (res.status === 401 || res.status === 403) {
+          await clearSession();
+          onSignedOut?.();
+        }
+        return null;
+      }
+      const next = ((await res.json()) as { data: Session }).data;
+      await saveSession(next);
+      return next;
+    } catch {
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+const REFRESH_EARLY_MS = 60_000;
+
+/**
+ * Headers every API request carries. With a session: `Authorization: Bearer`,
+ * refreshed shortly before it expires. Without one, in development only, the
+ * fixed dev account id (the server ignores it in production).
+ */
+export async function apiHeaders(): Promise<Record<string, string>> {
+  let session = getSession() ?? (await loadSession());
+  if (session && new Date(session.accessTokenExpiresAt).getTime() - Date.now() < REFRESH_EARLY_MS) {
+    session = (await refreshAccessToken()) ?? getSession();
+  }
+  if (session) return { 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` };
+  if (__DEV__ && process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID) {
+    return { 'Content-Type': 'application/json', 'x-carma-account-id': getCurrentAccountId() };
+  }
+  return { 'Content-Type': 'application/json' };
+}
+
+async function send(path: string, options: RequestOptions, retried = false): Promise<unknown> {
   const url = buildUrl(path, options.query);
   let res: Response;
   try {
     res = await fetch(url, {
       method: options.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-carma-account-id': getCurrentAccountId(),
-      },
+      headers: await apiHeaders(),
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
   } catch (cause) {
     throw new NetworkError(undefined, cause);
+  }
+
+  // An access token can expire or be revoked between the check and the call: refresh once and retry.
+  if (res.status === 401 && !retried && getSession()) {
+    const next = await refreshAccessToken();
+    if (next) return send(path, options, true);
   }
 
   let json: unknown = null;
@@ -184,44 +247,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       errorBody?.details
     );
   }
+  return json;
+}
 
-  return (json as { data: T }).data;
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return ((await send(path, options)) as { data: T }).data;
 }
 
 async function requestPaginated<T>(path: string, options: RequestOptions = {}): Promise<Paginated<T>> {
-  const url = buildUrl(path, options.query);
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: options.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-carma-account-id': getCurrentAccountId(),
-      },
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    });
-  } catch (cause) {
-    throw new NetworkError(undefined, cause);
-  }
-
-  let json: unknown = null;
-  try {
-    json = await res.json();
-  } catch {
-    // see note above
-  }
-
-  if (!res.ok) {
-    const errorBody = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
-    throw new ApiError(
-      res.status,
-      errorBody?.code ?? 'UNKNOWN_ERROR',
-      errorBody?.message ?? `Request failed with status ${res.status}.`,
-      errorBody?.details
-    );
-  }
-
-  const body = json as { data: T[]; pagination: PaginationMeta };
+  const body = (await send(path, options)) as { data: T[]; pagination: PaginationMeta };
   return { items: body.data, pagination: body.pagination };
 }
 

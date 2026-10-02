@@ -11,7 +11,8 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAccount, useActiveGarage, useUiState } from '@/data/hooks';
-import { resetDemoData, updateAccount } from '@/data/repo';
+import { updateAccount } from '@/data/repo';
+import { signOut } from '@/features/auth/signIn';
 import { setUiState } from '@/data/uiState';
 import { COUNTRIES } from '@/features/onboarding/countries';
 import { Colors, Spacing } from '@/theme/tokens';
@@ -97,7 +98,7 @@ export default function MyProfileScreen() {
       ))}
       <Pressable
         onPress={async () => {
-          await resetDemoData();
+          await signOut();
           router.replace('/onboarding/welcome');
         }}
         style={styles.row}>

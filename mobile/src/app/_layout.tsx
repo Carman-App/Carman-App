@@ -6,11 +6,13 @@ import {
   useFonts,
 } from '@expo-google-fonts/google-sans';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 
+import { setSignedOutHandler } from '@/data/api/client';
+import { loadSession, useSessionLoaded } from '@/data/auth/session';
 import { useHydrateOnMount } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
 import { Colors } from '@/theme/tokens';
@@ -32,7 +34,14 @@ export default function RootLayout() {
     GoogleSans_700Bold,
   });
   const hydrated = useHydrateOnMount();
-  const ready = fontsLoaded && hydrated;
+  const sessionLoaded = useSessionLoaded();
+  const ready = fontsLoaded && hydrated && sessionLoaded;
+
+  useEffect(() => {
+    void loadSession();
+    // A session that can no longer be refreshed (expired, revoked, account suspended) returns to Welcome.
+    setSignedOutHandler(() => router.replace('/onboarding/welcome'));
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});

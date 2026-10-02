@@ -2,39 +2,42 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { verifyAccessToken } from "@/lib/auth/end-user";
+import { recordActivity } from "@/lib/activity";
+import { clientIp, enforceLimit, LIMITS } from "@/lib/rate-limit";
 
 export type RequestAccount = Prisma.AccountGetPayload<{ include: { user: true } }>;
 
 /**
  * Identity resolution for the mobile-facing /api/v1/* routes.
  *
- * Real end-user authentication (Apple/Google OAuth) is a later phase — see
- * src/lib/auth/provider.ts. Until it lands there is no session token to
- * verify, so this reads an `x-carma-account-id` header as a development
- * stand-in for "the caller is this Account". This keeps the authorization
- * *chain* below (account -> role -> membership -> resource -> permission ->
- * plan limit) real and testable today; only the very first step is a stub.
+ * The caller proves who they are with `Authorization: Bearer <access token>`,
+ * a short-lived token issued after Google/Apple sign-in (see
+ * src/lib/auth/end-user.ts). Its signature and expiry are checked here.
  *
- * TODO(end-user-auth phase): replace the header read with verifying a real
- * session/JWT from the AuthProvider and swap this function's body — no
- * other route code should need to change.
+ * Development only: when ALLOW_DEV_ACCOUNT_HEADER=true and NODE_ENV is not
+ * "production", an `x-carma-account-id` header is still accepted so the app
+ * can run against a local server without OAuth credentials. In production
+ * that header is ignored no matter what the env says.
  */
-export async function getRequestAccount(req: NextRequest): Promise<RequestAccount | null> {
-  const accountId = req.headers.get("x-carma-account-id");
-  if (!accountId) return null;
+export function devAccountHeaderAllowed(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_ACCOUNT_HEADER === "true";
+}
 
-  const account = await prisma.account.findUnique({ where: { id: accountId }, include: { user: true } });
-
-  // Active-user proxy signal for Pulse (see AGENTS.md "Definitions" — mobile
-  // has no session/open-app analytics yet, so "API request activity tied to
-  // an account" is the closest observable stand-in). Fire-and-forget: never
-  // let bookkeeping slow down or fail a real request.
-  if (account) {
-    void prisma.account
-      .update({ where: { id: account.id }, data: { lastApiRequestAt: new Date() } })
-      .catch(() => {});
+async function resolveAccountId(req: NextRequest): Promise<string | null> {
+  const auth = req.headers.get("authorization");
+  if (auth?.toLowerCase().startsWith("bearer ")) {
+    return verifyAccessToken(auth.slice(7).trim());
   }
+  if (devAccountHeaderAllowed()) return req.headers.get("x-carma-account-id");
+  return null;
+}
 
+export async function getRequestAccount(req: NextRequest): Promise<RequestAccount | null> {
+  const accountId = await resolveAccountId(req);
+  if (!accountId) return null;
+  const account = await prisma.account.findUnique({ where: { id: accountId }, include: { user: true } });
+  if (account) recordActivity(account.id);
   return account;
 }
 
@@ -55,9 +58,15 @@ export class ForbiddenError extends Error {
 export async function requireAccount(req: NextRequest): Promise<RequestAccount> {
   const account = await getRequestAccount(req);
   if (!account) {
-    throw new UnauthorizedError(
-      "Missing or unknown x-carma-account-id header (end-user auth not implemented yet).",
-    );
+    await enforceLimit(LIMITS.anonymous, clientIp(req));
+    throw new UnauthorizedError("Sign in to continue.");
+  }
+  await enforceLimit(LIMITS.api, account.id);
+  if (req.method !== "GET" && req.method !== "HEAD") await enforceLimit(LIMITS.write, account.id);
+  // A suspended, deleted or merged account keeps no API access, even with a
+  // still-valid access token.
+  if (account.suspendedAt || account.deletedAt || account.mergedIntoAccountId) {
+    throw new ForbiddenError("This account cannot be used. Contact Carma support.");
   }
   return account;
 }

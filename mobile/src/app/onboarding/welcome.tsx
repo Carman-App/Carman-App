@@ -1,19 +1,59 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { T } from '@/components/ui/Typography';
+import { useSignedIn } from '@/data/auth/session';
 import { useAccount, useOnboarded, useUiState } from '@/data/hooks';
+import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, signOut, type SignInOutcome } from '@/features/auth/signIn';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
-/** Welcome. Google or Apple only; the three stripes are the Carma blue, signal red and yellow. */
+/**
+ * Welcome. Sign in with Apple or Google; the three stripes are the Carma
+ * blue, signal red and yellow. Signed in already: carry on, or finish set-up.
+ * In development only, a demo account can be used without signing in.
+ */
 export default function WelcomeScreen() {
+  const signedIn = useSignedIn();
   const onboarded = useOnboarded();
   const mode = useUiState('mode');
+  const [busy, setBusy] = useState<'apple' | 'google' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState({ apple: false, google: false, dev: false });
+  const devAllowed = __DEV__ && !!process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
+  // With no session, the account is only knowable through the development demo account.
   const account = useAccount().data;
-  const firstName = account?.name?.split(' ')[0];
+  const firstName = signedIn || providers.dev ? account?.name?.split(' ')[0] : undefined;
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const [config, apple] = await Promise.all([fetchAuthConfig(), appleAvailable()]);
+      if (live) setProviders({ apple: apple && config.apple, google: config.google && googleAvailable(), dev: devAllowed && config.devAccount });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [devAllowed]);
+
+  const run = async (which: 'apple' | 'google') => {
+    setBusy(which);
+    setError(null);
+    const outcome: SignInOutcome = which === 'apple' ? await signInWithApple() : await signInWithGoogle();
+    setBusy(null);
+    if (!outcome.ok) {
+      if (!outcome.cancelled) setError(outcome.message ?? 'Sign-in failed. Try again.');
+      return;
+    }
+    router.replace('/');
+  };
+
+  const continueHref = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
+  const canContinue = (signedIn || providers.dev) && onboarded;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -34,18 +74,50 @@ export default function WelcomeScreen() {
         </View>
       </View>
       <View style={styles.foot}>
-        {onboarded ? (
+        {canContinue ? (
           <>
-            <Button onPress={() => router.replace(mode === 'mechanic' ? '/mechanic/dashboard' : '/home')}>
-              {firstName ? `Continue as ${firstName}` : 'Continue'}
-            </Button>
-            <Button variant="secondary" size="md" onPress={() => router.push('/onboarding/country')}>
-              Set up again
-            </Button>
+            <Button onPress={() => router.replace(continueHref)}>{firstName ? `Continue as ${firstName}` : 'Continue'}</Button>
+            {signedIn ? (
+              <Pressable hitSlop={8} onPress={() => void signOut()} style={styles.link}>
+                <T variant="meta" color={Colors.body}>
+                  Not you? Sign out
+                </T>
+              </Pressable>
+            ) : null}
           </>
+        ) : signedIn ? (
+          <Button onPress={() => router.push('/onboarding/country')}>Set up my garage</Button>
         ) : (
           <>
-            <Button onPress={() => router.push('/onboarding/country')}>Get started</Button>
+            {providers.apple ? (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={28}
+                style={styles.apple}
+                onPress={() => void run('apple')}
+              />
+            ) : null}
+            {providers.google ? (
+              <Button variant="secondary" glyph="google" loading={busy === 'google'} disabled={!!busy} onPress={() => void run('google')}>
+                Continue with Google
+              </Button>
+            ) : null}
+            {providers.dev ? (
+              <Button variant={providers.apple || providers.google ? 'ghost' : 'primary'} onPress={() => router.push('/onboarding/country')}>
+                Use the demo account (development)
+              </Button>
+            ) : null}
+            {!providers.apple && !providers.google && !providers.dev ? (
+              <T variant="meta" color={Colors.body} center>
+                Sign-in is not available right now. Check your connection and reopen Carma.
+              </T>
+            ) : null}
+            {error ? (
+              <T variant="meta" color={Colors.signal} center>
+                {error}
+              </T>
+            ) : null}
             <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
               FREE TRIAL · NO CARD TO START{'\n'}YOUR RECORDS STAY READABLE WHEN IT ENDS
             </T>
@@ -113,5 +185,13 @@ const styles = StyleSheet.create({
   },
   trial: {
     lineHeight: 16,
+  },
+  apple: {
+    height: 56,
+    width: '100%',
+  },
+  link: {
+    alignSelf: 'center',
+    paddingVertical: 4,
   },
 });

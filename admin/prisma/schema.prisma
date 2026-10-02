@@ -637,7 +637,8 @@ model User {
   emailVerifiedSource    VerificationSource?
   emailVerifiedByAdminId String? // set only when emailVerifiedSource = ADMIN
 
-  account Account?
+  account        Account?
+  authIdentities AuthIdentity[]
 
   @@map("users")
 }
@@ -714,6 +715,8 @@ model Account {
   privacyConsents      PrivacyConsent[]
   dataExportRequests   DataExportRequest[]
   syncErrors           SyncError[]
+
+  refreshTokens EndUserRefreshToken[]
 
   @@index([deletedAt])
   @@index([suspendedAt])
@@ -959,14 +962,14 @@ model ExpenseRecord {
 }
 
 model OdometerReading {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   vehicleId          String
   date               DateTime
   odometerKm         Int
   enteredByAccountId String?
   enteredByName      String
   notes              String?
-  createdAt          DateTime @default(now())
+  createdAt          DateTime  @default(now())
   editedAt           DateTime? // DATA-02 — see FuelRecord.editedAt comment
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -2118,15 +2121,15 @@ model Banner {
 // instrumentation pass would POST into; it stays empty until that exists —
 // nothing here fabricates a telemetry pipeline.
 model SyncError {
-  id           String    @id @default(cuid())
-  accountId    String?
-  deviceInfo   String? // freeform (OS, app version) — shape TBD by whatever the mobile client eventually sends
-  operation    String // e.g. "record.create", "document.upload"
-  message      String
-  metadata     Json?     @db.JsonB
-  occurredAt   DateTime // when the client says it happened
-  reportedAt   DateTime  @default(now()) // when this row was written
-  resolvedAt   DateTime?
+  id         String    @id @default(cuid())
+  accountId  String?
+  deviceInfo String? // freeform (OS, app version) — shape TBD by whatever the mobile client eventually sends
+  operation  String // e.g. "record.create", "document.upload"
+  message    String
+  metadata   Json?     @db.JsonB
+  occurredAt DateTime // when the client says it happened
+  reportedAt DateTime  @default(now()) // when this row was written
+  resolvedAt DateTime?
 
   account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
@@ -2219,18 +2222,18 @@ model ConfigListItem {
 // populates this table today (the mobile make/model picker has no "type
 // your own" path); the admin queue/approve/merge UI exists for when it does.
 model UserSubmittedVehicleModel {
-  id                    String                       @id @default(cuid())
-  vehicleType           VehicleType
-  make                  String
-  model                 String
-  submittedByAccountId  String?
-  status                VehicleModelSubmissionStatus @default(PENDING)
-  mergedIntoMake        String?
-  mergedIntoModel       String?
-  reviewNote            String?
-  reviewedByAdminId     String?
-  reviewedAt            DateTime?
-  createdAt             DateTime                     @default(now())
+  id                   String                       @id @default(cuid())
+  vehicleType          VehicleType
+  make                 String
+  model                String
+  submittedByAccountId String?
+  status               VehicleModelSubmissionStatus @default(PENDING)
+  mergedIntoMake       String?
+  mergedIntoModel      String?
+  reviewNote           String?
+  reviewedByAdminId    String?
+  reviewedAt           DateTime?
+  createdAt            DateTime                     @default(now())
 
   @@index([status])
   @@map("user_submitted_vehicle_models")
@@ -2333,14 +2336,14 @@ model SubscriptionRules {
 // job queue exists), so this is mostly a record of "this happened", not a
 // long-lived queue state machine.
 model DataExportRequest {
-  id                  String            @id @default(cuid())
-  accountId           String
-  requestedByAdminId  String
-  reason              String
-  status              DataExportStatus  @default(GENERATED)
-  recordCounts        Json?             @db.JsonB // summary of what was included, per model
-  downloadedAt        DateTime?
-  createdAt           DateTime          @default(now())
+  id                 String           @id @default(cuid())
+  accountId          String
+  requestedByAdminId String
+  reason             String
+  status             DataExportStatus @default(GENERATED)
+  recordCounts       Json?            @db.JsonB // summary of what was included, per model
+  downloadedAt       DateTime?
+  createdAt          DateTime         @default(now())
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
@@ -2410,3 +2413,53 @@ model RetentionPurgeLog {
 
 // PRIV-05 (masking + reveal-with-reason access logging) reuses the existing
 // AuditLog table (see src/lib/audit.ts) exactly like AUD-06 — no new model.
+
+// ============================================================================
+// End-user sign-in (Google / Apple)
+// ============================================================================
+
+enum AuthProviderKind {
+  GOOGLE
+  APPLE
+}
+
+// One row per provider login linked to a person. `subject` is the provider's
+// stable "sub" claim, never the email (emails change; Apple relays them).
+model AuthIdentity {
+  id         String           @id @default(cuid())
+  userId     String
+  provider   AuthProviderKind
+  subject    String
+  email      String?
+  createdAt  DateTime         @default(now())
+  lastUsedAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+// Long-lived refresh tokens for the mobile app. Only a SHA-256 hash is
+// stored. Each refresh rotates the token; presenting an already-used token
+// revokes its whole family (theft detection). Access tokens are short-lived
+// signed JWTs and are never stored.
+model EndUserRefreshToken {
+  id            String    @id @default(cuid())
+  accountId     String
+  familyId      String
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  revokedAt     DateTime?
+  revokedReason String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([familyId])
+  @@map("end_user_refresh_tokens")
+}

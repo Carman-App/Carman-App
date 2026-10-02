@@ -287,3 +287,21 @@ export const assistantRequestSchema = z
   .refine((d) => (d.mode === "owner" ? !!d.garageId : !!d.workshopId), {
     message: "Owner questions need a garageId; mechanic questions need a workshopId.",
   });
+
+// --- End-user sign-in --------------------------------------------------------
+
+export const googleSignInSchema = z.object({
+  idToken: z.string().min(20).max(8000),
+});
+
+export const appleSignInSchema = z.object({
+  identityToken: z.string().min(20).max(8000),
+  /** The one-time nonce whose SHA-256 the app passed to Apple. */
+  rawNonce: z.string().min(16).max(200),
+  /** Apple only shares the name on the very first sign-in. */
+  fullName: z.string().max(120).optional(),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(20).max(200),
+});

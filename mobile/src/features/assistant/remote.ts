@@ -147,7 +147,7 @@ export async function askRemoteStream(input: AskInput, onPartial: (p: { lead: st
   try {
     res = (await streamingFetch(apiUrl('assistant/stream'), {
       method: 'POST',
-      headers: apiHeaders(),
+      headers: await apiHeaders(),
       body: JSON.stringify(input),
     })) as unknown as Response;
   } catch {
