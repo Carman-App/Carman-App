@@ -232,7 +232,7 @@ export default async function BillingPage() {
               className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
             />
           </div>
-          <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800">
+          <button type="submit" className="rounded-full bg-carma-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-carma-700">
             Download CSV
           </button>
         </form>

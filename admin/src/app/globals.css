@@ -1,18 +1,51 @@
 @import "tailwindcss";
 
+/*
+ * Carma brand, shared with the mobile app (mobile/src/theme/tokens.ts):
+ * Google Sans, Carma blue #134B9C, signal red #DB2617, yellow #F8C01D,
+ * and warm neutrals instead of Tailwind's cool greys. Overriding the
+ * neutral scale re-tints every existing `*-neutral-*` class at once.
+ */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #14161a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-satoshi);
+  --font-sans: var(--font-google-sans);
+}
+
+@theme {
+  --color-neutral-50: #f7f5f2;
+  --color-neutral-100: #f2f0eb;
+  --color-neutral-200: #edebe7;
+  --color-neutral-300: #dad7d1;
+  --color-neutral-400: #b4afa8;
+  --color-neutral-500: #6e6862;
+  --color-neutral-600: #5f5a55;
+  --color-neutral-700: #4a4642;
+  --color-neutral-800: #2a2c31;
+  --color-neutral-900: #14161a;
+  --color-neutral-950: #0b0c0e;
+
+  --color-carma-50: #eef3fa;
+  --color-carma-100: #e1ebf7;
+  --color-carma-200: #c4d6ee;
+  --color-carma-500: #2a62b4;
+  --color-carma-600: #134b9c;
+  --color-carma-700: #0f3e82;
+  --color-carma-800: #0b1a33;
+  --color-slate-blue: #4a5f86;
+
+  --color-signal: #db2617;
+  --color-cta: #f8c01d;
+  --color-cta-dark: #edb81a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-satoshi), Arial, Helvetica, sans-serif;
+  font-family: var(--font-google-sans), Arial, Helvetica, sans-serif;
 }

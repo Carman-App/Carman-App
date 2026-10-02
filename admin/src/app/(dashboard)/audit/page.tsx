@@ -107,7 +107,7 @@ export default async function AuditPage({
         </div>
         <button
           type="submit"
-          className="rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-800"
+          className="rounded-full bg-carma-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-carma-700"
         >
           Filter
         </button>

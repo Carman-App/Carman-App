@@ -16,7 +16,7 @@ export default function Forbidden() {
         </p>
         <Link
           href="/"
-          className="mt-6 inline-block rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-800"
+          className="mt-6 inline-block rounded-full bg-carma-600 px-4 py-2 text-sm font-medium text-white hover:bg-carma-700"
         >
           Back to Pulse
         </Link>

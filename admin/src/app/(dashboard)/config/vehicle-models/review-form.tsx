@@ -69,7 +69,7 @@ export function ReviewControls({ submissionId }: { submissionId: string }) {
           <button
             type="submit"
             disabled={mergePending}
-            className="rounded bg-neutral-900 px-2 py-1 text-xs font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-60"
+            className="rounded-full bg-carma-600 px-2 py-1 text-xs font-medium text-white hover:bg-carma-700 disabled:opacity-60"
           >
             {mergePending ? "Merging…" : "Confirm merge"}
           </button>

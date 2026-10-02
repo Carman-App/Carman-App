@@ -21,9 +21,18 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-white text-neutral-900">
       <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 px-3 py-4">
-        <div className="px-3 pb-4">
-          <p className="text-sm font-semibold">Carma Admin</p>
-          <p className="text-xs text-neutral-500">Internal ops dashboard</p>
+        <div className="px-3 pb-5">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-carma-600" />
+            <span className="text-[10px] tracking-[0.28em] text-neutral-800">CARMA</span>
+          </div>
+          <p className="mt-3 text-lg font-bold leading-tight tracking-tight">Admin</p>
+          <p className="text-xs text-slate-blue">Internal ops dashboard</p>
+          <div className="mt-3 flex h-1 gap-1.5">
+            <span className="flex-1 bg-carma-600" />
+            <span className="flex-1 bg-signal" />
+            <span className="flex-1 bg-cta" />
+          </div>
         </div>
         <div className="flex-1">
           <SidebarNav role={session.role} />
