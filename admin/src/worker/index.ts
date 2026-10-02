@@ -2,7 +2,7 @@
  * Background worker: `npm run worker`. Runs as its own process (scale it
  * separately from the web/API service) and needs REDIS_URL and DATABASE_URL.
  */
-import "dotenv/config";
+import "../../load-env";
 import { Worker } from "bullmq";
 import { QUEUE_NAME, queueConnection, type JobName } from "@/lib/jobs/queue";
 import { runJob } from "@/lib/jobs/handlers";

@@ -5,7 +5,7 @@
  * Usage:
  *   npm run create-admin
  */
-import "dotenv/config";
+import "../load-env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "../src/lib/auth/password";
