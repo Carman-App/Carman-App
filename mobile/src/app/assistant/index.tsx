@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,46 +10,93 @@ import { TopBar } from '@/components/ui/TopBar';
 import { pushRecent } from '@/data/uiState';
 import { setDraft } from '@/features/assistant/draftStore';
 import { answer, type Answer } from '@/features/assistant/engine';
+import { askRemote, fallbackNote, turnText, type RemoteAnswer, type Turn } from '@/features/assistant/remote';
 import { useAssistantContext } from '@/features/assistant/useAssistantContext';
 import { Composer } from '@/features/home/Composer';
 import { todayIso } from '@/lib/format';
 import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
-type Turn = { id: number; q: string; at: Date };
+type TurnState = {
+  id: number;
+  q: string;
+  at: Date;
+  status: 'waiting' | 'done';
+  a?: Answer & { draftExtras?: RemoteAnswer['draftExtras'] };
+  note?: string | null;
+};
 
 function clock(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 /**
- * Answer + draft. Two sentences from the garage's own records; when the
- * question described something that happened, an editable draft follows
- * with "Check and save". Nothing is saved on this screen.
+ * Answer + draft. Claude answers from the garage's own records (server-side,
+ * POST /api/v1/assistant); when the server has no key or can't be reached,
+ * the on-device engine answers instead. When the question described
+ * something that happened, an editable draft follows with "Check and save".
+ * Nothing is saved on this screen.
  */
 export default function AssistantScreen() {
   const { q, vehicleId } = useLocalSearchParams<{ q?: string; vehicleId?: string }>();
-  const { ctx, loading, offline } = useAssistantContext(vehicleId);
-  const [asked, setAsked] = useState<Turn[]>(() => (q ? [{ id: 1, q, at: new Date() }] : []));
+  const { ctx, loading, offline, garage } = useAssistantContext(vehicleId);
+  const [turns, setTurns] = useState<TurnState[]>(() => (q ? [{ id: 1, q, at: new Date(), status: 'waiting' }] : []));
   const [text, setText] = useState('');
   const scroller = useRef<ScrollView>(null);
+  const ctxRef = useRef(ctx);
+  const started = useRef(new Set<number>());
 
-  // Answers are derived from the garage's data, so they fill in once it loads.
-  const turns = useMemo(() => asked.map((t) => ({ ...t, a: loading ? null : (answer(t.q, ctx) as Answer) })), [asked, loading, ctx]);
+  useEffect(() => {
+    ctxRef.current = ctx;
+  }, [ctx]);
+
+  // Start any waiting turn once the garage (and its records, for the fallback) has loaded.
+  useEffect(() => {
+    if (!garage || loading) return;
+    const waiting = turns.filter((t) => t.status === 'waiting' && !started.current.has(t.id));
+    for (const turn of waiting) {
+      started.current.add(turn.id);
+      const history: Turn[] = turns
+        .filter((t) => t.status === 'done' && t.id < turn.id && t.a)
+        .slice(-6)
+        .map((t) => ({ question: t.q, answer: turnText(t.a!) }));
+      void askRemote({ mode: 'owner', question: turn.q, garageId: garage.id, vehicleId: ctxRef.current.vehicle?.id, history }).then((res) => {
+        let a: TurnState['a'];
+        let note: string | null = null;
+        if (res.ok) a = res.answer;
+        else if (res.reason === 'refused') a = { lead: res.message ?? 'Carma can’t help with that one.' };
+        else {
+          a = answer(turn.q, ctxRef.current);
+          note = fallbackNote(res.reason);
+        }
+        setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, status: 'done', a, note } : t)));
+        setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
+      });
+    }
+  }, [garage, loading, turns]);
 
   const send = () => {
     const question = text.trim();
     if (!question) return;
     void pushRecent(question);
     setText('');
-    setAsked((prev) => [...prev, { id: prev.length + 1, q: question, at: new Date() }]);
+    setTurns((prev) => [...prev, { id: prev.length + 1, q: question, at: new Date(), status: 'waiting' }]);
     setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
   };
 
-  const lastDraft = [...turns].reverse().find((t) => t.a?.draft)?.a?.draft;
+  const lastDraftTurn = [...turns].reverse().find((t) => t.a?.draft);
+  const lastDraft = lastDraftTurn?.a?.draft;
 
   const checkAndSave = () => {
     if (!lastDraft) return;
-    setDraft({ ...lastDraft, vehicleId: ctx.vehicle?.id ?? ctx.vehicles[0]?.id, date: todayIso() });
+    const extras = lastDraftTurn?.a?.draftExtras;
+    const knownVehicle = extras?.vehicleId && ctx.vehicles.some((v) => v.id === extras.vehicleId) ? extras.vehicleId : undefined;
+    setDraft({
+      ...lastDraft,
+      vehicleId: knownVehicle ?? ctx.vehicle?.id ?? ctx.vehicles[0]?.id,
+      date: extras?.date && /^\d{4}-\d{2}-\d{2}$/.test(extras.date) ? extras.date : todayIso(),
+      title: extras?.title,
+      origin: 'assistant',
+    });
     router.push('/record/review');
   };
 
@@ -84,7 +131,7 @@ export default function AssistantScreen() {
                   {t.q}
                 </T>
               </View>
-              {t.a ? (
+              {t.status === 'done' && t.a ? (
                 <View style={styles.answer}>
                   {t.a.checked ? <T variant="meta">{t.a.checked}</T> : null}
                   <T style={styles.lead}>
@@ -92,6 +139,11 @@ export default function AssistantScreen() {
                     {t.a.body ? <T style={styles.body}> {t.a.body}</T> : null}
                   </T>
                   {t.a.draft ? <DraftCard answer={t.a} /> : null}
+                  {t.note ? (
+                    <T variant="small" color={Colors.textFaint}>
+                      {t.note}
+                    </T>
+                  ) : null}
                   {t.a.link ? (
                     <Pressable onPress={() => router.push(t.a!.link!.href as never)} style={styles.link}>
                       <T variant="section">{t.a.link.label} →</T>
