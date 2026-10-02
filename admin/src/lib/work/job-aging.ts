@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { JobStatus } from "@/generated/prisma/enums";
 
 // WORK-05 — "jobs open longer than a threshold" needs a defensible number.

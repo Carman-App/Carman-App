@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { PlanSubject, SubscriptionEventType, SubscriptionStatus } from "@/generated/prisma/enums";
 import type { Plan } from "@/generated/prisma/client";
+import { cached, invalidate } from "@/lib/redis";
 
 /**
  * Plan limit enforcement lives here, in the domain layer — not in the UI.
@@ -85,7 +86,7 @@ async function startTrial(subject: PlanSubject, id: string): Promise<PlanState |
  * Returns null only when plans have not been seeded, in which case nothing
  * is enforced (a fresh dev database behaves as before).
  */
-export async function getPlanState(subject: PlanSubject, id: string): Promise<PlanState | null> {
+async function loadPlanState(subject: PlanSubject, id: string): Promise<PlanState | null> {
   const now = new Date();
   const subscription = await prisma.subscription.findFirst({
     where: { ...subjectWhere(subject, id), subject },
@@ -107,6 +108,33 @@ export async function getPlanState(subject: PlanSubject, id: string): Promise<Pl
   const free = await prisma.plan.findUnique({ where: { code: FREE_PLAN[subject] } });
   if (!free) return null;
   return { plan: free, state: "free", trialEndsAt: trialEndsAt ?? null, subscriptionId: subscription.id };
+}
+
+const planKey = (subject: PlanSubject, id: string) => `plan:${subject}:${id}`;
+
+/**
+ * Cached for a minute: every write checks the plan, and the plan changes
+ * rarely. Anything that changes a subscription calls invalidatePlanState.
+ */
+export async function getPlanState(subject: PlanSubject, id: string): Promise<PlanState | null> {
+  const value = await cached(planKey(subject, id), 60, () => loadPlanState(subject, id));
+  if (!value) return null;
+  // JSON round-trip through the cache turns dates into strings.
+  return {
+    ...value,
+    trialEndsAt: value.trialEndsAt ? new Date(value.trialEndsAt) : null,
+    plan: { ...value.plan, createdAt: new Date(value.plan.createdAt) },
+  };
+}
+
+export async function invalidatePlanState(subject: PlanSubject, id: string): Promise<void> {
+  await invalidate(planKey(subject, id));
+}
+
+/** Drops the cached plan for whoever a subscription belongs to. Call after changing it. */
+export async function invalidatePlanForSubscription(sub: { subject: PlanSubject; accountId: string | null; workshopId: string | null }): Promise<void> {
+  const id = sub.subject === PlanSubject.OWNER ? sub.accountId : sub.workshopId;
+  if (id) await invalidatePlanState(sub.subject, id);
 }
 
 const planLabel = (s: PlanState) => (s.state === "trial" ? `${s.plan.name} trial` : `${s.plan.name} plan`);

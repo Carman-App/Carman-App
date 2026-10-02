@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { SignupSource, SubscriptionStatus } from "@/generated/prisma/enums";
 import { getActivatedAccountIds } from "./definitions";
 

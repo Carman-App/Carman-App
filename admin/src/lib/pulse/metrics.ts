@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
+import { cached } from "@/lib/redis";
 
 /**
  * Pulse's fixed reference timezone (AGENTS.md PULSE-04: "a completed
@@ -196,11 +197,18 @@ export async function getMetricSnapshot(key: PulseMetricKey): Promise<MetricSnap
   };
 }
 
+/**
+ * Every headline metric, cached for a minute across all admins and
+ * instances: each snapshot is a few dozen counts, and a page that every
+ * operator opens first should not recount the platform on every load.
+ */
 export async function getAllMetricSnapshots(): Promise<Record<PulseMetricKey, MetricSnapshot>> {
-  const entries = await Promise.all(
-    PULSE_METRIC_KEYS.map(async (key) => [key, await getMetricSnapshot(key)] as const),
-  );
-  return Object.fromEntries(entries) as Record<PulseMetricKey, MetricSnapshot>;
+  return cached("pulse:snapshots:v1", 60, async () => {
+    const entries = await Promise.all(
+      PULSE_METRIC_KEYS.map(async (key) => [key, await getMetricSnapshot(key)] as const),
+    );
+    return Object.fromEntries(entries) as Record<PulseMetricKey, MetricSnapshot>;
+  });
 }
 
 /**

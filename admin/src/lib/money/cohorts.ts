@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { SubscriptionStatus, SubscriptionEventType } from "@/generated/prisma/enums";
 
 // MON-02 — "trial conversion by cohort (started per week, converted/lapsed/

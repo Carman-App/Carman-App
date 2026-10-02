@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { daysAgo } from "./period";
 
 // DATA-05 — storage per account. Document counts are fully real. Byte totals

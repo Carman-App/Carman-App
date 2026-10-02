@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { InvitationStatus, SignupSource } from "@/generated/prisma/enums";
 
 // GROW-04 — sent/accepted counts from GarageInvitation (status/createdAt/

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { InvoiceStatus } from "@/generated/prisma/enums";
 
 // WORK-06 — this is mechanic-side money: what workshops invoice their own

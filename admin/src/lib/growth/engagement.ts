@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { Region } from "@/generated/prisma/enums";
 import { fetchRecords, isoWeekKey, trailingWindow } from "./definitions";
 

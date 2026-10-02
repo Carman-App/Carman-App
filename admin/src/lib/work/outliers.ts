@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { EstimateDecisionType } from "@/generated/prisma/enums";
 
 // WORK-07 — outlier detection for decline/dispute/repeat-visit rates.

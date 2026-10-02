@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 
 /**
  * PULSE-03's live feed. Deliberately carries only a type + the account it

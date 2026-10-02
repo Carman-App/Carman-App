@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { monthBounds } from "@/lib/money/mrr";
 import { isoWeekKey, weekStart, monthKey, isActiveInWeek, ACTIVE_USER_CAVEAT } from "./definitions";
 

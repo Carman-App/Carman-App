@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { isoWeekKey, weekStart, getAccountRecordTimestamps } from "./definitions";
 
 // GROW-01 — "signup -> verified -> garage created -> vehicle added -> first

@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { fetchRecords, type DateRange } from "./definitions";
 
 // GROW-06 — distinct accounts using each of records/documents/reports/

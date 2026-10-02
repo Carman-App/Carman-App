@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import type { RecordType } from "@/lib/records";
 
 // DATA-03 — probably-mistaken records. These are flagged *questions* for a

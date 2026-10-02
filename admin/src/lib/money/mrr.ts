@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { SubscriptionStatus, SubscriptionEventType } from "@/generated/prisma/enums";
 import { currencyForSubscription, REPORTING_CURRENCY } from "./currency";
 import { convertCentsToReportingCurrency, getFxRateMap } from "./fx";

@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { ReportScope, ReportFormat, ReportChannel } from "@/generated/prisma/enums";
 import { daysAgo } from "./period";
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import type { RecordType } from "@/lib/records";
 import { currentAndPriorPeriod, percentChange, type PeriodRange } from "./period";
 

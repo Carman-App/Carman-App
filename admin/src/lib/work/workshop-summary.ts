@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { JobStatus } from "@/generated/prisma/enums";
 
 // WORK-01 schema gaps, handled honestly rather than invented:

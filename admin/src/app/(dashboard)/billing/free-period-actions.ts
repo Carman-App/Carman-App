@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, BILLING_ROLES } from "@/lib/auth/rbac";
 import { writeAdminAuditLog } from "@/lib/audit";
 import { SubscriptionStatus, SubscriptionEventType } from "@/generated/prisma/enums";
+import { invalidatePlanForSubscription } from "@/lib/limits";
 
 export type ActionState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -80,6 +81,8 @@ export async function grantExtension(_prev: ActionState, formData: FormData): Pr
       }),
     ]);
   }
+
+  await invalidatePlanForSubscription(subscription);
 
   await writeAdminAuditLog(admin, {
     action: kind === "TRIAL_EXTENSION" ? "billing.trial_extended" : "billing.free_period_granted",

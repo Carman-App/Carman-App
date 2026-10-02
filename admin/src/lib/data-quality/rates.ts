@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { Region } from "@/generated/prisma/enums";
 import { REGION_LABELS } from "@/lib/region";
 import type { RecordType } from "@/lib/records";

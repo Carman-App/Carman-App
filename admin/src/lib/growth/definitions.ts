@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaRead as prisma } from "@/lib/prisma";
 import { ProfileType } from "@/generated/prisma/enums";
 import { getFxRateMap, convertCentsToReportingCurrency, type FxRateRow } from "@/lib/money/fx";
 import { REPORTING_CURRENCY as MONEY_REPORTING_CURRENCY } from "@/lib/money/currency";
