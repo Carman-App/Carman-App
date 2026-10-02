@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { verifyAccessToken } from "@/lib/auth/end-user";
 import { recordActivity } from "@/lib/activity";
-import { clientIp, enforceLimit, LIMITS } from "@/lib/rate-limit";
+import { clientIp, enforceLimit, enforceLimits, LIMITS } from "@/lib/rate-limit";
 
 export type RequestAccount = Prisma.AccountGetPayload<{ include: { user: true } }>;
 
@@ -61,8 +61,7 @@ export async function requireAccount(req: NextRequest): Promise<RequestAccount> 
     await enforceLimit(LIMITS.anonymous, clientIp(req));
     throw new UnauthorizedError("Sign in to continue.");
   }
-  await enforceLimit(LIMITS.api, account.id);
-  if (req.method !== "GET" && req.method !== "HEAD") await enforceLimit(LIMITS.write, account.id);
+  await enforceLimits(req.method === "GET" || req.method === "HEAD" ? [LIMITS.api] : [LIMITS.api, LIMITS.write], account.id);
   // A suspended, deleted or merged account keeps no API access, even with a
   // still-valid access token.
   if (account.suspendedAt || account.deletedAt || account.mergedIntoAccountId) {

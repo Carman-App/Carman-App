@@ -895,6 +895,7 @@ model FuelRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date(sort: Desc)]) // newest-first per vehicle (timeline, records)
   @@map("fuel_records")
 }
 
@@ -916,6 +917,7 @@ model ServiceRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date(sort: Desc)]) // newest-first per vehicle (timeline, records)
   @@map("service_records")
 }
 
@@ -937,6 +939,7 @@ model RepairRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date(sort: Desc)]) // newest-first per vehicle (timeline, records)
   @@map("repair_records")
 }
 
@@ -958,6 +961,7 @@ model ExpenseRecord {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date(sort: Desc)]) // newest-first per vehicle (timeline, records)
   @@map("expense_records")
 }
 
@@ -975,6 +979,7 @@ model OdometerReading {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([vehicleId, date(sort: Desc)]) // newest-first per vehicle (timeline, records)
   @@map("odometer_readings")
 }
 
@@ -1044,6 +1049,8 @@ model Document {
   documentType DocumentType @relation(fields: [documentTypeId], references: [id])
 
   @@index([vehicleId])
+  @@index([vehicleId, addedAt(sort: Desc)])
+  @@index([expiryDate]) // daily reminder scan
   @@map("documents")
 }
 

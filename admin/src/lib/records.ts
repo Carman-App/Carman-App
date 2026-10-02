@@ -90,17 +90,16 @@ export async function getRecordsFeed(options?: {
   return items.slice(0, take);
 }
 
-/** Total row count across all five record tables for a vehicle (excludes soft-deleted rows). */
+/** Total row count across all five record tables for a vehicle (excludes soft-deleted rows). One round trip. */
 export async function getRecordsCount(vehicleId: string): Promise<number> {
-  const where = { vehicleId, deletedAt: null };
-  const [fuel, service, repair, expense, odometer] = await Promise.all([
-    prisma.fuelRecord.count({ where }),
-    prisma.serviceRecord.count({ where }),
-    prisma.repairRecord.count({ where }),
-    prisma.expenseRecord.count({ where }),
-    prisma.odometerReading.count({ where: { vehicleId } }),
-  ]);
-  return fuel + service + repair + expense + odometer;
+  const [row] = await prisma.$queryRaw<{ total: bigint }[]>`
+    SELECT
+      (SELECT count(*) FROM fuel_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+    + (SELECT count(*) FROM service_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+    + (SELECT count(*) FROM repair_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+    + (SELECT count(*) FROM expense_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+    + (SELECT count(*) FROM odometer_readings WHERE "vehicleId" = ${vehicleId}) AS total`;
+  return Number(row?.total ?? 0);
 }
 
 export type RecordType = "fuel" | "service" | "repair" | "expense" | "odometer";
@@ -146,4 +145,72 @@ export async function findRecordById(id: string): Promise<FoundRecord | null> {
   if (expense) return { type: "expense", vehicleId: expense.vehicleId, softDeletable: true };
   if (odometer) return { type: "odometer", vehicleId: odometer.vehicleId, softDeletable: false };
   return null;
+}
+
+export type TimelineRow = {
+  id: string;
+  kind: RecordFeedItem["kind"] | "DOCUMENT";
+  date: Date;
+  vehicleId: string;
+  amount: Prisma.Decimal | null;
+  description: string;
+  enteredByName: string | null;
+};
+
+/**
+ * One vehicle's merged timeline (all five record tables plus documents),
+ * newest first, paginated in the database with a single UNION ALL query and
+ * one count query, instead of one query per table. Each branch reads the
+ * (vehicleId, date DESC) index.
+ */
+export async function getVehicleTimeline(vehicleId: string, skip: number, take: number): Promise<{ items: TimelineRow[]; total: number }> {
+  type Raw = { id: string; kind: TimelineRow["kind"]; date: Date; vehicleId: string; amount: Prisma.Decimal | null; extra: string | null; label: string | null; enteredByName: string | null };
+  const [rows, counts] = await Promise.all([
+    prisma.$queryRaw<Raw[]>`
+      SELECT * FROM (
+        SELECT id, 'FUEL' AS kind, date, "vehicleId", amount, trim_scale(litres)::text AS extra, NULL::text AS label, "enteredByName" FROM fuel_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL
+        UNION ALL
+        SELECT id, 'SERVICE', date, "vehicleId", amount, description, NULL, "enteredByName" FROM service_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL
+        UNION ALL
+        SELECT id, 'REPAIR', date, "vehicleId", amount, description, NULL, "enteredByName" FROM repair_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL
+        UNION ALL
+        SELECT id, 'EXPENSE', date, "vehicleId", amount, category::text, NULL, "enteredByName" FROM expense_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL
+        UNION ALL
+        SELECT id, 'ODOMETER', date, "vehicleId", NULL, "odometerKm"::text, NULL, "enteredByName" FROM odometer_readings WHERE "vehicleId" = ${vehicleId}
+        UNION ALL
+        SELECT d.id, 'DOCUMENT', d."addedAt", d."vehicleId", NULL, d.title, t.label, d."uploadedByAccountId" FROM documents d JOIN document_types t ON t.id = d."documentTypeId" WHERE d."vehicleId" = ${vehicleId} AND d."deletedAt" IS NULL
+      ) feed
+      ORDER BY date DESC
+      LIMIT ${take} OFFSET ${skip}`,
+    prisma.$queryRaw<{ total: bigint }[]>`
+      SELECT
+        (SELECT count(*) FROM fuel_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+      + (SELECT count(*) FROM service_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+      + (SELECT count(*) FROM repair_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+      + (SELECT count(*) FROM expense_records WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL)
+      + (SELECT count(*) FROM odometer_readings WHERE "vehicleId" = ${vehicleId})
+      + (SELECT count(*) FROM documents WHERE "vehicleId" = ${vehicleId} AND "deletedAt" IS NULL) AS total`,
+  ]);
+
+  const describe = (r: Raw): string => {
+    switch (r.kind) {
+      case "FUEL":
+        return r.extra ? `Fuel — ${r.extra}L` : "Fuel";
+      case "SERVICE":
+        return r.extra ?? "Service";
+      case "REPAIR":
+        return r.extra ?? "Repair";
+      case "EXPENSE":
+        return `Expense — ${r.extra}`;
+      case "ODOMETER":
+        return `Odometer reading — ${Number(r.extra).toLocaleString()} km`;
+      case "DOCUMENT":
+        return `${r.label} — ${r.extra}`;
+    }
+  };
+
+  return {
+    items: rows.map((r) => ({ id: r.id, kind: r.kind, date: r.date, vehicleId: r.vehicleId, amount: r.amount, description: describe(r), enteredByName: r.enteredByName })),
+    total: Number(counts[0]?.total ?? 0),
+  };
 }

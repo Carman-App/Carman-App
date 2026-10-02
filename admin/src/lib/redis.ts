@@ -73,6 +73,24 @@ export async function incrementWindow(key: string, ttlSeconds: number): Promise<
   return next;
 }
 
+/** Several window counters in one round trip. Returns the new values in order. */
+export async function incrementWindows(entries: { key: string; ttlSeconds: number }[]): Promise<number[]> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const m = redis.multi();
+      for (const e of entries) m.incr(e.key).expire(e.key, e.ttlSeconds, "NX");
+      const res = (await m.exec()) ?? [];
+      return entries.map((_, i) => Number(res[i * 2]?.[1] ?? 0));
+    } catch {
+      return entries.map(() => 0);
+    }
+  }
+  const out: number[] = [];
+  for (const e of entries) out.push(await incrementWindow(e.key, e.ttlSeconds));
+  return out;
+}
+
 /** Sets a flag if it is not set. Returns true the first time inside each window. */
 export async function setOnce(key: string, ttlSeconds: number): Promise<boolean> {
   const redis = getRedis();
