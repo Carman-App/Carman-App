@@ -19,6 +19,7 @@ export type JobPayloads = {
   "notification.deliver": { notificationId: string };
   "reminders.scan": Record<string, never>;
   "privacy.export": { requestId: string };
+  "accounts.purge": Record<string, never>;
 };
 export type JobName = keyof JobPayloads;
 

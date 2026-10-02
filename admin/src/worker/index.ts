@@ -30,6 +30,7 @@ async function main() {
   // The daily reminder scan, 03:15 East Africa Time. Upserting keeps exactly one schedule however many workers start.
   const scheduler = new Queue(QUEUE_NAME, { connection: queueConnection()! });
   await scheduler.upsertJobScheduler("reminders-daily", { pattern: "15 3 * * *", tz: "Africa/Nairobi" }, { name: "reminders.scan", data: {} });
+  await scheduler.upsertJobScheduler("accounts-purge-daily", { pattern: "45 3 * * *", tz: "Africa/Nairobi" }, { name: "accounts.purge", data: {} });
 
   console.log(`[worker] processing "${QUEUE_NAME}" with concurrency ${concurrency}`);
 

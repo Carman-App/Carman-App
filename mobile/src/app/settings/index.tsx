@@ -4,7 +4,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Footnote, KeyValueRow, Toggle } from '@/components/ui/Blocks';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
 import { IconGlyph } from '@/components/ui/IconGlyph';
+import { OptionSheet } from '@/components/ui/OptionSheet';
 import { PickerSheet } from '@/components/ui/PickerSheet';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -12,7 +14,8 @@ import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAccount, useActiveGarage, useUiState } from '@/data/hooks';
 import { updateAccount } from '@/data/repo';
-import { signOut } from '@/features/auth/signIn';
+import { openLegal } from '@/features/auth/legal';
+import { deleteAccount, signOut } from '@/features/auth/signIn';
 import { setUiState } from '@/data/uiState';
 import { COUNTRIES } from '@/features/onboarding/countries';
 import { Colors, Spacing } from '@/theme/tokens';
@@ -34,6 +37,9 @@ export default function MyProfileScreen() {
   const mode = useUiState('mode');
   const prefs = useUiState('notificationPrefs');
   const [picking, setPicking] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const units = account ? REGION_UNITS[account.region] : undefined;
   const country = COUNTRIES.find((c) => c.region === account?.region);
   const on = (k: string) => prefs[k] ?? k !== 'idle';
@@ -107,11 +113,68 @@ export default function MyProfileScreen() {
           Sign out of this phone
         </T>
       </Pressable>
+
+      <SectionHeader title="PRIVACY" tone="tag" rule inset />
+      {[
+        { label: 'Privacy policy', go: () => openLegal('privacy') },
+        { label: 'Terms of use', go: () => openLegal('terms') },
+      ].map((r) => (
+        <Pressable key={r.label} onPress={r.go} style={styles.row}>
+          <T variant="bodyStrong" style={styles.flex}>
+            {r.label}
+          </T>
+          <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
+        </Pressable>
+      ))}
+      <Pressable onPress={() => setConfirmDelete(true)} style={styles.row}>
+        <T variant="bodyStrong" color={Colors.signal} style={styles.flex}>
+          Delete my account
+        </T>
+      </Pressable>
+
       <View style={styles.pad}>
         <Footnote color={Colors.textFaint} style={styles.version}>
           CARMA 1.0{garage?.location && garage.location !== 'Not set' ? ` · ${garage.location.split(',').pop()?.trim().toUpperCase()}` : ''}
         </Footnote>
       </View>
+
+      <OptionSheet
+        visible={confirmDelete}
+        title="Delete your account?"
+        lede="This signs you out on every device and deletes your account, garages, vehicles, records, documents and workshops. Everything is removed for good after 30 days; until then Carma support can undo it."
+        options={[]}
+        onSelect={() => {}}
+        onClose={() => setConfirmDelete(false)}
+        footer={
+          <View style={styles.deleteButtons}>
+            <Button
+              variant="danger"
+              loading={deleting}
+              onPress={async () => {
+                setDeleting(true);
+                setDeleteError(null);
+                const res = await deleteAccount();
+                setDeleting(false);
+                if (!res.ok) {
+                  setDeleteError(res.message);
+                  return;
+                }
+                setConfirmDelete(false);
+                router.replace('/onboarding/welcome');
+              }}>
+              Delete my account
+            </Button>
+            <Button variant="secondary" size="md" onPress={() => setConfirmDelete(false)}>
+              Keep my account
+            </Button>
+            {deleteError ? (
+              <T variant="meta" color={Colors.signal} center>
+                {deleteError}
+              </T>
+            ) : null}
+          </View>
+        }
+      />
 
       <PickerSheet
         visible={picking}
@@ -131,6 +194,9 @@ export default function MyProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  deleteButtons: {
+    gap: 10,
+  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',

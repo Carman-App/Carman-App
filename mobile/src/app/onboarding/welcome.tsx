@@ -2,7 +2,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -34,7 +34,10 @@ export default function WelcomeScreen() {
     let live = true;
     void (async () => {
       const [config, apple] = await Promise.all([fetchAuthConfig(), appleAvailable()]);
-      if (live) setProviders({ apple: apple && config.apple, google: config.google && googleAvailable() });
+      const appleOn = apple && config.apple;
+      // App Store 4.8: on iPhone, Google sign-in is offered only alongside Sign in with Apple.
+      const googleOn = config.google && googleAvailable() && (Platform.OS !== 'ios' || appleOn);
+      if (live) setProviders({ apple: appleOn, google: googleOn });
     })();
     return () => {
       live = false;

@@ -7,6 +7,8 @@ import { updateAccountSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
 import { PlanSubject, type ProfileType, type Region } from "@/generated/prisma/enums";
 import { getPlanState } from "@/lib/limits";
+import { deleteOwnAccount } from "@/lib/accounts/self-delete";
+import { clientIp } from "@/lib/rate-limit";
 
 // GET /api/v1/account — the caller's own Account, user, profiles and owner-side plan.
 // Chain: auth -> account -> resource.
@@ -102,6 +104,23 @@ export async function PATCH(req: NextRequest) {
     });
 
     return apiOk(updated);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+// DELETE /api/v1/account — the signed-in person deletes their own account.
+// Body: { "confirm": "DELETE" }. Ends every session at once; the data is
+// purged after a grace window (see src/lib/accounts/self-delete.ts).
+export async function DELETE(req: NextRequest) {
+  try {
+    const account = await requireAccount(req);
+    const body = (await req.json().catch(() => null)) as { confirm?: string } | null;
+    if (body?.confirm !== "DELETE") {
+      return apiError(422, "CONFIRMATION_REQUIRED", 'Send { "confirm": "DELETE" } to delete this account.');
+    }
+    const { purgeAfter } = await deleteOwnAccount(account.id, clientIp(req));
+    return apiOk({ deleted: true, purgeAfter });
   } catch (error) {
     return handleApiError(error);
   }

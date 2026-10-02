@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { notificationProvider, notify } from "@/lib/notifications/provider";
 import { buildAccountDataExport } from "@/lib/privacy/export";
+import { purgeSelfDeletedAccounts } from "@/lib/accounts/self-delete";
 import { DataExportStatus, NotificationType, ReminderKind } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import type { JobName, JobPayloads } from "./queue";
@@ -85,10 +86,17 @@ async function generateExport({ requestId }: JobPayloads["privacy.export"]) {
   });
 }
 
+/** Daily: permanently removes accounts their owners deleted more than 30 days ago. */
+async function purgeAccounts() {
+  const n = await purgeSelfDeletedAccounts();
+  console.log(`[jobs] accounts.purge removed ${n}`);
+}
+
 const HANDLERS: { [N in JobName]: (data: JobPayloads[N]) => Promise<void> } = {
   "notification.deliver": deliverNotification,
   "reminders.scan": scanReminders,
   "privacy.export": generateExport,
+  "accounts.purge": purgeAccounts,
 };
 
 export async function runJob<N extends JobName>(name: N, data: JobPayloads[N]): Promise<void> {

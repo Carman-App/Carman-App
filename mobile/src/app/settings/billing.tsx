@@ -7,7 +7,7 @@ import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAccount, usePlans } from '@/data/hooks';
 import { daysLeft } from '@/features/billing/plan';
-import { formatDateLong, formatNumber } from '@/lib/format';
+import { formatDateLong } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import type { PlanLimits } from '@/types/domain';
 
@@ -17,7 +17,12 @@ function limitLines(l: PlanLimits) {
   return [limit(l.garages, 'garage', 'garages'), limit(l.vehicles, 'vehicle', 'vehicles'), l.seats === 1 ? 'Just you' : limit(l.seats, 'person per garage', 'people per garage')];
 }
 
-/** Plan & billing: the plan in force, what it allows, and the other plans. Read-only until payments are connected. */
+/**
+ * Plan & billing: the plan in force, what it allows, and the other plans.
+ * Informational only: no prices and no purchase prompt. The stores require
+ * subscriptions to be sold through App Store / Google Play billing, which is
+ * not built yet (see STORE.md); until it is, nothing is sold in the app.
+ */
 export default function BillingScreen() {
   const accountQuery = useAccount();
   const plansQuery = usePlans('OWNER');
@@ -62,7 +67,7 @@ export default function BillingScreen() {
                   <View style={styles.planHead}>
                     <T variant="bodyStrong">{p.name}</T>
                     <T variant="meta" color={current ? Colors.accent : Colors.body}>
-                      {current ? (ps?.state === 'trial' ? 'TRIAL' : 'CURRENT') : p.price ? `${p.price.currency} ${formatNumber(p.price.amountCents / 100)} / MONTH` : ''}
+                      {current ? (ps?.state === 'trial' ? 'TRIAL' : 'CURRENT') : ''}
                     </T>
                   </View>
                   <T variant="small" color={Colors.body}>
@@ -74,7 +79,7 @@ export default function BillingScreen() {
           </View>
         )}
       </QueryBoundary>
-      <Footnote style={styles.foot}>PAYING IN THE APP IS NOT CONNECTED YET. NOTHING IS CHARGED, AND NOTHING YOU RECORDED IS EVER LOCKED AWAY.</Footnote>
+      <Footnote style={styles.foot}>NOTHING YOU RECORDED IS EVER LOCKED AWAY. RECORDS STAY READABLE ON EVERY PLAN.</Footnote>
     </Screen>
   );
 }

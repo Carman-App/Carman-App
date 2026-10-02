@@ -65,7 +65,8 @@ export function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname === "/login/verify" ||
-    pathname === "/login/setup-2fa";
+    pathname === "/login/setup-2fa" ||
+    pathname.startsWith("/legal/"); // privacy policy, terms, account deletion: public
   if (isPublic) {
     return NextResponse.next();
   }

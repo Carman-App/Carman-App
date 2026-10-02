@@ -127,3 +127,18 @@ export async function signOut(): Promise<void> {
   await setUiState({ onboarded: false, activeGarageId: null, mode: 'owner', homeVehicleId: null, recents: [], mechanicRecents: [] });
   queryClient.clear();
 }
+
+/**
+ * Deletes the signed-in account (App Store / Play account deletion). Ends
+ * every session on the server, then signs out here. The server keeps the data
+ * 30 days for mistakes, then removes it permanently.
+ */
+export async function deleteAccount(): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    await api.delete('account', { confirm: 'DELETE' });
+  } catch (e) {
+    return { ok: false, message: messageOf(e) };
+  }
+  await signOut();
+  return { ok: true };
+}
