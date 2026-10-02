@@ -22,6 +22,7 @@ export const SEED_ACCOUNT: Account = {
   profile: 'owner',
   activeProfile: 'owner',
   plan: 'free',
+  planState: null,
 };
 
 export const SEED_GARAGES: Garage[] = [

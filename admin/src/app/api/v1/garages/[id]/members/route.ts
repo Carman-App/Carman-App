@@ -6,6 +6,7 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { handleApiError, ConflictError, NotFoundError } from "@/lib/api/errors";
 import { addGarageMemberSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
+import { assertCanAddGarageSeat } from "@/lib/limits";
 import type { GarageRole } from "@/generated/prisma/enums";
 
 // GET /api/v1/garages/:id/members
@@ -61,6 +62,8 @@ export async function POST(
     if (existing) {
       throw new ConflictError("This account is already a member of the garage.");
     }
+
+    await assertCanAddGarageSeat(garageId);
 
     const member = await prisma.garageMember.create({
       data: {

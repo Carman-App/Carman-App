@@ -104,6 +104,27 @@ export type Account = {
   profile: AccountProfile;
   activeProfile: 'owner' | 'mechanic';
   plan: 'free' | 'personal' | 'pro';
+  /** The owner-side plan in force, from GET /account. Null when the server has no plans set up. */
+  planState: PlanState | null;
+};
+
+export type PlanLimits = { garages: number | null; vehicles: number | null; seats: number | null; jobsPerMonth?: number | null; staff?: number | null };
+
+export type PlanState = {
+  code: string;
+  name: string;
+  /** trial: no-card trial · active: paid · grace: payment failed, inside grace · free: no paid plan */
+  state: 'trial' | 'active' | 'grace' | 'free';
+  trialEndsAt: string | null;
+  limits: PlanLimits;
+};
+
+export type PlanOption = {
+  code: string;
+  name: string;
+  features: string[];
+  limits: PlanLimits;
+  price: { currency: string; amountCents: number } | null;
 };
 
 export type GarageMemberRole = 'owner' | 'member' | 'pending';

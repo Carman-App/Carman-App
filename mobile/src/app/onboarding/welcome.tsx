@@ -47,7 +47,7 @@ export default function WelcomeScreen() {
           <>
             <Button onPress={() => router.push('/onboarding/country')}>Get started</Button>
             <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
-              7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+              FREE TRIAL · NO CARD TO START{'\n'}YOUR RECORDS STAY READABLE WHEN IT ENDS
             </T>
           </>
         )}

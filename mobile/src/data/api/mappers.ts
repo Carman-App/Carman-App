@@ -35,6 +35,7 @@
  */
 import type {
   Account,
+  PlanState,
   AccessRequest,
   AccessRequestStatus,
   BuildStage,
@@ -91,6 +92,7 @@ export type RawAccount = {
   region: Region;
   user: RawUser;
   profiles: RawAccountProfile[];
+  plan?: PlanState | null;
 };
 
 export function toAccount(raw: RawAccount): Account {
@@ -107,8 +109,8 @@ export function toAccount(raw: RawAccount): Account {
     region: raw.region,
     profile,
     activeProfile,
-    // No server-side source yet (no Subscription lookup on GET /account) — see module doc.
-    plan: 'free',
+    plan: raw.plan?.code === 'OWNER_PRO' ? 'pro' : raw.plan?.code === 'OWNER_PERSONAL' ? 'personal' : 'free',
+    planState: raw.plan ?? null,
   };
 }
 

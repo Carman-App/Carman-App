@@ -46,7 +46,7 @@ import {
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
 import { setUiState, useActiveGarageId, useHydrateOnMount, useOnboarded, useUiState } from '@/data/uiState';
-import { REGION_UNITS, type Modification, type PartLine, type VehicleDocument, type VehicleRecord } from '@/types/domain';
+import { REGION_UNITS, type Modification, type PartLine, type PlanOption, type VehicleDocument, type VehicleRecord } from '@/types/domain';
 
 export { useHydrateOnMount, useOnboarded, useActiveGarageId, useUiState };
 
@@ -58,6 +58,14 @@ export function useAccount() {
   return useQuery({
     queryKey: qk.account(),
     queryFn: () => api.get<RawAccount>('account').then(toAccount),
+  });
+}
+
+/** The plans one side of Carma offers, with the price in the account's currency once set. */
+export function usePlans(subject: 'OWNER' | 'WORKSHOP' = 'OWNER') {
+  return useQuery({
+    queryKey: ['plans', subject] as const,
+    queryFn: () => api.get<PlanOption[]>('plans', { subject }),
   });
 }
 

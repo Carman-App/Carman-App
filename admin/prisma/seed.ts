@@ -77,6 +77,25 @@ async function main() {
       await prisma.documentType.upsert({ where: { code: dt.code }, update: { label: dt.label }, create: dt });
     }
 
+    // Plans — Product overview §06. Limits are structural, so they live on
+    // the Plan row and are enforced in src/lib/limits.ts. null = unlimited.
+    // Prices are not in the overview and are set per currency from the
+    // console (Config → Plans, CFG-02), so the seed never overwrites them.
+    const plans = [
+      { code: "OWNER_FREE", subject: "OWNER", name: "Free", maxGarages: 1, maxVehicles: 3, maxSeats: 1, maxJobsPerMonth: null, maxStaff: null, features: ["1 garage", "3 vehicles", "Just you", "90 days of history"] },
+      { code: "OWNER_PERSONAL", subject: "OWNER", name: "Personal", maxGarages: 2, maxVehicles: null, maxSeats: 3, maxJobsPerMonth: null, maxStaff: null, features: ["2 garages", "Unlimited vehicles", "3 members", "Full history", "CSV export"] },
+      { code: "OWNER_PRO", subject: "OWNER", name: "Pro", maxGarages: null, maxVehicles: null, maxSeats: 10, maxJobsPerMonth: null, maxStaff: null, features: ["Unlimited garages and vehicles", "10 members per garage", "Full history", "CSV export", "Priority support"] },
+      { code: "WORKSHOP_FREE", subject: "WORKSHOP", name: "Free", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: 5, maxStaff: 1, features: ["5 jobs a month"] },
+      { code: "WORKSHOP_STANDARD", subject: "WORKSHOP", name: "Workshop", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 3, features: ["Unlimited jobs", "3 staff"] },
+      { code: "WORKSHOP_FLEET", subject: "WORKSHOP", name: "Fleet", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 12, features: ["Unlimited jobs", "12 staff", "API access"] },
+    ] as const;
+    for (const { code, subject, ...limits } of plans) {
+      const data = { ...limits, features: [...limits.features] };
+      await prisma.plan.upsert({ where: { code }, update: data, create: { code, subject, ...data } });
+    }
+    // CFG-08 trial and grace rules. Created once; afterwards edited from the console.
+    await prisma.subscriptionRules.upsert({ where: { key: "global" }, update: {}, create: { key: "global" } });
+
     const prado = await upsertVehicle(prisma, {
       id: "00000000-0000-4000-8000-000000000010",
       garageId: garage.id,

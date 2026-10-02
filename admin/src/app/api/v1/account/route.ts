@@ -5,9 +5,10 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { handleApiError, NotFoundError } from "@/lib/api/errors";
 import { updateAccountSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
-import type { ProfileType, Region } from "@/generated/prisma/enums";
+import { PlanSubject, type ProfileType, type Region } from "@/generated/prisma/enums";
+import { getPlanState } from "@/lib/limits";
 
-// GET /api/v1/account — the caller's own Account, user, and profiles.
+// GET /api/v1/account — the caller's own Account, user, profiles and owner-side plan.
 // Chain: auth -> account -> resource.
 export async function GET(req: NextRequest) {
   try {
@@ -21,7 +22,19 @@ export async function GET(req: NextRequest) {
       throw new NotFoundError("Account not found.");
     }
 
-    return apiOk(full);
+    // The owner-side plan in force (starts the no-card trial on first read).
+    const ps = await getPlanState(PlanSubject.OWNER, account.id);
+    const plan = ps
+      ? {
+          code: ps.plan.code,
+          name: ps.plan.name,
+          state: ps.state,
+          trialEndsAt: ps.trialEndsAt,
+          limits: { garages: ps.plan.maxGarages, vehicles: ps.plan.maxVehicles, seats: ps.plan.maxSeats },
+        }
+      : null;
+
+    return apiOk({ ...full, plan });
   } catch (error) {
     return handleApiError(error);
   }

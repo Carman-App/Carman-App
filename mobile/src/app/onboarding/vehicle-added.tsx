@@ -6,6 +6,8 @@ import { Footnote } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
+import { useAccount } from '@/data/hooks';
+import { daysLeft } from '@/features/billing/plan';
 import { useOnboardingDraft } from '@/features/onboarding/context';
 import { formatNumber } from '@/lib/format';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
@@ -14,6 +16,8 @@ import { REGION_UNITS, USAGE_LABEL } from '@/types/domain';
 /** Garage ready: a receipt of what was created, then three next steps that each earn their place. */
 export default function GarageReadyScreen() {
   const { draft } = useOnboardingDraft();
+  const planState = useAccount().data?.planState;
+  const trialLabel = planState?.state === 'trial' ? `${daysLeft(planState.trialEndsAt)} DAYS FREE` : 'FREE TRIAL';
   const units = REGION_UNITS[draft.region];
   const vehicleId = draft.vehicleId;
   const next = [
@@ -52,7 +56,7 @@ export default function GarageReadyScreen() {
       <View style={styles.foot}>
         <View style={styles.trial}>
           <T variant="eyebrow" color={Colors.ink}>
-            7 DAYS FREE · {(draft.garageName || 'MY GARAGE').toUpperCase()} · {units.currency}
+            {trialLabel} · {(draft.garageName || 'MY GARAGE').toUpperCase()} · {units.currency}
           </T>
         </View>
         {draft.profile === 'both' ? (

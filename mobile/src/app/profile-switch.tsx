@@ -8,6 +8,7 @@ import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAccount, useActiveGarage, useGarageMembers, useGarages, useUiState, useVehicles, useWorkshops } from '@/data/hooks';
 import { setUiState } from '@/data/uiState';
+import { planMeta } from '@/features/billing/plan';
 import { Colors, Spacing } from '@/theme/tokens';
 
 /** Switch profile: which profile Carma is being used as. Opened from My profile or the drawer. */
@@ -74,9 +75,9 @@ export default function SwitchProfileScreen() {
           ACCOUNT
         </T>
         {[
-          { label: 'Garage members', meta: `${members.length} OF 5`, go: () => garage && router.push(`/garages/${garage.id}/members`) },
+          { label: 'Garage members', meta: account?.planState?.limits.seats != null ? `${members.length} OF ${account.planState.limits.seats}` : String(members.length), go: () => garage && router.push(`/garages/${garage.id}/members`) },
           { label: 'Country & units', meta: account ? account.region : '', go: () => router.push('/settings') },
-          { label: 'Subscription', meta: account?.plan.toUpperCase() ?? '', go: () => router.push('/settings/billing') },
+          { label: 'Subscription', meta: planMeta(account?.planState), go: () => router.push('/settings/billing') },
         ].map((r) => (
           <Pressable key={r.label} onPress={r.go} style={styles.row}>
             <T variant="body" color={Colors.ink} style={styles.flex}>
