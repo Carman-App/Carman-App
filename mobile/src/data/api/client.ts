@@ -16,6 +16,9 @@
  *                       HTTP status already set correctly (401/403/404/409/402/422/500).
  */
 
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 /** Same shape admin/src/lib/api/response.ts emits for paginated list endpoints. */
 export type PaginationMeta = {
   page: number;
@@ -56,21 +59,53 @@ export class ApiError extends Error {
  */
 export class NetworkError extends Error {
   cause?: unknown;
-  constructor(message = 'Could not reach the Carma server. Check your connection and try again.', cause?: unknown) {
+  constructor(message = `Could not reach the Carma server at ${serverAddress()}. Check the admin server is running and this device is on the same network.`, cause?: unknown) {
     super(message);
     this.name = 'NetworkError';
     this.cause = cause;
   }
 }
 
+/**
+ * On a phone or emulator, "localhost" is the device itself, not the computer
+ * running the admin server. In development the computer's address is known:
+ * it is the host Expo served the bundle from (Constants.expoConfig.hostUri,
+ * e.g. "192.168.0.12:8081"). A localhost API URL is pointed there instead,
+ * keeping its port. Web and real hostnames are left untouched.
+ */
+function resolveLocalhost(url: string): string {
+  if (Platform.OS === 'web') return url;
+  const parsed = new URL(url);
+  if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') return url;
+  const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
+  if (!devHost || devHost === 'localhost' || devHost === '127.0.0.1') {
+    // Android emulator without a LAN host: 10.0.2.2 is the computer.
+    if (Platform.OS === 'android') parsed.hostname = '10.0.2.2';
+    return parsed.toString().replace(/\/$/, '');
+  }
+  parsed.hostname = devHost;
+  return parsed.toString().replace(/\/$/, '');
+}
+
+let baseUrl: string | null = null;
+
 function getBaseUrl(): string {
+  if (baseUrl) return baseUrl;
   const url = process.env.EXPO_PUBLIC_API_URL;
   if (!url) {
-    throw new Error(
-      'EXPO_PUBLIC_API_URL is not set. Copy mobile/.env.example to .env.local and fill it in — on a physical device or Android emulator, "localhost" would otherwise silently point at the wrong host.'
-    );
+    throw new Error('EXPO_PUBLIC_API_URL is not set. Copy mobile/.env.example to .env.local and fill it in.');
   }
-  return url;
+  baseUrl = resolveLocalhost(url);
+  return baseUrl;
+}
+
+/** The server address the app is actually using, for error messages. */
+export function serverAddress(): string {
+  try {
+    return getBaseUrl();
+  } catch {
+    return 'no server set';
+  }
 }
 
 /**

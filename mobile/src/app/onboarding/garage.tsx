@@ -11,7 +11,7 @@ export default function FirstGarageScreen() {
   const ok = draft.garageName.trim().length > 0;
   return (
     <OnboardingScreen
-      step={{ step: 3, total: 6 }}
+      step={{ step: 3, total: 7 }}
       title="Name your first garage"
       lede="A garage holds vehicles and the people you share them with."
       footer={

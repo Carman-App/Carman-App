@@ -71,7 +71,7 @@ export default function OdometerScreen() {
 
   return (
     <OnboardingScreen
-      step={{ step: 6, total: 6 }}
+      step={{ step: 7, total: 7 }}
       title="What’s on the odometer?"
       bleed
       footer={

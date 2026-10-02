@@ -36,7 +36,7 @@ export default function WorkshopSetupScreen() {
 
   return (
     <OnboardingScreen
-      step={{ step: 1, total: 2, label: 'WORKSHOP' }}
+      step={{ step: 3, total: 4 }}
       title="What goes on your invoices?"
       lede="Name, country and town. No logo, bank details or tax form."
       bleed

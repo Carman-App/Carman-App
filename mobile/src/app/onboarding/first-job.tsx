@@ -24,7 +24,7 @@ export default function FirstJobScreen() {
   return (
     <OnboardingScreen
       hideBack
-      step={{ step: 2, total: 2, label: 'WORKSHOP' }}
+      step={{ step: 4, total: 4 }}
       title={`${name} is open`}
       lede="Three steps put the first job on the board. None of them block you."
       bleed

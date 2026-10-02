@@ -34,7 +34,7 @@ export default function MakeModelScreen() {
   return (
     <OnboardingScreen
       backLabel="BACK"
-      step={{ step: 5, total: 6 }}
+      step={{ step: 5, total: 7 }}
       title="Which vehicle?"
       lede="Make, model and year. Carma fills in the variant where it knows it."
       bleed

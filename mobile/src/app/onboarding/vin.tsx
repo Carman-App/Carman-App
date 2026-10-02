@@ -21,8 +21,7 @@ export default function VinScreen() {
   return (
     <OnboardingScreen
       backLabel="BACK"
-      right="SKIP"
-      onRight={() => router.push('/onboarding/odometer')}
+      step={{ step: 6, total: 7 }}
       above={
         <View style={styles.badge}>
           <T variant="eyebrowStrong" color={Colors.white}>
@@ -35,9 +34,14 @@ export default function VinScreen() {
       bleed
       footer={
         manual ? (
-          <Button disabled={!valid} onPress={() => router.push('/onboarding/odometer')}>
-            {valid ? 'Continue' : `${clean.length} of 17 characters`}
-          </Button>
+          <>
+            <Button disabled={!valid} onPress={() => router.push('/onboarding/odometer')}>
+              {valid ? 'Continue' : `${clean.length} of 17 characters`}
+            </Button>
+            <Button variant="secondary" size="md" onPress={() => router.push('/onboarding/odometer')}>
+              Skip for now
+            </Button>
+          </>
         ) : (
           <>
             <Button onPress={() => setManual(true)}>Enter the VIN</Button>

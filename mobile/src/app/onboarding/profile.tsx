@@ -19,7 +19,7 @@ export default function RoleScreen() {
   return (
     <OnboardingScreen
       backLabel="COUNTRY"
-      step={{ step: 2, total: 6 }}
+      step={{ step: 2, total: draft.profile === 'mechanic' ? 4 : 7 }}
       title="What brings you to Carma?"
       lede="This decides what Carma sets up first. You can change it later."
       bleed

@@ -25,7 +25,7 @@ export default function VehicleTypeScreen() {
   return (
     <OnboardingScreen
       backLabel="GARAGE"
-      step={{ step: 4, total: 6 }}
+      step={{ step: 4, total: 7 }}
       title="What are you adding?"
       bleed
       footer={<Button onPress={() => router.push('/onboarding/make-model')}>Continue</Button>}>

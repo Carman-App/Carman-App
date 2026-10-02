@@ -24,7 +24,7 @@ export default function CountryScreen() {
   return (
     <OnboardingScreen
       backLabel="WELCOME"
-      step={{ step: 1, total: 6 }}
+      step={{ step: 1, total: draft.profile === 'mechanic' ? 4 : 7 }}
       title="Where are you based?"
       lede="Sets your currency and units."
       footer={
