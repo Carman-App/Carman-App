@@ -13,16 +13,16 @@ import { setUiState } from '@/data/uiState';
  * is never stored; only Carma's own session is (see @/data/auth/session).
  */
 
-export type AuthConfig = { google: boolean; apple: boolean; devAccount: boolean };
+export type AuthConfig = { google: boolean; apple: boolean; devAccount: boolean; reachable: boolean };
 export type SignInOutcome = { ok: true; isNew: boolean } | { ok: false; cancelled?: boolean; message?: string };
 
 type SessionResponse = Session & { accountId: string; isNew: boolean };
 
 export async function fetchAuthConfig(): Promise<AuthConfig> {
   try {
-    return await api.get<AuthConfig>('auth/config');
+    return { ...(await api.get<Omit<AuthConfig, 'reachable'>>('auth/config')), reachable: true };
   } catch {
-    return { google: false, apple: false, devAccount: false };
+    return { google: false, apple: false, devAccount: false, reachable: false };
   }
 }
 

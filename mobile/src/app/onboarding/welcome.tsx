@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { T } from '@/components/ui/Typography';
+import { serverAddress } from '@/data/api/client';
 import { useSignedIn } from '@/data/auth/session';
 import { useAccount, useOnboarded, useUiState } from '@/data/hooks';
 import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, signOut, type SignInOutcome } from '@/features/auth/signIn';
@@ -23,7 +24,8 @@ export default function WelcomeScreen() {
   const mode = useUiState('mode');
   const [busy, setBusy] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [providers, setProviders] = useState({ apple: false, google: false, dev: false });
+  const [providers, setProviders] = useState({ apple: false, google: false, dev: false, reachable: true, checked: false });
+  const [attempt, setAttempt] = useState(0);
   const devAllowed = __DEV__ && !!process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
   // With no session, the account is only knowable through the development demo account.
   const account = useAccount().data;
@@ -33,12 +35,20 @@ export default function WelcomeScreen() {
     let live = true;
     void (async () => {
       const [config, apple] = await Promise.all([fetchAuthConfig(), appleAvailable()]);
-      if (live) setProviders({ apple: apple && config.apple, google: config.google && googleAvailable(), dev: devAllowed && config.devAccount });
+      if (live) {
+        setProviders({
+          apple: apple && config.apple,
+          google: config.google && googleAvailable(),
+          dev: devAllowed && config.devAccount,
+          reachable: config.reachable,
+          checked: true,
+        });
+      }
     })();
     return () => {
       live = false;
     };
-  }, [devAllowed]);
+  }, [devAllowed, attempt]);
 
   const run = async (which: 'apple' | 'google') => {
     setBusy(which);
@@ -108,10 +118,21 @@ export default function WelcomeScreen() {
                 Use the demo account (development)
               </Button>
             ) : null}
-            {!providers.apple && !providers.google && !providers.dev ? (
-              <T variant="meta" color={Colors.body} center>
-                Sign-in is not available right now. Check your connection and reopen Carma.
-              </T>
+            {providers.checked && !providers.apple && !providers.google && !providers.dev ? (
+              <>
+                <T variant="meta" color={Colors.body} center>
+                  {!providers.reachable
+                    ? __DEV__
+                      ? `Can't reach the Carma server at ${serverAddress()}. Start it with "npm run dev" in admin/, and keep this phone on the same Wi-Fi as the computer.`
+                      : "Can't reach Carma. Check your connection and try again."
+                    : __DEV__
+                      ? 'The server offers no sign-in yet: add Google/Apple client ids, or run it with "npm run dev" for the demo account.'
+                      : 'Sign-in is not available right now. Try again in a moment.'}
+                </T>
+                <Button variant="secondary" size="md" onPress={() => setAttempt((n) => n + 1)}>
+                  Try again
+                </Button>
+              </>
             ) : null}
             {error ? (
               <T variant="meta" color={Colors.signal} center>

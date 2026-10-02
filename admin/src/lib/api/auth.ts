@@ -15,13 +15,16 @@ export type RequestAccount = Prisma.AccountGetPayload<{ include: { user: true } 
  * a short-lived token issued after Google/Apple sign-in (see
  * src/lib/auth/end-user.ts). Its signature and expiry are checked here.
  *
- * Development only: when ALLOW_DEV_ACCOUNT_HEADER=true and NODE_ENV is not
- * "production", an `x-carma-account-id` header is still accepted so the app
- * can run against a local server without OAuth credentials. In production
- * that header is ignored no matter what the env says.
+ * Development only: under `next dev` an `x-carma-account-id` header is
+ * accepted so the app can run against a local server without OAuth
+ * credentials (set ALLOW_DEV_ACCOUNT_HEADER=false to refuse it). In a
+ * production build that header is ignored no matter what the env says.
  */
 export function devAccountHeaderAllowed(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_ACCOUNT_HEADER === "true";
+  // `next dev` only (NODE_ENV=development): on by default so the app's demo
+  // account works locally; ALLOW_DEV_ACCOUNT_HEADER=false turns it off.
+  // Production builds (`next build` / `next start`) never accept it.
+  return process.env.NODE_ENV === "development" && process.env.ALLOW_DEV_ACCOUNT_HEADER !== "false";
 }
 
 async function resolveAccountId(req: NextRequest): Promise<string | null> {
