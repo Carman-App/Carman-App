@@ -1,26 +1,24 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import { Footnote, ScreenTitle } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { updateVehicle } from '@/data/repo';
+import { TopBar } from '@/components/ui/TopBar';
 import { useVehicle } from '@/data/hooks';
-import { Spacing } from '@/theme/tokens';
+import { updateVehicle } from '@/data/repo';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
 /**
- * Registration/plate isn't collected during onboarding (prototype screen 07
- * has no plate field) — it's added later here, from Vehicle Details, the
- * same "deferred" pattern as VIN and Powertrain.
+ * Registration isn't collected during onboarding; it's added later here,
+ * from Vehicle details, the same deferred pattern as VIN and Powertrain.
  */
 export default function VehiclePlateScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicle = useVehicle(id).data;
-  // 'UNASSIGNED' is the placeholder onboarding/addVehicle sends when no real
-  // plate was set yet (see @/data/repo) — don't prefill it as if it were a
-  // real value the user typed.
+  // 'UNASSIGNED' is the placeholder sent when no real plate was set yet (see @/data/repo).
   const [plate, setPlate] = useState(vehicle?.plate && vehicle.plate !== 'UNASSIGNED' ? vehicle.plate : '');
   const [saving, setSaving] = useState(false);
 
@@ -34,44 +32,62 @@ export default function VehiclePlateScreen() {
 
   return (
     <Screen
+      header={<TopBar backLabel="DETAILS" right="OPTIONAL" />}
       footer={
-        <View style={styles.footer}>
+        <>
           <Button onPress={save} loading={saving} disabled={!plate.trim()}>
             Save registration
           </Button>
-          <Button variant="ghost" onPress={() => router.back()}>
-            I&apos;ll do this later
+          <Button variant="secondary" size="md" onPress={() => router.back()}>
+            Not now
           </Button>
-        </View>
+        </>
       }>
-      <T variant="eyebrow">OPTIONAL</T>
-      <T variant="display" style={styles.title}>
-        Add your registration
-      </T>
-      <T variant="body" color="#6F6C63" style={styles.intro}>
-        Not needed to start logging. Worth adding before you sell, share access with a mechanic, or generate a report.
-      </T>
-
-      <TextField
-        label="PLATE"
-        value={plate}
-        onChangeText={(v) => setPlate(v.toUpperCase())}
-        placeholder="KDG 441X"
-        autoFocus
+      <ScreenTitle
+        title="Add your registration"
+        lede="Not needed to start logging. Worth adding before you sell, share access with a mechanic, or export a report."
       />
+      <View style={styles.plate}>
+        <T variant="eyebrow" color={Colors.slate}>
+          {vehicle ? `${vehicle.make} ${vehicle.model}`.toUpperCase() : 'PLATE'}
+        </T>
+        <TextInput
+          value={plate}
+          onChangeText={(v) => setPlate(v.toUpperCase())}
+          placeholder="KDG 441X"
+          placeholderTextColor={Colors.textFaint}
+          autoCapitalize="characters"
+          autoFocus
+          style={styles.plateInput}
+        />
+      </View>
+      <Footnote>SHOWN ON THE VEHICLE, ITS QR PAGE AND REPORTS. ONLY YOUR GARAGE AND MECHANICS YOU APPROVE SEE IT.</Footnote>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    marginTop: Spacing.xxs,
-    marginBottom: Spacing.xs,
+  plate: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.ink,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.ctaSoft,
+    minWidth: 240,
   },
-  intro: {
-    marginBottom: Spacing.md,
-  },
-  footer: {
-    gap: Spacing.xs,
+  plateInput: {
+    outlineWidth: 0,
+    fontFamily: FontFamily.bold,
+    fontSize: 34,
+    letterSpacing: 3,
+    color: Colors.ink,
+    textAlign: 'center',
+    minWidth: 200,
   },
 });

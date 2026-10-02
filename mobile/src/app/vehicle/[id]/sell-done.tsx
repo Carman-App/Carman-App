@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Footnote } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
+import { IconGlyph } from '@/components/ui/IconGlyph';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { useVehicle } from '@/data/hooks';
@@ -10,7 +11,7 @@ import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
 /** Handed over: the code the buyer redeems, and what the seller keeps. */
 export default function SellDoneScreen() {
-  const { id, model: modelParam, salePrice } = useLocalSearchParams<{ id: string; buyer?: string; model?: string; salePrice?: string }>();
+  const { id, buyer, model: modelParam, salePrice } = useLocalSearchParams<{ id: string; buyer?: string; model?: string; salePrice?: string }>();
   const vehicle = useVehicle(id).data;
   // The vehicle may already be gone (handover without a read-only copy deletes it), so fall back to the model carried in params.
   const model = vehicle?.model ?? modelParam ?? 'vehicle';
@@ -21,7 +22,9 @@ export default function SellDoneScreen() {
     <Screen footer={<Button onPress={() => router.replace('/home')}>Back to my garage</Button>}>
       <View style={styles.body}>
         <View style={styles.badgeRow}>
-          <View style={styles.disc} />
+          <View style={styles.disc}>
+            <IconGlyph glyph="check" size={46} bg="transparent" fg={Colors.white} scale={0.55} />
+          </View>
           <View style={styles.pill}>
             <T variant="eyebrowStrong" color={Colors.accent}>
               HANDED OVER
@@ -29,7 +32,7 @@ export default function SellDoneScreen() {
           </View>
         </View>
         <T variant="display">
-          The {model} and its history are with <T variant="display" style={{ textTransform: 'uppercase' }}>the buyer.</T>
+          The {model} and its history are with {buyer?.trim() || 'the buyer'}.
         </T>
         <View style={styles.card}>
           <T variant="eyebrow" color={Colors.slate}>
@@ -66,6 +69,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderWidth: 5,
     borderColor: Colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pill: {
     backgroundColor: Colors.accentSoft,

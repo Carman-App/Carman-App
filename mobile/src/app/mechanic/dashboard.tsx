@@ -23,7 +23,7 @@ export default function MechanicHomeScreen() {
   const workshop = workshopQ.data;
   const jobsData = useJobs(workshop?.id ?? undefined).data;
   const jobs = useMemo(() => jobsData ?? [], [jobsData]);
-  const recents = useUiState('recents');
+  const recents = useUiState('mechanicRecents');
   const [text, setText] = useState('');
   const [drawer, setDrawer] = useState(false);
 

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -51,10 +51,13 @@ function timeLeft(days: number) {
 
 /** Documents. Expiry sorts the list. Renewing supersedes rather than overwrites. */
 export default function DocumentsScreen() {
+  // Opened from a vehicle, the same list is scoped to that vehicle's papers.
+  const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const garage = useActiveGarage().data;
   const vehicles = useVehicles(garage?.id).data ?? [];
   const documentsQuery = useGarageDocuments(garage?.id);
-  const documents = useMemo(() => documentsQuery.data ?? [], [documentsQuery.data]);
+  const documents = useMemo(() => (documentsQuery.data ?? []).filter((d) => !vehicleId || d.vehicleId === vehicleId), [documentsQuery.data, vehicleId]);
+  const scopedVehicle = vehicleId ? vehicles.find((v) => v.id === vehicleId) : undefined;
   const [filter, setFilter] = useState<Filter>('all');
   const superseded = useMemo(() => supersededIds(documents), [documents]);
   const vehicleById = new Map(vehicles.map((v) => [v.id, v] as const));
@@ -71,13 +74,13 @@ export default function DocumentsScreen() {
   return (
     <Screen
       padded={false}
-      header={<TopBar title="Documents" right={`${sorted.length} of ${documents.length}`} />}
+      header={<TopBar title={scopedVehicle ? `${scopedVehicle.model} papers` : 'Documents'} right={`${sorted.length} of ${documents.length}`} />}
       footer={
         <View style={styles.foot}>
-          <Button style={styles.flex} glyph="scan" onPress={() => router.push('/doc/scan')}>
+          <Button style={styles.flex} glyph="scan" onPress={() => router.push({ pathname: '/doc/scan', params: vehicleId ? { vehicleId } : {} })}>
             Scan a document
           </Button>
-          <IconButton glyph="upload-file" size={64} bg={Colors.white} fg={Colors.accent} style={styles.upload} onPress={() => router.push({ pathname: '/doc/scan', params: { mode: 'upload' } })} accessibilityLabel="Upload a file" />
+          <IconButton glyph="upload-file" size={64} bg={Colors.white} fg={Colors.accent} style={styles.upload} onPress={() => router.push({ pathname: '/doc/scan', params: { mode: 'upload', ...(vehicleId ? { vehicleId } : {}) } })} accessibilityLabel="Upload a file" />
         </View>
       }>
       <View style={styles.filters}>
@@ -122,7 +125,7 @@ export default function DocumentsScreen() {
                       </T>
                       <T variant="meta">
                         {d.expiryDate ? `${isOld || (days ?? 0) < 0 ? 'Expired' : 'Expires'} ${formatDateWithYear(d.expiryDate)}` : `Added ${formatDateWithYear(d.addedAt.slice(0, 10))}`}
-                        {v ? ` · ${v.model}` : ''}
+                        {v && !vehicleId ? ` · ${v.model}` : ''}
                         {isOld ? ' · still readable' : ''}
                       </T>
                       {days !== null && !isOld ? (

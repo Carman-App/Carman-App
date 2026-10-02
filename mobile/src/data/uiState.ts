@@ -24,6 +24,8 @@ type UiState = {
   activeWorkshopId: string | null;
   /** Recent questions asked on Home, newest first (drawer "Recents"). */
   recents: string[];
+  /** Recent questions asked on the workshop side, kept apart from the owner's. */
+  mechanicRecents: string[];
   /** Notification preferences from My profile, keyed by topic. */
   notificationPrefs: Record<string, boolean>;
 };
@@ -37,6 +39,7 @@ let state: UiState = {
   homeVehicleId: null,
   activeWorkshopId: null,
   recents: [],
+  mechanicRecents: [],
   notificationPrefs: {},
 };
 let hydrated = false;
@@ -115,9 +118,10 @@ export function useMode(): UiState['mode'] {
   return useUiState('mode');
 }
 
-/** Adds a question to the drawer's Recents, de-duplicated and capped at 20. */
+/** Adds a question to the drawer's Recents for the current mode, de-duplicated and capped at 20. */
 export async function pushRecent(question: string): Promise<void> {
   const q = question.trim();
   if (!q) return;
-  await setUiState({ recents: [q, ...state.recents.filter((r) => r !== q)].slice(0, 20) });
+  const key = state.mode === 'mechanic' ? 'mechanicRecents' : 'recents';
+  await setUiState({ [key]: [q, ...state[key].filter((r) => r !== q)].slice(0, 20) });
 }

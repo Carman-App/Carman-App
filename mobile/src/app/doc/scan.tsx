@@ -1,19 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Footnote, KeyValueRow, Rule } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
-import { IconGlyph } from '@/components/ui/IconGlyph';
-import { ModalHeader } from '@/components/ui/ModalHeader';
+import { DateSheet } from '@/components/ui/DateSheet';
+import { OptionSheet } from '@/components/ui/OptionSheet';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { useActiveGarage, useDocument, useVehicles } from '@/data/hooks';
 import { addDocument, updateDocument } from '@/data/repo';
-import { todayIso } from '@/lib/format';
+import { formatDateWithYear, formatNumber, todayIso } from '@/lib/format';
 import type { DocumentType } from '@/types/domain';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
 const TYPES: { key: DocumentType; label: string }[] = [
   { key: 'insurance', label: 'Insurance' },
@@ -24,34 +26,37 @@ const TYPES: { key: DocumentType; label: string }[] = [
 ];
 
 /**
- * Two states, one screen (prototype screens 36/38 DOCUMENT SCAN):
- *  - New document (no `documentId` param): reached from Documents list or
- *    Vehicle Added's "Add insurance document" — pick a type, title, expiry.
- *  - Replace existing scan (`documentId` param present): reached from the
- *    DOCUMENT detail screen's "TAP TO UPLOAD" row on a document that already
- *    has its metadata set — just re-attach the file, no type/title/expiry
- *    fields to repeat.
+ * Two states, one screen:
+ *  - New document (no `documentId`): from Documents or a vehicle's papers.
+ *    Pick the type, name it, link a vehicle, set the expiry.
+ *  - Replace (`documentId`): from a document's page. Re-attach the file only;
+ *    name, vehicle and expiry stay as they are.
  */
 export default function ScanDocumentScreen() {
-  const { vehicleId: paramVehicleId, documentId } = useLocalSearchParams<{ vehicleId?: string; documentId?: string }>();
+  const { vehicleId: paramVehicleId, documentId, mode } = useLocalSearchParams<{ vehicleId?: string; documentId?: string; mode?: string }>();
   const existingDoc = useDocument(documentId).data;
   const isReplace = !!documentId;
+  const upload = mode === 'upload';
 
   const garage = useActiveGarage().data;
   const vehicles = useVehicles(garage?.id).data ?? [];
   const [type, setType] = useState<DocumentType>('insurance');
   const [title, setTitle] = useState('');
   const [expiry, setExpiry] = useState('');
+  const [pickedVehicleId, setPickedVehicleId] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<'vehicle' | 'expiry' | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSaveNew = async () => {
-    const vehicleId = paramVehicleId || vehicles[0]?.id;
-    if (!vehicleId || !title.trim()) return;
+  const vehicleId = pickedVehicleId ?? paramVehicleId ?? vehicles[0]?.id;
+  const vehicle = vehicles.find((v) => v.id === vehicleId);
+  const hasExpiry = type === 'insurance' || type === 'inspection' || type === 'logbook';
+
+  const run = async (fn: () => Promise<unknown>) => {
     setSaving(true);
     setError(null);
     try {
-      await addDocument(vehicleId, { type, title: title.trim(), expiryDate: expiry || undefined, addedAt: todayIso() });
+      await fn();
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
@@ -60,125 +65,146 @@ export default function ScanDocumentScreen() {
     }
   };
 
-  const handleReplace = async () => {
-    if (!documentId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await updateDocument(documentId, { addedAt: todayIso() });
-      router.back();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
-    } finally {
-      setSaving(false);
-    }
+  const saveNew = () => {
+    if (!vehicleId || !title.trim()) return;
+    void run(() => addDocument(vehicleId, { type, title: title.trim(), expiryDate: (hasExpiry && expiry) || undefined, addedAt: todayIso() }));
   };
+
+  const replace = () => {
+    if (!documentId) return;
+    void run(() => updateDocument(documentId, { addedAt: todayIso() }));
+  };
+
+  const frame = (
+    <View style={styles.frameWrap}>
+      <View style={styles.frame}>
+        <View style={[styles.corner, styles.tl]} />
+        <View style={[styles.corner, styles.tr]} />
+        <View style={[styles.corner, styles.bl]} />
+        <View style={[styles.corner, styles.br]} />
+        <T variant="eyebrow" color={Colors.slate} center>
+          {upload ? 'PHOTO OR PDF' : 'FIT THE PAGE INSIDE THE CORNERS'}
+        </T>
+      </View>
+    </View>
+  );
+
+  const errorLine = error ? (
+    <T variant="body" color={Colors.signal} style={styles.error}>
+      {error}
+    </T>
+  ) : null;
 
   if (isReplace) {
     return (
       <Screen
-        contentStyle={styles.content}
+        header={<TopBar backLabel="DOCUMENT" right="REPLACE FILE" />}
         footer={
-          <Button onPress={handleReplace} loading={saving}>
+          <Button onPress={replace} loading={saving}>
             Replace file
           </Button>
         }>
-        <ModalHeader eyebrow="DOCUMENTS" title={existingDoc?.title ?? 'Replace scan'} />
-
-        <Pressable style={styles.scanArea}>
-          <IconGlyph glyph="scan" size={64} />
-          <T variant="bodyStrong" style={styles.scanLabel}>
-            SCAN
-          </T>
-          <T variant="meta">Nothing attached · Upload a photo or PDF</T>
-        </Pressable>
-
-        <T variant="body" color={Colors.textMuted} style={styles.replaceNote}>
-          This replaces the file attached to {existingDoc?.title ?? 'this document'}. Its name, linked vehicle and expiry
-          date stay as they are.
-        </T>
-
-        {error ? (
-          <T variant="body" color={Colors.danger} center style={styles.error}>
-            {error}
-          </T>
-        ) : null}
+        <View style={styles.head}>
+          <T variant="display">{existingDoc?.title ?? 'Replace the file'}</T>
+          <T variant="lede">Its name, vehicle and expiry stay as they are. Only the attached file changes.</T>
+        </View>
+        {frame}
+        {errorLine}
       </Screen>
     );
   }
 
   return (
     <Screen
-      scroll
-      contentStyle={styles.content}
+      header={<TopBar backLabel="BACK" right={upload ? 'UPLOAD A FILE' : 'SCAN A DOCUMENT'} />}
       footer={
-        <Button onPress={handleSaveNew} loading={saving} disabled={!title.trim()}>
-          Save document
+        <Button onPress={saveNew} loading={saving} disabled={!title.trim() || !vehicleId}>
+          {!vehicleId ? 'Add a vehicle first' : title.trim() ? 'Save document' : 'Name it first'}
         </Button>
       }>
-      <ModalHeader eyebrow="DOCUMENTS" title="Scan document" />
+      {frame}
 
-      <Pressable style={styles.scanArea}>
-        <IconGlyph glyph="scan" size={64} />
-        <T variant="bodyStrong" style={styles.scanLabel}>
-          SCAN
-        </T>
-        <T variant="meta">Nothing attached · Upload a photo or PDF</T>
-      </Pressable>
-
-      <T variant="eyebrow" style={styles.sectionLabel}>
-        DOCUMENT TYPE
-      </T>
-      <View style={styles.typeRow}>
-        {TYPES.map((t) => (
-          <Chip key={t.key} label={t.label} selected={type === t.key} onPress={() => setType(t.key)} />
-        ))}
+      <View style={styles.section}>
+        <T variant="section">What it is</T>
+        <View style={styles.chips}>
+          {TYPES.map((t) => (
+            <Chip key={t.key} label={t.label} selected={type === t.key} onPress={() => setType(t.key)} />
+          ))}
+        </View>
+        <TextField label="Name" value={title} onChangeText={setTitle} placeholder="e.g. Jubilee comprehensive cover" />
       </View>
-
-      <TextField label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Jubilee Comprehensive Cover" />
-      <View style={styles.spacer} />
-      <TextField label="Expiry (optional)" value={expiry} onChangeText={setExpiry} placeholder="YYYY-MM-DD" />
-
-      {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
-          {error}
-        </T>
+      <Rule />
+      <KeyValueRow
+        label="Vehicle"
+        value={vehicle ? `${vehicle.make} ${vehicle.model}` : 'None yet'}
+        onPress={vehicles.length > 1 ? () => setSheet('vehicle') : undefined}
+        valueColor={vehicles.length > 1 ? Colors.accent : undefined}
+      />
+      {hasExpiry ? (
+        <KeyValueRow label="Expires" value={expiry ? formatDateWithYear(expiry) : 'Set a date'} valueColor={expiry ? undefined : Colors.accent} onPress={() => setSheet('expiry')} last />
       ) : null}
+      <Footnote style={styles.note}>
+        {hasExpiry ? 'CARMA REMINDS YOU 30 DAYS BEFORE IT RUNS OUT.' : 'RECEIPTS AND INVOICES HAVE NO EXPIRY. THEY STAY WITH THE VEHICLE’S HISTORY.'}
+      </Footnote>
+      {errorLine}
+
+      <OptionSheet
+        visible={sheet === 'vehicle'}
+        title="Which vehicle?"
+        options={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}`, meta: `${v.year} · ${formatNumber(v.odometerKm)} KM`, glyph: v.type === 'motorcycle' ? 'motorcycle' : 'vehicle' }))}
+        selected={vehicleId}
+        onSelect={(k) => {
+          setPickedVehicleId(k);
+          setSheet(null);
+        }}
+        onClose={() => setSheet(null)}
+      />
+      <DateSheet visible={sheet === 'expiry'} value={expiry} title="Expires on" allowFuture onSelect={setExpiry} onClose={() => setSheet(null)} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
+  head: {
+    paddingTop: Spacing.md,
+    gap: 10,
   },
-  scanArea: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.xxl,
+  frameWrap: {
+    marginTop: Spacing.md,
     marginBottom: Spacing.lg,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.chip,
+    padding: Spacing.lg,
   },
-  replaceNote: {
-    marginTop: Spacing.sm,
+  frame: {
+    height: 150,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
   },
-  scanLabel: {
-    letterSpacing: 1,
+  corner: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderColor: Colors.accent,
   },
-  sectionLabel: {
-    marginBottom: Spacing.xs,
+  tl: { top: 0, left: 0, borderTopWidth: 2, borderLeftWidth: 2 },
+  tr: { top: 0, right: 0, borderTopWidth: 2, borderRightWidth: 2 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 2, borderLeftWidth: 2 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 2, borderRightWidth: 2 },
+  section: {
+    paddingVertical: Spacing.md,
+    gap: 12,
   },
-  typeRow: {
+  chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginBottom: Spacing.lg,
+    gap: 8,
   },
-  spacer: {
-    height: Spacing.md,
+  note: {
+    marginTop: Spacing.md,
   },
   error: {
     marginTop: Spacing.sm,
+    fontFamily: FontFamily.medium,
   },
 });

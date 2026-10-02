@@ -38,7 +38,7 @@ export default function GaragesListScreen() {
         {(garages) => (
           <>
             <T variant="eyebrow" style={styles.eyebrow}>
-              {garages.length} OF {Math.max(MAX_GARAGES, garages.length)} GARAGES
+              {garages.length} {garages.length === 1 ? 'GARAGE' : 'GARAGES'} · UP TO {Math.max(MAX_GARAGES, garages.length)} ON YOUR PLAN
             </T>
             <Card padded={false} style={styles.card}>
               {garages.map((garage, i) => (
@@ -74,7 +74,7 @@ function GarageRow({ garage, bordered, onPress }: { garage: Garage; bordered: bo
       onPress={onPress}
       left={<IconGlyph glyph="garage" size={40} />}
       title={garage.name}
-      subtitle={`${vehicleCount} VEHICLES · ${memberCount} MEMBERS · ${garage.location}`}
+      subtitle={`${vehicleCount} ${vehicleCount === 1 ? 'VEHICLE' : 'VEHICLES'} · ${memberCount} ${memberCount === 1 ? 'MEMBER' : 'MEMBERS'} · ${garage.location}`}
       style={styles.row}
     />
   );

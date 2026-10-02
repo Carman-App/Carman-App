@@ -2,82 +2,87 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { Rule, ScreenTitle } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { updateVehicle } from '@/data/repo';
+import { TopBar } from '@/components/ui/TopBar';
 import { useVehicle } from '@/data/hooks';
-import { Spacing } from '@/theme/tokens';
+import { updateVehicle } from '@/data/repo';
+import { Colors, Spacing } from '@/theme/tokens';
 
+const WHY = ['Confirms exact specification', 'Identifies compatible parts', 'Surfaces manufacturer recalls', 'Builds a verifiable history'];
+
+/** VIN, added later from Vehicle details. 17 characters from the door jamb plate. */
 export default function VehicleVinScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicle = useVehicle(id).data;
   const [vin, setVin] = useState(vehicle?.vin ?? '');
   const [saving, setSaving] = useState(false);
+  const clean = vin.replace(/[^A-HJ-NPR-Z0-9]/gi, '').toUpperCase();
+  const valid = clean.length === 17;
 
   const save = async () => {
-    if (!id || !vin.trim()) return;
+    if (!id || !valid) return;
     setSaving(true);
-    await updateVehicle(id, { vin: vin.trim() });
+    await updateVehicle(id, { vin: clean });
     setSaving(false);
     router.back();
   };
 
   return (
     <Screen
+      header={<TopBar backLabel="DETAILS" right="OPTIONAL" />}
       footer={
-        <View style={styles.footer}>
-          <Button onPress={save} loading={saving} disabled={!vin.trim()}>
-            Save VIN
+        <>
+          <Button onPress={save} loading={saving} disabled={!valid}>
+            {valid ? 'Save VIN' : `${clean.length} of 17 characters`}
           </Button>
-          <Button variant="ghost" onPress={() => router.back()}>
-            I&apos;ll do this later
+          <Button variant="secondary" size="md" onPress={() => router.back()}>
+            Not now
           </Button>
-        </View>
+        </>
       }>
-      <T variant="eyebrow">OPTIONAL</T>
-      <T variant="display" style={styles.title}>
-        Add your VIN
-      </T>
-      <T variant="body" color="#6F6C63" style={styles.intro}>
-        Your VIN tells Carma exactly which vehicle you own: down to the engine.
-      </T>
-
-      <View style={styles.bullets}>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
-          • Confirms exact specification
-        </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
-          • Identifies compatible parts
-        </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
-          • Surfaces manufacturer recalls
-        </T>
-        <T variant="body" color="#6F6C63" style={styles.bullet}>
-          • Builds a verifiable history
-        </T>
+      <ScreenTitle title="Add your VIN" lede={`Your VIN tells Carma exactly which ${vehicle?.model ?? 'vehicle'} you own, down to the engine.`} />
+      {WHY.map((w) => (
+        <View key={w} style={styles.why}>
+          <View style={styles.square} />
+          <T variant="body" color={Colors.ink}>
+            {w}
+          </T>
+        </View>
+      ))}
+      <Rule />
+      <View style={styles.field}>
+        <TextField
+          label="VIN"
+          value={vin}
+          onChangeText={(v) => setVin(v.toUpperCase())}
+          placeholder="17 characters"
+          autoCapitalize="characters"
+          helper="On the plate inside the driver’s door, at the base of the windscreen, or on the logbook."
+        />
       </View>
-
-      <TextField label="VIN PLATE / DOOR JAMB" value={vin} onChangeText={setVin} placeholder="e.g. JTEBU29J...." autoFocus />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    marginTop: Spacing.xxs,
-    marginBottom: Spacing.xs,
+  why: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
-  intro: {
-    marginBottom: Spacing.md,
+  square: {
+    width: 6,
+    height: 6,
+    backgroundColor: Colors.accent,
   },
-  bullets: {
-    gap: Spacing.xs,
-    marginBottom: Spacing.xl,
-  },
-  bullet: {},
-  footer: {
-    gap: Spacing.xs,
+  field: {
+    paddingVertical: Spacing.lg,
   },
 });

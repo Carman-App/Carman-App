@@ -141,11 +141,17 @@ export function useGarageRecords(garageId: string | undefined) {
  * `undefined`, same as the mock store returning nothing for an unknown id;
  * screens already render a "not found" state for that case.
  */
+// There is no GET-by-id endpoint for records or documents: read the cached lists first, and on a
+// cold open (a deep link, a reload) load the active garage's list and look in that.
 export function useRecord(recordId: string | undefined) {
+  const garageId = useActiveGarage().data?.id;
   return useQuery({
     queryKey: ['record', recordId] as const,
-    queryFn: () => findCached<VehicleRecord>(['records', 'garageRecords'], recordId!),
-    enabled: !!recordId,
+    queryFn: async () =>
+      findCached<VehicleRecord>(['records', 'garageRecords'], recordId!) ??
+      (await queryClient.fetchQuery({ queryKey: qk.garageRecords(garageId), queryFn: () => fetchGarageRecords(garageId!) })).find((r) => r.id === recordId) ??
+      null,
+    enabled: !!recordId && !!garageId,
   });
 }
 
@@ -169,10 +175,14 @@ export function useGarageDocuments(garageId: string | undefined) {
 
 /** Same "no GET-by-id endpoint, read from an already-fetched list's cache" approach as `useRecord`. */
 export function useDocument(documentId: string | undefined) {
+  const garageId = useActiveGarage().data?.id;
   return useQuery({
     queryKey: ['document', documentId] as const,
-    queryFn: () => findCached<VehicleDocument>(['documents', 'garageDocuments'], documentId!),
-    enabled: !!documentId,
+    queryFn: async () =>
+      findCached<VehicleDocument>(['documents', 'garageDocuments'], documentId!) ??
+      (await queryClient.fetchQuery({ queryKey: qk.garageDocuments(garageId), queryFn: () => fetchGarageDocuments(garageId!) })).find((d) => d.id === documentId) ??
+      null,
+    enabled: !!documentId && !!garageId,
   });
 }
 
