@@ -1,75 +1,76 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Card } from '@/components/ui/Card';
 import { IconGlyph } from '@/components/ui/IconGlyph';
-import { ListRow } from '@/components/ui/ListRow';
-import { ModalHeader } from '@/components/ui/ModalHeader';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
-import { RECORD_CATEGORIES, type CategoryConfig } from '@/features/record/categories';
+import { TopBar } from '@/components/ui/TopBar';
+import { CATEGORY_TINT, RECORD_CATEGORIES, categoryHref } from '@/features/record/categories';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
 import { formatNumber } from '@/lib/format';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing } from '@/theme/tokens';
 
+/** The 18-action record selector as a full screen (opened from a vehicle). Home opens the same list as a sheet. */
 export default function AddRecordScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const vehicle = useResolvedVehicle(vehicleId);
 
-  const handlePick = (category: CategoryConfig) => {
-    if (!vehicle) return;
-    if (category.route === '/record/expense') {
-      router.push({ pathname: '/record/expense', params: { vehicleId: vehicle.id, categoryLabel: category.label } });
-      return;
-    }
-    router.push({ pathname: category.route, params: { vehicleId: vehicle.id } });
-  };
-
-  if (!vehicle) {
-    return (
-      <Screen>
-        <ModalHeader eyebrow="ADD RECORD" title="No vehicle yet" />
-        <T variant="body" color={Colors.textMuted}>
-          Add a vehicle to your garage first, then come back here to log fuel, service and other costs.
-        </T>
-      </Screen>
-    );
-  }
-
   return (
-    <Screen scroll contentStyle={styles.content}>
-      <ModalHeader eyebrow={`ADD TO ${vehicle.make} ${vehicle.model} · ${formatNumber(vehicle.odometerKm)} KM`.toUpperCase()} />
+    <Screen header={<TopBar backGlyph="close" backLabel="CLOSE" right={vehicle ? `${vehicle.model} · ${formatNumber(vehicle.odometerKm)} KM`.toUpperCase() : undefined} />}>
       <T variant="display" style={styles.title}>
-        What happened?
+        Add a record
       </T>
-      <Card padded={false} style={styles.list}>
-        {RECORD_CATEGORIES.map((category, i) => (
-          <ListRow
-            key={category.key}
-            bordered={i < RECORD_CATEGORIES.length - 1}
-            title={category.label}
-            subtitle={category.sub}
-            onPress={() => handlePick(category)}
-            style={styles.row}
-            left={<IconGlyph glyph={category.glyph} size={36} />}
-          />
-        ))}
-      </Card>
+      {!vehicle ? (
+        <T variant="lede">Add a vehicle to your garage first, then come back to log fuel, service and other costs.</T>
+      ) : (
+        <View style={styles.grid}>
+          {RECORD_CATEGORIES.map((c) => {
+            const tint = CATEGORY_TINT[c.key];
+            return (
+              <Pressable
+                key={c.key}
+                onPress={() => router.push(categoryHref(c, vehicle.id) as never)}
+                style={({ pressed }) => [styles.tile, pressed && { backgroundColor: Colors.accentSoft }]}>
+                <IconGlyph glyph={c.glyph} size={34} shape="tile" bg={tint.tint} fg={tint.hue} />
+                <View style={styles.text}>
+                  <T variant="bodyStrong" numberOfLines={1}>
+                    {c.label}
+                  </T>
+                  <T variant="eyebrow" numberOfLines={1} style={styles.sub}>
+                    {c.sub}
+                  </T>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-  },
   title: {
-    marginBottom: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
-  list: {
-    padding: Spacing.sm,
+  grid: {
+    gap: 8,
   },
-  row: {
-    paddingHorizontal: Spacing.sm,
+  tile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderSoft,
+  },
+  text: {
+    flex: 1,
+    gap: 4,
+  },
+  sub: {
+    fontSize: 9,
   },
 });

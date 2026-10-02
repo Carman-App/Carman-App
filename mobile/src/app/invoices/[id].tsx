@@ -1,12 +1,13 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { useInvoice, useVehicle } from '@/data/hooks';
 import { payInvoice } from '@/data/repo';
 import { formatDateShort, formatDateWithYear, formatMoney } from '@/lib/format';
@@ -43,12 +44,7 @@ export default function InvoiceDetailScreen() {
         const outstanding = invoice.status === 'paid' ? 0 : invoice.total;
         const paidAmount = invoice.status === 'paid' ? invoice.total : 0;
         return (
-          <Screen scroll contentStyle={styles.content}>
-            <Pressable onPress={() => router.back()}>
-              <T variant="eyebrowStrong" color={Colors.accent}>
-                ← BACK
-              </T>
-            </Pressable>
+          <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
 
             <T variant="eyebrow" style={styles.eyebrow}>
               INV {invoice.id.toUpperCase()} · {formatDateShort(invoice.createdAt)}

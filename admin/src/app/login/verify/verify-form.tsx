@@ -35,7 +35,7 @@ export default function VerifyForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 transition hover:bg-neutral-800 disabled:opacity-60"
+        className="w-full rounded-full bg-carma-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-carma-700 disabled:opacity-60"
       >
         {pending ? "Verifying…" : "Verify"}
       </button>

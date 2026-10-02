@@ -1,139 +1,189 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import { KeyValueRow, Rule } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
-import { ModalHeader } from '@/components/ui/ModalHeader';
+import { Chip } from '@/components/ui/Chip';
+import { DateSheet } from '@/components/ui/DateSheet';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { useAccount, useRecords } from '@/data/hooks';
+import { TopBar } from '@/components/ui/TopBar';
+import { useAccount, useRecords, useReminders } from '@/data/hooks';
 import { addRecord } from '@/data/repo';
-import { OdometerQuickAdd } from '@/features/record/OdometerQuickAdd';
 import { useResolvedVehicle } from '@/features/record/useResolvedVehicle';
-import { formatDateShort, formatNumber, todayIso } from '@/lib/format';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { daysUntil, formatDateLong, formatDateShort, formatNumber, todayIso } from '@/lib/format';
+import { costPerKm } from '@/lib/spend';
+import { Colors, FontFamily, Spacing } from '@/theme/tokens';
+import { REGION_UNITS } from '@/types/domain';
 
-export default function OdometerRollScreen() {
+function isoDaysAgo(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * New reading. A reading is its own record: it moves reminders and cost per
+ * km, and creates no expense.
+ */
+export default function OdometerReadingScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const vehicle = useResolvedVehicle(vehicleId);
   const account = useAccount().data;
   const records = useRecords(vehicle?.id).data ?? [];
-  const lastOdometerRecord = records.find((r) => r.odometerAtEntry != null);
-
-  const original = vehicle?.odometerKm ?? 0;
-  const [reading, setReading] = useState(original);
+  const reminders = useReminders(vehicle?.id).data ?? [];
+  const currency = account ? (REGION_UNITS[account.region]?.currency ?? 'KES') : 'KES';
+  const [text, setText] = useState('');
+  const [date, setDate] = useState(todayIso());
+  const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const setClamped = (next: number) => setReading(Math.max(original, next));
-
-  const canSave = !!vehicle && reading >= original;
-
-  const handleSave = async () => {
-    if (!vehicle) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await addRecord(vehicle.id, {
-        type: 'odometer',
-        date: todayIso(),
-        amount: 0,
-        odometerAtEntry: reading,
-        enteredByMemberName: account?.name ?? 'You',
-        category: 'other',
-      });
-      router.replace({
-        pathname: '/record/saved',
-        params: { vehicleId: vehicle.id, amount: '0', kind: 'odometer' },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (!vehicle) {
     return (
-      <Screen>
-        <ModalHeader eyebrow="ODOMETER" title="No vehicle yet" />
-        <T variant="body" color={Colors.textMuted}>
-          Add a vehicle first to log a reading.
+      <Screen header={<TopBar title="New reading" />}>
+        <T variant="lede" style={{ paddingTop: Spacing.xl }}>
+          Add a vehicle first, then log its odometer here.
         </T>
       </Screen>
     );
   }
 
+  const last = records.filter((r) => r.odometerAtEntry > 0).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  const lastKm = Math.max(vehicle.odometerKm, last?.odometerAtEntry ?? 0);
+  const reading = Number(text.replace(/[,\s]/g, '')) || 0;
+  const delta = reading - lastKm;
+  const days = last ? Math.max(1, -daysUntil(last.date) + (date === todayIso() ? 0 : daysUntil(date))) : null;
+  const nextService = vehicle.nextServiceDueKm ?? reminders.find((r) => r.kind === 'service-due' && r.dueKm)?.dueKm;
+  const cpkBefore = costPerKm(records);
+  const cpkAfter = reading > lastKm ? costPerKm([...records, { ...records[0], id: 'x', type: 'odometer', amount: 0, odometerAtEntry: reading, date } as never]) : cpkBefore;
+  const valid = reading > 0 && reading >= lastKm;
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await addRecord(vehicle.id, {
+        type: 'odometer',
+        date,
+        amount: 0,
+        odometerAtEntry: reading,
+        enteredByMemberName: account?.name ?? 'You',
+        category: 'other',
+      });
+      router.replace({ pathname: '/record/saved', params: { vehicleId: vehicle.id, amount: '0', kind: 'odometer', reading: String(reading) } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save. Try again.');
+      setSaving(false);
+    }
+  };
+
   return (
     <Screen
+      header={<TopBar title="New reading" right={vehicle.model} />}
+      headerRule
       footer={
-        <Button disabled={!canSave} loading={saving} onPress={handleSave}>
-          Save reading · {formatNumber(reading)} KM
-        </Button>
+        <>
+          {error ? (
+            <T variant="meta" color={Colors.danger} center>
+              {error}
+            </T>
+          ) : null}
+          <Button disabled={!valid} loading={saving} onPress={save}>
+            {reading > 0 && reading < lastKm ? `Below the last reading of ${formatNumber(lastKm)}` : 'Save reading'}
+          </Button>
+        </>
       }>
-      <ModalHeader eyebrow={`ODOMETER · ${vehicle.make} ${vehicle.model}`.toUpperCase()} title="Odometer" />
-      <T variant="display">Roll it forward.</T>
-      <T variant="eyebrow" style={styles.lastReading}>
-        LAST RECORDED · {formatNumber(original)} KM{lastOdometerRecord ? ` · READ ${formatDateShort(lastOdometerRecord.date)}` : ''}
-      </T>
-
-      <View style={styles.readingRow}>
-        <T variant="numericLarge">{formatNumber(reading)}</T>
-        <View style={styles.unitBadge}>
-          <T variant="eyebrowStrong" color={Colors.accent}>
-            KM
-          </T>
-        </View>
-      </View>
-
-      <OdometerQuickAdd value={reading} original={original} min={original} onChange={setClamped} />
-
-      <View style={styles.manual}>
-        <TextField
-          label="ENTER THE READING"
-          value={String(reading)}
-          onChangeText={(v) => setClamped(Number(v.replace(/\D/g, '')) || original)}
+      <View style={styles.figure}>
+        <TextInput
+          value={text}
+          onChangeText={(v) => setText(v.replace(/[^\d,]/g, ''))}
+          placeholder={formatNumber(lastKm)}
+          placeholderTextColor={Colors.lineStrong}
           keyboardType="number-pad"
+          autoFocus
+          style={styles.input}
         />
+        <T style={styles.unit}>km</T>
       </View>
-
-      <T variant="body" color={Colors.textMuted} style={styles.guardrail}>
-        An odometer only counts up. You cannot wind it back below the last reading Carma holds.
-      </T>
-
-      {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
-          {error}
+      <View style={styles.lastRow}>
+        <T variant="meta">
+          Last: {formatNumber(lastKm)} km{last ? ` · ${formatDateShort(last.date)}` : ''}
         </T>
-      ) : null}
+        {delta > 0 && days ? (
+          <T variant="meta" color={Colors.accent}>
+            +{formatNumber(delta)} km over {days} day{days === 1 ? '' : 's'}
+          </T>
+        ) : null}
+      </View>
+      <Rule />
+      <View style={styles.section}>
+        <T variant="section">Read on</T>
+        <View style={styles.chips}>
+          <Chip label="Today" selected={date === todayIso()} onPress={() => setDate(todayIso())} />
+          <Chip label="Yesterday" selected={date === isoDaysAgo(1)} onPress={() => setDate(isoDaysAgo(1))} />
+          <Chip label={date !== todayIso() && date !== isoDaysAgo(1) ? formatDateLong(date) : 'Pick a date'} selected={date !== todayIso() && date !== isoDaysAgo(1)} onPress={() => setPicking(true)} />
+        </View>
+        <T variant="meta">Date the reading when you saw it, not when you typed it.</T>
+      </View>
+      <Rule />
+      <KeyValueRow label="Distance since" value={delta > 0 ? `${formatNumber(delta)} km` : '—'} />
+      <KeyValueRow label="Daily average" value={delta > 0 && days ? `${formatNumber(delta / days)} km/day` : '—'} />
+      <KeyValueRow
+        label="Next service"
+        value={nextService ? `${formatNumber(Math.max(0, nextService - (reading || lastKm)))} km away · at ${formatNumber(nextService)}` : 'Not set'}
+      />
+      <KeyValueRow
+        label="Cost per km"
+        value={cpkAfter ? `${currency} ${cpkAfter.toFixed(2)}${cpkBefore && cpkBefore !== cpkAfter ? ` · was ${cpkBefore.toFixed(2)}` : ''}` : '—'}
+        last
+      />
+      <View style={styles.section}>
+        <T variant="section">What this does</T>
+        <T variant="body" color={Colors.ink}>
+          It moves your distance-based reminders and refreshes cost per km. It does not create an expense.
+        </T>
+      </View>
+      <DateSheet visible={picking} value={date} onSelect={setDate} onClose={() => setPicking(false)} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  lastReading: {
-    marginTop: Spacing.xs,
-  },
-  readingRow: {
+  figure: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingTop: Spacing.lg,
+  },
+  input: {
+    outlineWidth: 0,
+    fontFamily: FontFamily.medium,
+    fontSize: 48,
+    letterSpacing: -1,
+    color: Colors.accent,
+    minWidth: 120,
+    paddingVertical: 0,
+  },
+  unit: {
+    fontSize: 13,
+    color: Colors.slate,
+    marginBottom: 10,
+  },
+  lastRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
+  },
+  section: {
+    paddingVertical: Spacing.md,
     gap: Spacing.sm,
-    marginTop: Spacing.xl,
   },
-  unitBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.accentSoft,
-  },
-  manual: {
-    marginTop: Spacing.lg,
-  },
-  guardrail: {
-    marginTop: Spacing.lg,
-  },
-  error: {
-    marginTop: Spacing.sm,
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
 });

@@ -1,76 +1,98 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
-import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
+/** Welcome. Google or Apple only; the three stripes are the Carma blue, signal red and yellow. */
 export default function WelcomeScreen() {
   return (
-    <Screen
-      footer={
-        <View style={styles.footerWrap}>
-          <Button onPress={() => router.push('/onboarding/country')}>Continue with Apple</Button>
-          <Button variant="secondary" onPress={() => router.push('/onboarding/country')}>
-            Continue with Google
-          </Button>
-          <T variant="meta" center style={styles.legal}>
-            By creating an account on Carma you agree to the Terms of Service and Privacy Policy.
-          </T>
-        </View>
-      }>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <Image source={require('@/../assets/images/welcome-car.jpg')} style={styles.photo} contentFit="cover" contentPosition={{ left: '38%', top: '58%' }} />
+      <View style={styles.brand}>
+        <View style={styles.dot} />
+        <T style={styles.brandText}>CARMA</T>
+      </View>
       <View style={styles.hero}>
-        <View style={styles.badge}>
-          <T variant="eyebrowStrong">CARMA</T>
-        </View>
-        <T variant="display" style={styles.headline}>
-          Every vehicle has a history. Most of it gets lost.
-        </T>
-        <T variant="body" color={Colors.textMuted} style={styles.sub}>
+        <T variant="hero">Every vehicle has a history. Most of it gets lost.</T>
+        <T variant="body" style={styles.sub}>
           Know exactly what your car costs you, and prove every service it has had when you sell it.
         </T>
+        <View style={styles.stripes}>
+          <View style={[styles.stripe, { backgroundColor: Colors.accent }]} />
+          <View style={[styles.stripe, { backgroundColor: Colors.signal }]} />
+          <View style={[styles.stripe, { backgroundColor: Colors.cta }]} />
+        </View>
       </View>
-      <View style={styles.trialCard}>
-        <T variant="bodyStrong">7 days free · no card to start</T>
-        <T variant="meta">Subscribe after that to keep adding records</T>
+      <View style={styles.foot}>
+        <Button onPress={() => router.push('/onboarding/country')}>Get started</Button>
+        <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
+          7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+        </T>
       </View>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  photo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.14,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 22,
+  },
+  dot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: Colors.accent,
+  },
+  brandText: {
+    fontSize: 10,
+    letterSpacing: Tracking.brand,
+    color: Colors.body,
+  },
   hero: {
     flex: 1,
     justifyContent: 'center',
-    paddingTop: Spacing.xxxl,
-    gap: Spacing.md,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.accentSoft,
-    marginBottom: Spacing.md,
-  },
-  headline: {
-    fontSize: 32,
+    paddingHorizontal: Spacing.lg,
   },
   sub: {
-    marginTop: Spacing.xs,
+    marginTop: Spacing.lg,
+    maxWidth: 300,
   },
-  trialCard: {
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: 2,
-    marginBottom: Spacing.lg,
+  stripes: {
+    flexDirection: 'row',
+    gap: 10,
+    height: 8,
+    marginTop: Spacing.xl,
   },
-  footerWrap: {
-    gap: Spacing.sm,
+  stripe: {
+    flex: 1,
   },
-  legal: {
-    marginTop: Spacing.xxs,
+  foot: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
+    paddingBottom: 14,
+    gap: 14,
+  },
+  trial: {
+    lineHeight: 16,
   },
 });

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { fetchProjectById } from '@/data/api/aggregates';
 import { qk } from '@/data/queryKeys';
 import { updateProjectBrief } from '@/data/repo';
@@ -77,18 +78,13 @@ export default function BuildBriefScreen() {
       {(loaded: ProjectBuild) => {
         const stageCount = loaded.stages.length;
         return (
-          <Screen
+          <Screen header={<TopBar backLabel="BACK" />}
             scroll
             footer={
               <Button onPress={save} loading={saving}>
                 Save brief{briefType ? ` · ${BRIEF_OPTIONS.find((o) => o.key === briefType)?.label ?? ''}` : ''}
               </Button>
             }>
-            <Pressable onPress={() => router.back()}>
-              <T variant="eyebrowStrong" color={Colors.accent}>
-                ← BACK
-              </T>
-            </Pressable>
 
             <T variant="display" style={styles.title}>
               What are you building?

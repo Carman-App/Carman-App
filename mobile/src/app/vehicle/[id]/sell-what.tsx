@@ -1,148 +1,105 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Toggle } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { ListRow } from '@/components/ui/ListRow';
-import { ProgressSteps } from '@/components/ui/ProgressSteps';
 import { Screen } from '@/components/ui/Screen';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
-import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useInspections, useRecords, useVehicle } from '@/data/hooks';
+import { TopBar } from '@/components/ui/TopBar';
+import { useRecords, useVehicle } from '@/data/hooks';
 import { transferVehicle } from '@/data/repo';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { TransferRow } from '@/features/transfer/TransferRow';
+import { Colors, Spacing } from '@/theme/tokens';
 
+/** What goes with the car, what stays with you, then the hand-over itself. */
 export default function SellWhatScreen() {
-  const { id, buyer, phone, salePrice } = useLocalSearchParams<{
-    id: string;
-    buyer?: string;
-    phone?: string;
-    salePrice?: string;
-  }>();
-  const vehicleQuery = useVehicle(id);
+  const { id, buyer, phone, salePrice } = useLocalSearchParams<{ id: string; buyer?: string; phone?: string; salePrice?: string }>();
+  const vehicle = useVehicle(id).data;
   const records = useRecords(id).data ?? [];
-  const inspections = useInspections(id).data ?? [];
   const [keepCopy, setKeepCopy] = useState(true);
-  const [handing, setHanding] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const service = records.filter((r) => r.type === 'service' || r.type === 'repair').length;
 
-  const serviceRepairCount = records.filter((r) => r.type === 'service' || r.type === 'repair').length;
-  const odometerRecords = records.filter((r) => r.type === 'odometer');
-  const odometerCount = odometerRecords.length;
-  const odometerSinceYear = odometerRecords.reduce<number | null>((min, r) => {
-    const y = Number(r.date.slice(0, 4));
-    return min == null || y < min ? y : min;
-  }, null);
-  const partsCount = records.filter((r) => r.type === 'part').length;
-  const inspectionWorkshop = inspections[0]?.workshopName;
-
-  const handleHandover = async () => {
-    setHanding(true);
+  const handOver = async () => {
+    setBusy(true);
     setError(null);
     try {
-      if (!keepCopy) {
-        await transferVehicle(id);
-      }
-      router.replace({
-        pathname: `/vehicle/${id}/sell-done`,
-        params: { buyer: buyer ?? '', phone: phone ?? '', salePrice: salePrice ?? '', model: vehicleQuery.data?.model ?? '' },
-      });
+      if (!keepCopy) await transferVehicle(id);
+      router.replace({ pathname: `/vehicle/${id}/sell-done`, params: { buyer: buyer ?? '', phone: phone ?? '', salePrice: salePrice ?? '', model: vehicle?.model ?? '' } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
-    } finally {
-      setHanding(false);
+      setBusy(false);
     }
   };
 
   return (
     <Screen
-      scroll
-      contentStyle={styles.content}
-      footer={<Button loading={handing} onPress={handleHandover}>Hand over to buyer</Button>}>
-      <ProgressSteps step={2} total={3} />
-      <T variant="display" style={styles.title}>
-        What goes with the car
+      padded={false}
+      header={<TopBar backLabel="BUYER" step={{ step: 2, total: 3 }} />}
+      footer={
+        <>
+          {error ? (
+            <T variant="meta" color={Colors.danger} center>
+              {error}
+            </T>
+          ) : null}
+          <Button variant="strong" caps loading={busy} onPress={handOver}>
+            Hand over to the buyer
+          </Button>
+        </>
+      }>
+      <View style={styles.head}>
+        <T variant="display">What goes with the car</T>
+      </View>
+      <T variant="eyebrow" color={Colors.accent} style={styles.group}>
+        TRANSFERS TO {buyer ? buyer.toUpperCase() : 'THE BUYER'}
       </T>
-
-      <QueryBoundary query={vehicleQuery} isEmpty={() => false}>
-        {() => (
-          <>
-            <SectionHeader title="TRANSFERS TO THE BUYER" />
-            <Card padded={false} style={styles.card}>
-              <ListRow title="Service and repair history" subtitle={`${serviceRepairCount} RECORDS · EVERY JOB AND LINE ITEM`} />
-              <ListRow
-                title="Odometer history"
-                subtitle={`${odometerCount} CONFIRMED READINGS${odometerSinceYear ? ` SINCE ${odometerSinceYear}` : ''}`}
-              />
-              <ListRow title="Parts fitted" subtitle={`${partsCount} PARTS · BRAND AND DATE`} />
-              <ListRow
-                title="Inspection reports"
-                subtitle={`${inspections.length} REPORTS${inspectionWorkshop ? ` FROM ${inspectionWorkshop.toUpperCase()}` : ''}`}
-                bordered={false}
-              />
-            </Card>
-
-            <SectionHeader title="STAYS WITH YOU" />
-            <Card padded={false} style={styles.card}>
-              <ListRow title="Fuel and running costs" subtitle="WHAT YOU PAID IS YOURS" />
-              <ListRow title="Receipts and invoices" subtitle="YOUR FINANCIAL RECORD" />
-              <ListRow title="Insurance and licence" subtitle="TIED TO YOU, NOT THE CAR" />
-              <ListRow title="Garage members" subtitle="NOBODY IS CARRIED OVER" bordered={false} />
-            </Card>
-
-            <Pressable style={styles.toggleRow} onPress={() => setKeepCopy((v) => !v)}>
-              <View style={styles.toggleText}>
-                <T variant="bodyStrong">Keep a read-only copy of this vehicle in my garage</T>
-                <T variant="meta" style={styles.toggleHelper}>
-                  YOU KEEP A READ-ONLY COPY OF THE FULL HISTORY AFTER HANDOVER.
-                </T>
-              </View>
-              <Switch value={keepCopy} onValueChange={setKeepCopy} trackColor={{ true: Colors.accent, false: Colors.border }} />
-            </Pressable>
-
-            {error ? (
-              <T variant="body" color={Colors.danger} center style={styles.error}>
-                {error}
-              </T>
-            ) : null}
-          </>
-        )}
-      </QueryBoundary>
+      <TransferRow glyph="service" title="Service and repair history" sub={`${service} RECORDS`} goes tag={false} />
+      <TransferRow glyph="part" title="Parts fitted" sub={`${records.filter((r) => r.type === 'part').length} RECORDS`} goes tag={false} />
+      <TransferRow glyph="odometer" title="Odometer readings" sub={`${records.filter((r) => r.odometerAtEntry > 0).length} READINGS`} goes tag={false} />
+      <TransferRow glyph="info" title="Vehicle details" sub="REGISTRATION · VIN · SPECIFICATION" goes tag={false} />
+      <T variant="eyebrow" color={Colors.slate} style={styles.group}>
+        STAYS WITH YOU
+      </T>
+      <TransferRow glyph="wallet" title="Your receipts and amounts" sub="WHAT YOU PAID STAYS PRIVATE" goes={false} tag={false} />
+      <TransferRow glyph="document" title="Insurance and licence documents" sub="IN YOUR NAME, NOT THE CAR’S" goes={false} tag={false} />
+      <TransferRow glyph="fuel" title="Fuel and running costs" sub="COST PER KM STAYS WITH YOU" goes={false} tag={false} />
+      <TransferRow glyph="reminder" title="Reminders you set" sub="CLEARED FROM YOUR GARAGE" goes={false} tag={false} />
+      <View style={styles.keep}>
+        <View style={styles.flex}>
+          <T variant="bodyStrong">Keep a read-only copy</T>
+          <T variant="meta">It cannot be edited and stops counting towards your costs.</T>
+        </View>
+        <Toggle value={keepCopy} onValueChange={setKeepCopy} />
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
+  head: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
-  title: {
-    marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
+  group: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
-  card: {
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  toggleRow: {
+  keep: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
-  toggleText: {
+  flex: {
     flex: 1,
     gap: 4,
-  },
-  toggleHelper: {
-    marginTop: 2,
-  },
-  error: {
-    marginBottom: Spacing.md,
   },
 });

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -6,6 +6,7 @@ import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { useInspection, useVehicle } from '@/data/hooks';
 import { formatDateWithYear } from '@/lib/format';
 import type { InspectionReport } from '@/types/domain';
@@ -42,12 +43,7 @@ export default function InspectionReportScreen() {
         const undecidedCount = inspection.items.filter((i) => i.status !== 'good' && !decisions[i.id]).length;
 
         return (
-          <Screen scroll contentStyle={styles.content}>
-            <Pressable onPress={() => router.back()}>
-              <T variant="eyebrowStrong" color={Colors.accent}>
-                ← BACK
-              </T>
-            </Pressable>
+          <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
 
             <T variant="eyebrow" style={styles.eyebrow}>
               {approved} OF {total} APPROVED

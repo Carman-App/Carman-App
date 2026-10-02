@@ -1,15 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Footnote } from '@/components/ui/Blocks';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { useEstimate, useVehicle } from '@/data/hooks';
 import { formatMoney, todayIso } from '@/lib/format';
 import type { Estimate } from '@/types/domain';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -36,30 +36,39 @@ export default function EstimateApprovedScreen() {
         const dropOff = addDays(todayIso(), 2);
         const summary = estimate.notes ?? estimate.lines[0]?.description ?? 'Work';
         return (
-          <Screen scroll contentStyle={styles.content}>
-            <T variant="eyebrowStrong" color={Colors.positive}>
-              APPROVED
-            </T>
-            <T variant="display" style={styles.title}>
-              {formatMoney(estimate.total)}
-            </T>
-            <T variant="body" color={Colors.textMuted}>
-              {summary} · {estimate.workshopName} · EST {estimate.id.toUpperCase()}
-            </T>
-
-            <Card style={styles.dropCard}>
-              <T variant="eyebrow">DROP THE CAR OFF</T>
-              <T variant="numeric">{formatDropOff(dropOff)}</T>
-              <T variant="meta">IN 2 DAYS</T>
-            </Card>
-
-            <T variant="body" color={Colors.textMuted} style={styles.explainer}>
-              {estimate.workshopName} sees this now. They invoice you after the work, and it joins your vehicle history.
-            </T>
-
-            <Button onPress={() => router.replace(`/vehicle/${estimate.vehicleId}`)}>
-              Back to {vehicle ? vehicle.model.split(' ').pop() : 'vehicle'}
-            </Button>
+          <Screen
+            footer={
+              <>
+                <Button onPress={() => router.replace('/home')}>Back to Home</Button>
+                <Button variant="ghost" size="md" onPress={() => router.replace(`/vehicle/${estimate.vehicleId}`)}>
+                  Open the {vehicle ? vehicle.model : 'vehicle'}
+                </Button>
+              </>
+            }>
+            <View style={styles.body}>
+              <View style={styles.badgeRow}>
+                <View style={styles.disc} />
+                <View style={styles.pill}>
+                  <T variant="eyebrowStrong" color={Colors.accent}>
+                    AUTHORISED
+                  </T>
+                </View>
+              </View>
+              <T variant="display">{estimate.workshopName} can go ahead.</T>
+              <T variant="lede">
+                {summary} · {formatMoney(estimate.total)}
+              </T>
+              <View style={styles.card}>
+                <T variant="eyebrow" color={Colors.slate}>
+                  DROP THE CAR OFF
+                </T>
+                <T variant="numeric">{formatDropOff(dropOff)}</T>
+                <T variant="eyebrow" color={Colors.slate}>
+                  IN 2 DAYS
+                </T>
+              </View>
+              <Footnote>{`${estimate.workshopName.toUpperCase()} SEES THIS NOW. THEY INVOICE YOU AFTER THE WORK, AND IT JOINS YOUR VEHICLE HISTORY.`}</Footnote>
+            </View>
           </Screen>
         );
       }}
@@ -68,18 +77,34 @@ export default function EstimateApprovedScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.xxl,
+  body: {
+    paddingTop: 72,
+    gap: Spacing.lg,
   },
-  title: {
-    marginTop: Spacing.xs,
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  dropCard: {
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
-    gap: 2,
+  disc: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.accent,
+    borderWidth: 5,
+    borderColor: Colors.accentSoft,
   },
-  explainer: {
-    marginBottom: Spacing.xl,
+  pill: {
+    backgroundColor: Colors.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: 6,
   },
 });

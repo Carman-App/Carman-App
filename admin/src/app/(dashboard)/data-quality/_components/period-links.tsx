@@ -11,7 +11,7 @@ export function PeriodLinks({ basePath, selected }: { basePath: string; selected
           href={`${basePath}?days=${days}`}
           className={`rounded-full border px-2.5 py-1 ${
             days === selected
-              ? "border-neutral-100 bg-neutral-900 text-neutral-100"
+              ? "border-neutral-100 bg-carma-600 text-white"
               : "border-neutral-300 text-neutral-700 hover:border-neutral-500"
           }`}
         >

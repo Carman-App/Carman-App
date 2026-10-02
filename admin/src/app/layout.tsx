@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-const satoshi = localFont({
-  variable: "--font-satoshi",
+// Google Sans (SIL OFL 1.1, see ../fonts/GoogleSans-OFL.txt): the same face as the Carma app.
+const googleSans = localFont({
+  variable: "--font-google-sans",
   src: [
-    { path: "../fonts/Satoshi-Light.woff2", weight: "300", style: "normal" },
-    { path: "../fonts/Satoshi-Regular.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/Satoshi-Medium.woff2", weight: "500", style: "normal" },
-    { path: "../fonts/Satoshi-Bold.woff2", weight: "700", style: "normal" },
-    { path: "../fonts/Satoshi-Black.woff2", weight: "900", style: "normal" },
+    { path: "../fonts/GoogleSans_400Regular.ttf", weight: "400", style: "normal" },
+    { path: "../fonts/GoogleSans_500Medium.ttf", weight: "500", style: "normal" },
+    { path: "../fonts/GoogleSans_600SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "../fonts/GoogleSans_700Bold.ttf", weight: "700", style: "normal" },
   ],
   display: "swap",
 });
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${satoshi.variable} h-full antialiased`}>
+    <html lang="en" className={`${googleSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

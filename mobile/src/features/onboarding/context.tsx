@@ -16,16 +16,21 @@ export type OnboardingDraft = {
   variant: string;
   year: number;
   powertrain?: Powertrain;
+  transmission?: 'automatic' | 'manual';
+  vin: string;
   odometerKm: number;
   vehicleId?: string;
+  businessName: string;
+  businessTown: string;
+  teamSize?: 'solo' | 'helper' | 'team';
 };
 
 const DEFAULT_DRAFT: OnboardingDraft = {
-  name: 'Wallace Ralak',
-  email: 'wallaceralak@gmail.com',
+  name: '',
+  email: '',
   region: 'KE',
   profile: 'owner',
-  garageName: 'My Garage',
+  garageName: '',
   garageLocation: 'Nairobi',
   vehicleType: 'car',
   usage: 'daily',
@@ -34,8 +39,13 @@ const DEFAULT_DRAFT: OnboardingDraft = {
   variant: '',
   year: 2018,
   powertrain: undefined,
+  transmission: undefined,
+  vin: '',
   odometerKm: 0,
   vehicleId: undefined,
+  businessName: '',
+  businessTown: 'Nairobi',
+  teamSize: undefined,
 };
 
 type OnboardingContextValue = {

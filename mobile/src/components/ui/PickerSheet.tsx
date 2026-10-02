@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import ArrowDown01Icon from '@hugeicons/core-free-icons/ArrowDown01Icon';
+import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon';
+import Tick02Icon from '@hugeicons/core-free-icons/Tick02Icon';
 import Search01Icon from '@hugeicons/core-free-icons/Search01Icon';
 
+import { FieldRow } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
 /**
  * Bottom-sheet picker matching the prototype's MAKE/MODEL/YEAR picker sheet:
@@ -22,17 +24,7 @@ type PickerFieldProps = {
 
 /** The tappable field row that opens a PickerSheet — same visual language as TextField, but non-editable. */
 export function PickerField({ label, value, onPress }: PickerFieldProps) {
-  return (
-    <Pressable onPress={onPress} style={styles.fieldWrap}>
-      <T variant="eyebrow">{label}</T>
-      <View style={styles.fieldRow}>
-        <T variant="subheading" style={styles.fieldValue} numberOfLines={1}>
-          {value}
-        </T>
-        <HugeiconsIcon icon={ArrowDown01Icon} size={18} color={Colors.text} />
-      </View>
-    </Pressable>
-  );
+  return <FieldRow label={label} value={value} onPress={onPress} />;
 }
 
 type PickerSheetProps = {
@@ -77,25 +69,22 @@ export function PickerSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <Pressable style={styles.backdrop} onPress={handleClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.grabber} />
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
-              <T variant="heading">{title}</T>
+              <T variant="display">{title}</T>
               {hint ? (
                 <T variant="eyebrow" style={styles.hint}>
                   {hint}
                 </T>
               ) : null}
             </View>
-            <Pressable onPress={handleClose} hitSlop={10} style={styles.closeBtn}>
-              <T variant="eyebrowStrong" color={Colors.textMuted}>
-                CLOSE
-              </T>
+            <Pressable onPress={handleClose} hitSlop={10} style={styles.closeBtn} accessibilityLabel="Close">
+              <HugeiconsIcon icon={Cancel01Icon} size={22} color={Colors.slate} />
             </Pressable>
           </View>
 
           <View style={styles.searchWrap}>
-            <HugeiconsIcon icon={Search01Icon} size={18} color={Colors.textMuted} />
+            <HugeiconsIcon icon={Search01Icon} size={18} color={Colors.slate} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -107,7 +96,7 @@ export function PickerSheet({
             />
           </View>
 
-          <T variant="meta" color={Colors.textMuted} style={styles.count}>
+          <T variant="eyebrow" color={Colors.textFaint} style={styles.count}>
             {filtered.length} OF {items.length}
           </T>
 
@@ -120,12 +109,10 @@ export function PickerSheet({
               const active = item === selected;
               return (
                 <Pressable style={styles.row} onPress={() => handlePick(item)}>
-                  <T variant={active ? 'bodyStrong' : 'body'} color={active ? Colors.accent : Colors.text} style={styles.rowLabel}>
+                  <T variant="bodyStrong" color={active ? Colors.accent : Colors.body} style={styles.rowLabel}>
                     {item}
                   </T>
-                  <T variant="eyebrowStrong" color={active ? Colors.accent : Colors.textMuted}>
-                    SELECT
-                  </T>
+                  {active ? <HugeiconsIcon icon={Tick02Icon} size={18} color={Colors.accent} /> : null}
                 </Pressable>
               );
             }}
@@ -142,77 +129,56 @@ export function PickerSheet({
 }
 
 const styles = StyleSheet.create({
-  fieldWrap: {
-    gap: Spacing.xs,
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.xs,
-    borderBottomWidth: 1.5,
-    borderBottomColor: Colors.border,
-    paddingBottom: Spacing.xs,
-  },
-  fieldValue: {
-    flex: 1,
-  },
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(20,19,17,0.34)',
+    backgroundColor: Colors.scrim,
   },
   sheet: {
-    maxHeight: '76%',
+    maxHeight: '84%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
     paddingBottom: Spacing.xl,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.border,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xxs,
-  },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xs,
-    paddingBottom: Spacing.sm,
+    paddingTop: Spacing.lg,
+    paddingBottom: 14,
   },
   headerText: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   hint: {
     marginTop: 2,
   },
   closeBtn: {
-    paddingTop: Spacing.xxs,
+    padding: 4,
   },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 11,
     marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.line,
     borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: 18,
+    paddingVertical: 4,
   },
   searchInput: {
+    outlineWidth: 0,
     flex: 1,
-    fontSize: 15,
-    color: Colors.text,
+    fontFamily: FontFamily.medium,
+    fontSize: 16,
+    color: Colors.body,
+    paddingVertical: 9,
   },
   count: {
     marginHorizontal: Spacing.lg,
@@ -223,12 +189,12 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSoft,
   },
   rowLabel: {
     flex: 1,

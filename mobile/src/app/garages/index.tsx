@@ -6,6 +6,7 @@ import { IconGlyph } from '@/components/ui/IconGlyph';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useGarageMembers, useGarages, useVehicles } from '@/data/hooks';
 import { setActiveGarage } from '@/data/repo';
@@ -23,12 +24,7 @@ export default function GaragesListScreen() {
   };
 
   return (
-    <Screen scroll contentStyle={styles.content}>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← BACK
-        </T>
-      </Pressable>
+    <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
 
       <T variant="display" style={styles.title}>
         Your garages

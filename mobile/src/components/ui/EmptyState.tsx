@@ -16,11 +16,11 @@ type EmptyStateProps = {
 export function EmptyState({ glyph, title, body, children }: EmptyStateProps) {
   return (
     <View style={styles.wrap}>
-      <IconGlyph glyph={glyph} size={56} />
-      <T variant="subheading" center style={styles.title}>
+      <IconGlyph glyph={glyph} size={56} shape="tile" />
+      <T variant="heading" center style={styles.title}>
         {title}
       </T>
-      <T variant="body" color="#6F6C63" center style={styles.body}>
+      <T variant="lede" center style={styles.body}>
         {body}
       </T>
       {children}
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.xl,
+    paddingVertical: Spacing.xxl,
     paddingHorizontal: Spacing.md,
   },
   title: {

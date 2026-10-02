@@ -7,6 +7,7 @@ import { IconGlyph } from '@/components/ui/IconGlyph';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { useDocument, useVehicle } from '@/data/hooks';
 import { deleteDocument, updateDocument } from '@/data/repo';
 import { daysUntil, formatPlate } from '@/lib/format';
@@ -28,7 +29,7 @@ export default function DocumentDetailScreen() {
   // "not found" case while that lookup query is still settling on first mount.
   if (docQuery.isLoading) {
     return (
-      <Screen>
+      <Screen header={<TopBar backLabel="BACK" />}>
         <View style={styles.center}>
           <ActivityIndicator color={Colors.accent} />
         </View>
@@ -75,11 +76,6 @@ export default function DocumentDetailScreen() {
           Save changes
         </Button>
       }>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← BACK
-        </T>
-      </Pressable>
 
       <T variant="eyebrow" style={styles.eyebrow}>
         DOCUMENTS

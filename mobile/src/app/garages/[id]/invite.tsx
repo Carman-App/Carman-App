@@ -1,92 +1,58 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { ModalHeader } from '@/components/ui/ModalHeader';
+import { ScreenTitle } from '@/components/ui/Blocks';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { useGarageMembers } from '@/data/hooks';
+import { TopBar } from '@/components/ui/TopBar';
+import { useGarage } from '@/data/hooks';
 import { inviteGarageMember } from '@/data/repo';
+import { InvitePanel, inviteList, type InviteState } from '@/features/garage/InvitePanel';
 import { Colors, Spacing } from '@/theme/tokens';
 
-const SEAT_LIMIT = 4;
-
-export default function InviteMemberScreen() {
+/** Invite members: people already in your other garage carried over in one tap, or invited by email. */
+export default function InviteMembersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const membersQuery = useGarageMembers(id);
-  const memberCount = membersQuery.data?.length ?? 0;
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
+  const garage = useGarage(id).data;
+  const [state, setState] = useState<InviteState>({ email: '', carry: {} });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const list = inviteList(state);
 
-  const canSave = name.trim().length > 0 && contact.trim().length > 0;
-
-  const handleSave = async () => {
-    if (!canSave || !id) return;
+  const send = async () => {
     setSaving(true);
     setError(null);
     try {
-      await inviteGarageMember(id, { name: name.trim(), email: contact.trim() });
+      for (const p of list) await inviteGarageMember(id, p);
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
-    } finally {
+      setError(e instanceof Error ? e.message : 'Could not send the invite.');
       setSaving(false);
     }
   };
 
   return (
     <Screen
+      padded={false}
+      header={<TopBar title="Invite members" right={garage?.name} />}
       footer={
-        <Button disabled={!canSave} loading={saving} onPress={handleSave}>
-          {name.trim().length === 0 ? 'Enter a name' : 'Send invite'}
-        </Button>
+        <>
+          {error ? (
+            <T variant="meta" color={Colors.danger} center>
+              {error}
+            </T>
+          ) : null}
+          <Button disabled={list.length === 0} loading={saving} onPress={send}>
+            {list.length > 1 ? `Invite ${list.length} people` : 'Send invite'}
+          </Button>
+        </>
       }>
-      <ModalHeader eyebrow="MEMBERS" />
-
-      <T variant="eyebrow" style={styles.seats}>
-        {memberCount} OF {SEAT_LIMIT} SEATS USED
-      </T>
-      <T variant="subheading" style={styles.heading}>
-        Invite someone to this garage
-      </T>
-
-      <View style={styles.form}>
-        <TextField label="NAME" value={name} onChangeText={setName} placeholder="Full name" autoFocus />
-        <TextField label="PHONE OR EMAIL" value={contact} onChangeText={setContact} placeholder="+254... or name@email.com" />
+      <View style={{ paddingHorizontal: Spacing.lg }}>
+        <ScreenTitle title="Who else uses it?" lede="Members see the vehicles and add records. You stay the only one who can remove them." />
       </View>
-
-      <T variant="meta" color={Colors.textMuted} style={styles.explainer}>
-        They join as a member: they can add records and see history, but cannot invite, remove or delete. You can change this later.
-      </T>
-
-      {error ? (
-        <T variant="body" color={Colors.danger} center style={styles.error}>
-          {error}
-        </T>
-      ) : null}
+      <InvitePanel excludeGarageId={id} value={state} onChange={setState} />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  seats: {
-    marginTop: Spacing.sm,
-  },
-  heading: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.lg,
-  },
-  form: {
-    gap: Spacing.md,
-  },
-  explainer: {
-    marginTop: Spacing.lg,
-  },
-  error: {
-    marginTop: Spacing.sm,
-  },
-});

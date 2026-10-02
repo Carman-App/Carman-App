@@ -270,3 +270,20 @@ export const createJobLineSchema = z.object({
   description: z.string().trim().min(1).max(500),
   cost: z.number().nonnegative(),
 });
+
+export const assistantRequestSchema = z
+  .object({
+    mode: z.enum(["owner", "mechanic"]).default("owner"),
+    question: z.string().trim().min(1).max(2000),
+    garageId: z.string().min(1).optional(),
+    vehicleId: z.string().min(1).optional(),
+    workshopId: z.string().min(1).optional(),
+    jobId: z.string().min(1).optional(),
+    history: z
+      .array(z.object({ question: z.string().max(2000), answer: z.string().max(4000) }))
+      .max(10)
+      .default([]),
+  })
+  .refine((d) => (d.mode === "owner" ? !!d.garageId : !!d.workshopId), {
+    message: "Owner questions need a garageId; mechanic questions need a workshopId.",
+  });

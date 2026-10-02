@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
@@ -8,11 +8,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageRecords } from '@/data/hooks';
 import { formatDateShort, formatMoney, formatNumber } from '@/lib/format';
 import type { VehicleRecord } from '@/types/domain';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Spacing } from '@/theme/tokens';
 
 type Filter = 'all' | 'fuel' | 'service' | 'repair' | 'other';
 
@@ -54,12 +55,7 @@ export default function AllExpensesScreen() {
   const total = thisYear.reduce((sum, r) => sum + r.amount, 0);
 
   return (
-    <Screen scroll contentStyle={styles.content}>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← BACK
-        </T>
-      </Pressable>
+    <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
 
       <T variant="eyebrow" style={styles.eyebrow}>
         ALL EXPENSES

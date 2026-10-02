@@ -10,6 +10,38 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react-native';
 // map entry) sidesteps the barrel file entirely, so only the icons actually used here
 // are ever opened/bundled -- true tree-shaking instead of relying on the bundler to
 // prune the barrel's re-exports.
+import Add01Icon from '@hugeicons/core-free-icons/Add01Icon';
+import ArrowDown01Icon from '@hugeicons/core-free-icons/ArrowDown01Icon';
+import ArrowLeft02Icon from '@hugeicons/core-free-icons/ArrowLeft02Icon';
+import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
+import ArrowUp01Icon from '@hugeicons/core-free-icons/ArrowUp01Icon';
+import ArrowUpRight01Icon from '@hugeicons/core-free-icons/ArrowUpRight01Icon';
+import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon';
+import Chat01Icon from '@hugeicons/core-free-icons/Chat01Icon';
+import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
+import CloudUploadIcon from '@hugeicons/core-free-icons/CloudUploadIcon';
+import Delete02Icon from '@hugeicons/core-free-icons/Delete02Icon';
+import GarageIcon from '@hugeicons/core-free-icons/GarageIcon';
+import Home02Icon from '@hugeicons/core-free-icons/Home02Icon';
+import Image01Icon from '@hugeicons/core-free-icons/Image01Icon';
+import InformationCircleIcon from '@hugeicons/core-free-icons/InformationCircleIcon';
+import Logout01Icon from '@hugeicons/core-free-icons/Logout01Icon';
+import Mail01Icon from '@hugeicons/core-free-icons/Mail01Icon';
+import Menu01Icon from '@hugeicons/core-free-icons/Menu01Icon';
+import Mic01Icon from '@hugeicons/core-free-icons/Mic01Icon';
+import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
+import PieChart08Icon from '@hugeicons/core-free-icons/PieChart08Icon';
+import PrinterIcon from '@hugeicons/core-free-icons/PrinterIcon';
+import RefreshDotIcon from '@hugeicons/core-free-icons/RefreshDotIcon';
+import Search01Icon from '@hugeicons/core-free-icons/Search01Icon';
+import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon';
+import Share01Icon from '@hugeicons/core-free-icons/Share01Icon';
+import StopIcon from '@hugeicons/core-free-icons/StopIcon';
+import Upload01Icon from '@hugeicons/core-free-icons/Upload01Icon';
+import UserAdd01Icon from '@hugeicons/core-free-icons/UserAdd01Icon';
+import UserMultipleIcon from '@hugeicons/core-free-icons/UserMultipleIcon';
+import UserSwitchIcon from '@hugeicons/core-free-icons/UserSwitchIcon';
+import WifiOff01Icon from '@hugeicons/core-free-icons/WifiOff01Icon';
 import Alert02Icon from '@hugeicons/core-free-icons/Alert02Icon';
 import Analytics01Icon from '@hugeicons/core-free-icons/Analytics01Icon';
 import ArrowReloadHorizontalIcon from '@hugeicons/core-free-icons/ArrowReloadHorizontalIcon';
@@ -47,7 +79,7 @@ import TowTruckIcon from '@hugeicons/core-free-icons/TowTruckIcon';
 import UserGroupIcon from '@hugeicons/core-free-icons/UserGroupIcon';
 import Wrench01Icon from '@hugeicons/core-free-icons/Wrench01Icon';
 
-import { Colors, Radius } from '@/theme/tokens';
+import { Colors } from '@/theme/tokens';
 
 // Real Hugeicons (free, stroke-rounded set) replacing the earlier emoji
 // placeholders, matched 1:1 against the Carma prototype's `hgi-*` classes
@@ -102,6 +134,40 @@ const ICONS: Record<string, IconSvgElement> = {
   subscriptions: RepeatIcon,
   modifications: Settings02Icon,
   other: Note01Icon,
+
+  // Chrome and actions used by the redesigned screens.
+  add: Add01Icon,
+  back: ArrowLeft02Icon,
+  'chevron-down': ArrowDown01Icon,
+  'chevron-right': ArrowRight01Icon,
+  send: ArrowUp01Icon,
+  open: ArrowUpRight01Icon,
+  close: Cancel01Icon,
+  chat: Chat01Icon,
+  done: CheckmarkCircle02Icon,
+  upload: CloudUploadIcon,
+  'upload-file': Upload01Icon,
+  delete: Delete02Icon,
+  'garage-door': GarageIcon,
+  home: Home02Icon,
+  image: Image01Icon,
+  info: InformationCircleIcon,
+  logout: Logout01Icon,
+  mail: Mail01Icon,
+  menu: Menu01Icon,
+  mic: Mic01Icon,
+  edit: PencilEdit01Icon,
+  pie: PieChart08Icon,
+  print: PrinterIcon,
+  swap: RefreshDotIcon,
+  search: Search01Icon,
+  settings: Settings01Icon,
+  share: Share01Icon,
+  stop: StopIcon,
+  'user-add': UserAdd01Icon,
+  members: UserMultipleIcon,
+  'switch-profile': UserSwitchIcon,
+  offline: WifiOff01Icon,
 };
 
 type IconGlyphProps = {
@@ -109,13 +175,18 @@ type IconGlyphProps = {
   size?: number;
   bg?: string;
   fg?: string;
+  /** Glyph size as a fraction of the tile. */
+  scale?: number;
+  /** 'circle' (default) or the design's soft rounded 'tile' (10px radius). */
+  shape?: 'circle' | 'tile';
 };
 
-export function IconGlyph({ glyph, size = 40, bg = Colors.surfaceMuted, fg }: IconGlyphProps) {
+export function IconGlyph({ glyph, size = 40, bg = Colors.accentSoft, fg, scale = 0.5, shape = 'circle' }: IconGlyphProps) {
   const icon = ICONS[glyph];
+  const radius = shape === 'tile' ? Math.round(size * 0.3) : size / 2;
   return (
-    <View style={[styles.base, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      {icon ? <HugeiconsIcon icon={icon} size={size * 0.5} color={fg ?? Colors.text} /> : null}
+    <View style={[styles.base, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]}>
+      {icon ? <HugeiconsIcon icon={icon} size={Math.round(size * scale)} color={fg ?? Colors.accent} strokeWidth={1.6} /> : null}
     </View>
   );
 }
@@ -124,6 +195,5 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
   },
 });
