@@ -41,6 +41,11 @@ and offers managed Postgres and Redis works.
 
 ## Environment (API and worker)
 
+Locally, `node scripts/setup-env.mjs` (from the repo root) creates or updates
+`admin/.env` and `mobile/.env.local` from the `.env.example` files: it adds
+missing settings, generates the secrets, clears example placeholders and never
+changes a value you set.
+
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | **Pooled** URL (PgBouncer, transaction mode) |

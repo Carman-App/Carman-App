@@ -42,3 +42,6 @@ example
 # generated native folders
 /ios
 /android
+
+# backups written by scripts/setup-env.mjs
+.env*.bak
