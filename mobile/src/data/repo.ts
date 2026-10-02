@@ -15,6 +15,7 @@
  * (`src/app/garages/[id]/members.tsx`) needs updating to pass it.
  */
 import { api } from '@/data/api/client';
+import { clearProgress } from '@/features/onboarding/progress';
 import { fetchVehicleDocuments, fetchVehicleProject, fetchVehicleRecords } from '@/data/api/aggregates';
 import {
   toAccount,
@@ -149,6 +150,7 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
   });
 
   await setUiState({ onboarded: true, activeGarageId: garage.id });
+  await clearProgress();
 
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.account() }),
@@ -171,6 +173,7 @@ export async function completeWorkshopOnboarding(input: { region: Region; name: 
   const workshop = await api.post<{ id: string; name: string }>('workshops', { name: input.businessName.trim() });
   const garages = await api.get<RawGarage[]>('garages').catch(() => [] as RawGarage[]);
   await setUiState({ onboarded: true, mode: 'mechanic', activeWorkshopId: workshop.id, activeGarageId: garages[0]?.id ?? null });
+  await clearProgress();
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.account() }),
     queryClient.invalidateQueries({ queryKey: ['workshops'] }),

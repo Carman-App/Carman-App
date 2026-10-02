@@ -7,6 +7,7 @@ import { api, ApiError } from '@/data/api/client';
 import { clearSession, getSession, saveSession, type Session } from '@/data/auth/session';
 import { queryClient } from '@/data/queryClient';
 import { setUiState } from '@/data/uiState';
+import { clearProgress } from '@/features/onboarding/progress';
 
 /**
  * Sign in with Google or Apple, natively, then trade the provider's ID token
@@ -122,6 +123,7 @@ export async function signOut(): Promise<void> {
   const g = loadGoogle();
   if (g) await g.GoogleSignin.signOut().catch(() => {});
   await clearSession();
+  await clearProgress();
   await setUiState({ onboarded: false, activeGarageId: null, mode: 'owner', homeVehicleId: null, recents: [], mechanicRecents: [] });
   queryClient.clear();
 }

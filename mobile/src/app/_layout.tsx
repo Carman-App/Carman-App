@@ -15,6 +15,7 @@ import { setSignedOutHandler } from '@/data/api/client';
 import { loadSession, useSessionLoaded } from '@/data/auth/session';
 import { useHydrateOnMount } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
+import { launchTarget } from '@/features/onboarding/progress';
 import { withMonitoring } from '@/lib/monitoring';
 import { Colors } from '@/theme/tokens';
 
@@ -52,15 +53,17 @@ function RootLayout() {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
 
-  // Every launch starts at Welcome. Expo Go (and Android) reopen the app on
-  // the last screen's URL, e.g. /record/add, which would skip it.
+  // Every launch opens on Welcome, or on the unfinished set-up step with its
+  // answers. Expo Go (and Android) reopen the app on the last screen's URL,
+  // e.g. /record/add, which would otherwise skip both. "/" is handled by index.
   const pathname = usePathname();
   useEffect(() => {
     if (!ready || launched) return;
     launched = true;
-    if (pathname !== '/' && pathname !== '/onboarding/welcome') {
-      requestAnimationFrame(() => router.replace('/onboarding/welcome'));
-    }
+    if (pathname === '/') return;
+    void launchTarget().then((target) => {
+      if (target !== pathname) router.replace(target);
+    });
   }, [ready, pathname]);
 
   if (!ready) return null;

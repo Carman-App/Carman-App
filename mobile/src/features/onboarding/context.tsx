@@ -1,4 +1,8 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { usePathname } from 'expo-router';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import { clearProgress, isResumableStep, loadProgress, saveProgress } from '@/features/onboarding/progress';
+import { getUiState } from '@/data/uiState';
 
 import type { AccountProfile, Powertrain, Region, VehicleType, VehicleUsage } from '@/types/domain';
 
@@ -57,6 +61,32 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<OnboardingDraft>(DEFAULT_DRAFT);
+  const [loaded, setLoaded] = useState(false);
+  const pathname = usePathname();
+  const lastStep = useRef<string | null>(null);
+
+  // Restore unfinished set-up answers (see ./progress.ts).
+  useEffect(() => {
+    void (async () => {
+      if (getUiState().onboarded) await clearProgress();
+      else {
+        const p = await loadProgress();
+        if (p) {
+          setDraft({ ...DEFAULT_DRAFT, ...p.draft });
+          lastStep.current = p.step;
+        }
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  // Save the answers and the current step as they change.
+  useEffect(() => {
+    if (!loaded || getUiState().onboarded) return;
+    if (isResumableStep(pathname)) lastStep.current = pathname;
+    if (lastStep.current) void saveProgress({ step: lastStep.current, draft });
+  }, [loaded, pathname, draft]);
+
   const value = useMemo(
     () => ({
       draft,
@@ -64,6 +94,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }),
     [draft]
   );
+  // Screens read the draft in their initial state, so wait for the restore.
+  if (!loaded) return null;
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
 }
 
