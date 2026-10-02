@@ -5,10 +5,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { T } from '@/components/ui/Typography';
+import { useAccount, useOnboarded, useUiState } from '@/data/hooks';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /** Welcome. Google or Apple only; the three stripes are the Carma blue, signal red and yellow. */
 export default function WelcomeScreen() {
+  const onboarded = useOnboarded();
+  const mode = useUiState('mode');
+  const account = useAccount().data;
+  const firstName = account?.name?.split(' ')[0];
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <Image source={require('@/../assets/images/welcome-car.jpg')} style={styles.photo} contentFit="cover" contentPosition={{ left: '38%', top: '58%' }} />
@@ -28,10 +34,23 @@ export default function WelcomeScreen() {
         </View>
       </View>
       <View style={styles.foot}>
-        <Button onPress={() => router.push('/onboarding/country')}>Get started</Button>
-        <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
-          7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
-        </T>
+        {onboarded ? (
+          <>
+            <Button onPress={() => router.replace(mode === 'mechanic' ? '/mechanic/dashboard' : '/home')}>
+              {firstName ? `Continue as ${firstName}` : 'Continue'}
+            </Button>
+            <Button variant="secondary" size="md" onPress={() => router.push('/onboarding/country')}>
+              Set up again
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onPress={() => router.push('/onboarding/country')}>Get started</Button>
+            <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
+              7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+            </T>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
