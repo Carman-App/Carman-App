@@ -1,0 +1,77 @@
+# Production-shaped local stack: Postgres behind PgBouncer, Redis, the API
+# (two instances behind nothing — hit either port), and the worker.
+#   docker compose up --build
+# Then: http://localhost:3001/api/health and http://localhost:3002/api/health
+# Secrets below are for local use only. See DEPLOY.md for real deployments.
+
+x-app-env: &app-env
+  NODE_ENV: production
+  # Through the pooler (transaction mode). Each instance keeps <= 10 connections to it.
+  DATABASE_URL: postgresql://carma:carma@pgbouncer:6432/carma
+  DATABASE_POOL_MAX: "10"
+  REDIS_URL: redis://redis:6379
+  AUTH_JWT_SECRET: local-only-secret-change-me-0123456789abcdef
+  SESSION_SECRET: local-only-session-secret-change-me-0123456789
+  CORS_ALLOWED_ORIGINS: http://localhost:8081
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: carma
+      POSTGRES_PASSWORD: carma
+      POSTGRES_DB: carma
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carma"]
+      interval: 5s
+      retries: 10
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DATABASE_URL: postgresql://carma:carma@postgres:5432/carma
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "2000"
+      DEFAULT_POOL_SIZE: "40"
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes: [redisdata:/data]
+
+  # Runs migrations once, straight to Postgres (not through the pooler), then exits.
+  migrate:
+    build: { context: ./admin, target: worker }
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://carma:carma@postgres:5432/carma
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api-1: &api
+    build: { context: ./admin, target: web }
+    environment: *app-env
+    ports: ["3001:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_started }
+      pgbouncer: { condition: service_started }
+
+  api-2:
+    <<: *api
+    ports: ["3002:3000"]
+
+  worker:
+    build: { context: ./admin, target: worker }
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_started }
+
+volumes:
+  pgdata:
+  redisdata:
