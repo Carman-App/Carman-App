@@ -1060,6 +1060,9 @@ model Reminder {
   description String
   resolved    Boolean      @default(false)
   createdAt   DateTime     @default(now())
+  // Set by the background reminder scan (e.g. "doc-expiry:<documentId>:<expiry>")
+  // so running it again never creates the same reminder twice.
+  sourceKey   String?      @unique
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 

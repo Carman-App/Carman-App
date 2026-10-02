@@ -9,6 +9,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { enqueue } from "@/lib/jobs/queue";
 import type { NotificationType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -34,8 +35,13 @@ export class NoopNotificationProvider implements NotificationProvider {
 export const notificationProvider: NotificationProvider = new NoopNotificationProvider();
 
 /** Persist the notification and hand it to the configured provider. */
+/**
+ * Saves the in-app notification now (the app reads it from the list) and
+ * hands outside delivery (push/SMS/email) to a background job, so a slow or
+ * failing provider never slows down or fails the request that caused it.
+ */
 export async function notify(notification: OutboundNotification): Promise<void> {
-  await prisma.notification.create({
+  const row = await prisma.notification.create({
     data: {
       accountId: notification.accountId,
       type: notification.type,
@@ -44,5 +50,5 @@ export async function notify(notification: OutboundNotification): Promise<void> 
       metadata: (notification.metadata as Prisma.InputJsonValue) ?? undefined,
     },
   });
-  await notificationProvider.send(notification);
+  await enqueue("notification.deliver", { notificationId: row.id });
 }

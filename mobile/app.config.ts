@@ -12,7 +12,12 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * `npx expo run:android` or EAS), not Expo Go.
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const plugins: ExpoConfig['plugins'] = [...(config.plugins ?? []), 'expo-apple-authentication', 'expo-secure-store'];
+  const plugins: ExpoConfig['plugins'] = [
+    ...(config.plugins ?? []),
+    'expo-apple-authentication',
+    'expo-secure-store',
+    ['expo-image-picker', { cameraPermission: 'Carma uses the camera to photograph your vehicle documents and receipts.', photosPermission: false }],
+  ];
   const googleScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
   if (googleScheme) plugins.push(['@react-native-google-signin/google-signin', { iosUrlScheme: googleScheme }]);
 

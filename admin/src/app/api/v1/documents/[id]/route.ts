@@ -33,6 +33,9 @@ export async function PATCH(
     if (!parsed.success) {
       return apiError(422, "VALIDATION_ERROR", "Invalid document payload.", parsed.error.flatten());
     }
+    if (parsed.data.fileKey && !parsed.data.fileKey.startsWith(`vehicles/${document.vehicleId}/`)) {
+      return apiError(422, "VALIDATION_ERROR", "That file was not uploaded for this vehicle.");
+    }
 
     const updated = await prisma.document.update({
       where: { id },

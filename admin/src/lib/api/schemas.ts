@@ -305,3 +305,20 @@ export const appleSignInSchema = z.object({
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(20).max(200),
 });
+
+// --- File uploads --------------------------------------------------------------
+
+export const UPLOAD_CONTENT_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/heic": "heic",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+} as const;
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+
+export const createUploadSchema = z.object({
+  vehicleId: z.string().min(1),
+  contentType: z.enum(Object.keys(UPLOAD_CONTENT_TYPES) as [keyof typeof UPLOAD_CONTENT_TYPES, ...(keyof typeof UPLOAD_CONTENT_TYPES)[]]),
+  sizeBytes: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+});

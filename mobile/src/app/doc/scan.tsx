@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Footnote, KeyValueRow, Rule } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useActiveGarage, useDocument, useVehicles } from '@/data/hooks';
+import { chooseFile, describeFile, takePhoto, uploadFile, type PickedFile } from '@/features/documents/upload';
 import { addDocument, updateDocument } from '@/data/repo';
 import { formatDateWithYear, formatNumber, todayIso } from '@/lib/format';
 import type { DocumentType } from '@/types/domain';
@@ -45,6 +46,7 @@ export default function ScanDocumentScreen() {
   const [expiry, setExpiry] = useState('');
   const [pickedVehicleId, setPickedVehicleId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'vehicle' | 'expiry' | null>(null);
+  const [file, setFile] = useState<PickedFile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,14 +67,30 @@ export default function ScanDocumentScreen() {
     }
   };
 
+  const pick = async (how: 'camera' | 'file') => {
+    setError(null);
+    try {
+      const f = how === 'camera' ? await takePhoto() : await chooseFile();
+      if (f) setFile(f);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open that file.');
+    }
+  };
+
   const saveNew = () => {
     if (!vehicleId || !title.trim()) return;
-    void run(() => addDocument(vehicleId, { type, title: title.trim(), expiryDate: (hasExpiry && expiry) || undefined, addedAt: todayIso() }));
+    void run(async () => {
+      const uploaded = file ? await uploadFile(vehicleId, file) : null;
+      await addDocument(vehicleId, { type, title: title.trim(), expiryDate: (hasExpiry && expiry) || undefined, addedAt: todayIso(), fileRef: uploaded?.fileKey });
+    });
   };
 
   const replace = () => {
-    if (!documentId) return;
-    void run(() => updateDocument(documentId, { addedAt: todayIso() }));
+    if (!documentId || !existingDoc || !file) return;
+    void run(async () => {
+      const uploaded = await uploadFile(existingDoc.vehicleId, file);
+      await updateDocument(documentId, { fileRef: uploaded.fileKey });
+    });
   };
 
   const frame = (
@@ -82,9 +100,30 @@ export default function ScanDocumentScreen() {
         <View style={[styles.corner, styles.tr]} />
         <View style={[styles.corner, styles.bl]} />
         <View style={[styles.corner, styles.br]} />
-        <T variant="eyebrow" color={Colors.slate} center>
-          {upload ? 'PHOTO OR PDF' : 'FIT THE PAGE INSIDE THE CORNERS'}
-        </T>
+        {file ? (
+          <>
+            <T variant="bodyStrong" center>
+              {describeFile(file)}
+            </T>
+            <T variant="eyebrow" color={Colors.slate} center>
+              READY TO UPLOAD
+            </T>
+          </>
+        ) : (
+          <T variant="eyebrow" color={Colors.slate} center>
+            {upload ? 'PHOTO OR PDF, UP TO 15 MB' : 'FIT THE PAGE INSIDE THE CORNERS'}
+          </T>
+        )}
+      </View>
+      <View style={styles.pickRow}>
+        {Platform.OS !== 'web' ? (
+          <Button variant={upload ? 'secondary' : 'strong'} size="md" glyph="camera" style={styles.flex} onPress={() => void pick('camera')}>
+            {file ? 'Retake' : 'Take a photo'}
+          </Button>
+        ) : null}
+        <Button variant={upload || Platform.OS === 'web' ? 'strong' : 'secondary'} size="md" glyph="upload-file" style={styles.flex} onPress={() => void pick('file')}>
+          {file ? 'Choose another' : 'Choose a file'}
+        </Button>
       </View>
     </View>
   );
@@ -100,8 +139,8 @@ export default function ScanDocumentScreen() {
       <Screen
         header={<TopBar backLabel="DOCUMENT" right="REPLACE FILE" />}
         footer={
-          <Button onPress={replace} loading={saving}>
-            Replace file
+          <Button onPress={replace} loading={saving} disabled={!file}>
+            {file ? 'Replace file' : 'Pick the new file first'}
           </Button>
         }>
         <View style={styles.head}>
@@ -168,6 +207,14 @@ const styles = StyleSheet.create({
   head: {
     paddingTop: Spacing.md,
     gap: 10,
+  },
+  pickRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: Spacing.md,
+  },
+  flex: {
+    flex: 1,
   },
   frameWrap: {
     marginTop: Spacing.md,

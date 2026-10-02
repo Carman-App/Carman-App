@@ -57,6 +57,10 @@ export async function POST(
       return apiError(422, "VALIDATION_ERROR", "Invalid document payload.", parsed.error.flatten());
     }
     const input = parsed.data;
+    // A file key must come from POST /uploads for this vehicle: never someone else's file.
+    if (input.fileKey && !input.fileKey.startsWith(`vehicles/${vehicleId}/`)) {
+      return apiError(422, "VALIDATION_ERROR", "That file was not uploaded for this vehicle.");
+    }
 
     let documentTypeId = input.documentTypeId;
     if (!documentTypeId && input.documentTypeCode) {

@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
@@ -10,6 +11,7 @@ import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
+import { api } from '@/data/api/client';
 import { useDocument, useVehicle } from '@/data/hooks';
 import { deleteDocument, updateDocument } from '@/data/repo';
 import { daysUntil, formatDateWithYear, formatPlate } from '@/lib/format';
@@ -37,6 +39,7 @@ export default function DocumentDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
 
   // useDocument reads an already-fetched list's cache; wait for it before deciding the doc is gone.
   if (docQuery.isPending) {
@@ -80,6 +83,20 @@ export default function DocumentDetailScreen() {
     }
   };
 
+  const openFile = async () => {
+    setOpening(true);
+    setError(null);
+    try {
+      // Files are private: the API checks access and returns a link that expires in 10 minutes.
+      const { url } = await api.get<{ url: string }>(`documents/${id}/file`);
+      await WebBrowser.openBrowserAsync(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the file.');
+    } finally {
+      setOpening(false);
+    }
+  };
+
   const remove = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -112,15 +129,24 @@ export default function DocumentDetailScreen() {
         {days !== null && days >= 0 ? <ProgressBar progress={Math.max(0.04, Math.min(1, days / 365))} color={urgent ? Colors.signal : Colors.accent} /> : null}
       </View>
 
-      <Pressable style={styles.file} onPress={() => router.push({ pathname: '/doc/scan', params: { documentId: id } })}>
+      <Pressable
+        style={styles.file}
+        onPress={() => (doc.fileRef ? void openFile() : router.push({ pathname: '/doc/scan', params: { documentId: id } }))}>
         <IconGlyph glyph={doc.fileRef ? 'document' : 'camera'} size={44} />
         <View style={styles.flex}>
           <T variant="bodyStrong">{doc.fileRef ? 'Photo on file' : 'Nothing attached'}</T>
-          <T variant="meta">{doc.fileRef ? 'Tap to replace' : 'Add a photo or PDF'}</T>
+          <T variant="meta">{doc.fileRef ? (opening ? 'Opening…' : 'Tap to open') : 'Add a photo or PDF'}</T>
         </View>
         <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
       </Pressable>
 
+      {doc.fileRef ? (
+        <Pressable hitSlop={8} style={styles.replace} onPress={() => router.push({ pathname: '/doc/scan', params: { documentId: id } })}>
+          <T variant="meta" color={Colors.accent}>
+            Replace the file
+          </T>
+        </Pressable>
+      ) : null}
       <Rule />
       <View style={styles.section}>
         <T variant="section">Details</T>
@@ -173,6 +199,11 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
     gap: 2,
+  },
+  replace: {
+    alignSelf: 'flex-start',
+    marginTop: -Spacing.sm,
+    marginBottom: Spacing.md,
   },
   section: {
     paddingVertical: Spacing.md,

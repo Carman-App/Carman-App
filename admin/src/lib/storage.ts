@@ -72,3 +72,24 @@ export async function getSignedReadUrl(
   const command = new GetObjectCommand({ Bucket: getBucket(), Key: key });
   return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
 }
+
+/** True when a bucket and credentials are configured. */
+export function storageConfigured(): boolean {
+  return Boolean(process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY);
+}
+
+/**
+ * A short-lived URL the app PUTs the file to directly, so uploads never pass
+ * through (or tie up) the API servers. The signature binds the content type
+ * and exact size, so the URL cannot be reused for a different file.
+ */
+export async function getSignedUploadUrl(
+  key: string,
+  contentType: string,
+  contentLength: number,
+  expiresInSeconds = 300,
+): Promise<string> {
+  const client = getClient();
+  const command = new PutObjectCommand({ Bucket: getBucket(), Key: key, ContentType: contentType, ContentLength: contentLength });
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds, signableHeaders: new Set(["content-type", "content-length"]) });
+}
