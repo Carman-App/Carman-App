@@ -11,10 +11,12 @@ import { buildGarageContext, buildWorkshopContext } from "@/lib/assistant/contex
 import { AssistantNotConfiguredError, AssistantRefusedError, type AskInput } from "@/lib/assistant/claude";
 import { currencyForRegion } from "@/lib/region";
 import { enforceLimit, RateLimitedError, type Limit } from "@/lib/rate-limit";
+import { answerCacheKey, AssistantQuotaError, cachedAnswer, checkQuota, type QuotaSubject } from "@/lib/assistant/quota";
+import { PlanSubject } from "@/generated/prisma/enums";
 
 // Each question is one model call over the caller's whole garage: a short
 // burst ceiling per account, counted in the shared store so it holds across
-// every server instance (monthly per-plan quotas are in ./quota.ts).
+// every server instance (monthly per-plan quotas and the answer cache are in ./quota.ts).
 const ASSISTANT_BURST: Limit = { name: "assistant", max: 40, windowSeconds: 10 * 60 };
 
 export class AssistantRequestError extends Error {
@@ -28,7 +30,9 @@ export class AssistantRequestError extends Error {
  * limit -> membership -> context. Throws AssistantRequestError carrying the
  * HTTP response to send when the request can't go ahead.
  */
-export async function prepareAssistant(req: NextRequest): Promise<AskInput> {
+export type PreparedAssistant = { input: AskInput; quota: QuotaSubject; cacheKey: string | null };
+
+export async function prepareAssistant(req: NextRequest): Promise<PreparedAssistant> {
   const account = await requireAccount(req);
 
   const body = await req.json().catch(() => null);
@@ -75,7 +79,9 @@ export async function prepareAssistant(req: NextRequest): Promise<AskInput> {
     }
   }
 
-  return {
+  const quota: QuotaSubject =
+    input.mode === "owner" ? { subject: PlanSubject.OWNER, id: account.id } : { subject: PlanSubject.WORKSHOP, id: input.workshopId! };
+  const prepared: AskInput = {
     mode: input.mode,
     context,
     question: input.question,
@@ -86,6 +92,17 @@ export async function prepareAssistant(req: NextRequest): Promise<AskInput> {
     selectedVehicle,
     focusJob,
   };
+  const cacheKey = answerCacheKey(prepared, quota);
+  // A cached answer costs nothing, so the quota is only checked when the model will be asked.
+  if (!(cacheKey && (await cachedAnswer(cacheKey)))) {
+    try {
+      await checkQuota(quota);
+    } catch (e) {
+      if (e instanceof AssistantQuotaError) throw new AssistantRequestError(apiError(402, "AI_QUOTA_EXCEEDED", e.message));
+      throw e;
+    }
+  }
+  return { input: prepared, quota, cacheKey };
 }
 
 /** Maps a failure to the API's { error: { code, message } } shape. */

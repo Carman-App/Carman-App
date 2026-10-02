@@ -119,3 +119,27 @@ export async function invalidate(...keys: string[]): Promise<void> {
   }
   for (const k of keys) memory.delete(k);
 }
+
+export async function getJson<T>(key: string): Promise<T | null> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const v = await redis.get(key);
+      return v === null ? null : (JSON.parse(v) as T);
+    } catch {
+      return null;
+    }
+  }
+  const v = memGet(key);
+  return v === null ? null : (JSON.parse(v) as T);
+}
+
+export async function setJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(key, JSON.stringify(value), "EX", ttlSeconds).catch(() => {});
+    return;
+  }
+  memSweep();
+  memory.set(key, { value: JSON.stringify(value), expiresAt: Date.now() + ttlSeconds * 1000 });
+}

@@ -1561,6 +1561,9 @@ model Plan {
   // CFG-02
   features        String[]    @default([])
   trialDays       Int?
+  // Assistant questions per calendar month (null = unlimited). Each answer is
+  // a paid model call; repeats served from the answer cache do not count.
+  assistantMonthlyQuota Int?
   createdAt       DateTime    @default(now())
 
   subscriptions Subscription[]

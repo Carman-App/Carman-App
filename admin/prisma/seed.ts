@@ -82,12 +82,12 @@ async function main() {
     // Prices are not in the overview and are set per currency from the
     // console (Config → Plans, CFG-02), so the seed never overwrites them.
     const plans = [
-      { code: "OWNER_FREE", subject: "OWNER", name: "Free", maxGarages: 1, maxVehicles: 3, maxSeats: 1, maxJobsPerMonth: null, maxStaff: null, features: ["1 garage", "3 vehicles", "Just you", "90 days of history"] },
-      { code: "OWNER_PERSONAL", subject: "OWNER", name: "Personal", maxGarages: 2, maxVehicles: null, maxSeats: 3, maxJobsPerMonth: null, maxStaff: null, features: ["2 garages", "Unlimited vehicles", "3 members", "Full history", "CSV export"] },
-      { code: "OWNER_PRO", subject: "OWNER", name: "Pro", maxGarages: null, maxVehicles: null, maxSeats: 10, maxJobsPerMonth: null, maxStaff: null, features: ["Unlimited garages and vehicles", "10 members per garage", "Full history", "CSV export", "Priority support"] },
-      { code: "WORKSHOP_FREE", subject: "WORKSHOP", name: "Free", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: 5, maxStaff: 1, features: ["5 jobs a month"] },
-      { code: "WORKSHOP_STANDARD", subject: "WORKSHOP", name: "Workshop", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 3, features: ["Unlimited jobs", "3 staff"] },
-      { code: "WORKSHOP_FLEET", subject: "WORKSHOP", name: "Fleet", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 12, features: ["Unlimited jobs", "12 staff", "API access"] },
+      { code: "OWNER_FREE", assistantMonthlyQuota: 20, subject: "OWNER", name: "Free", maxGarages: 1, maxVehicles: 3, maxSeats: 1, maxJobsPerMonth: null, maxStaff: null, features: ["1 garage", "3 vehicles", "Just you", "90 days of history"] },
+      { code: "OWNER_PERSONAL", assistantMonthlyQuota: 200, subject: "OWNER", name: "Personal", maxGarages: 2, maxVehicles: null, maxSeats: 3, maxJobsPerMonth: null, maxStaff: null, features: ["2 garages", "Unlimited vehicles", "3 members", "Full history", "CSV export"] },
+      { code: "OWNER_PRO", assistantMonthlyQuota: 1000, subject: "OWNER", name: "Pro", maxGarages: null, maxVehicles: null, maxSeats: 10, maxJobsPerMonth: null, maxStaff: null, features: ["Unlimited garages and vehicles", "10 members per garage", "Full history", "CSV export", "Priority support"] },
+      { code: "WORKSHOP_FREE", assistantMonthlyQuota: 30, subject: "WORKSHOP", name: "Free", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: 5, maxStaff: 1, features: ["5 jobs a month"] },
+      { code: "WORKSHOP_STANDARD", assistantMonthlyQuota: 500, subject: "WORKSHOP", name: "Workshop", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 3, features: ["Unlimited jobs", "3 staff"] },
+      { code: "WORKSHOP_FLEET", assistantMonthlyQuota: 2000, subject: "WORKSHOP", name: "Fleet", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 12, features: ["Unlimited jobs", "12 staff", "API access"] },
     ] as const;
     for (const { code, subject, ...limits } of plans) {
       const data = { ...limits, features: [...limits.features] };

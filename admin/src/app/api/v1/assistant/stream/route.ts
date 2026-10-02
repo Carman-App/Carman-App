@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { streamClaude } from "@/lib/assistant/claude";
 import { assistantError, assistantErrorResponse, prepareAssistant } from "@/lib/assistant/request";
 import { handleApiError } from "@/lib/api/errors";
+import { cachedAnswer, recordUse, storeAnswer } from "@/lib/assistant/quota";
 
 // POST /api/v1/assistant/stream — same request as /api/v1/assistant, answered
 // as newline-delimited JSON so the app can show the answer as it is written:
@@ -24,7 +25,14 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       try {
-        const reply = await streamClaude(prepared, { onText: (p) => send({ type: "text", ...p }) });
+        const hit = await cachedAnswer(prepared.cacheKey);
+        if (hit) {
+          send({ type: "text", lead: hit.lead, body: hit.body ?? "" });
+          send({ type: "done", data: hit });
+          return;
+        }
+        const reply = await streamClaude(prepared.input, { onText: (p) => send({ type: "text", ...p }) });
+        await Promise.all([recordUse(prepared.quota), storeAnswer(prepared.cacheKey, reply)]);
         send({ type: "done", data: reply });
       } catch (error) {
         const mapped = assistantError(error);

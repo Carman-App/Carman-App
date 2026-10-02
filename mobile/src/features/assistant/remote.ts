@@ -111,7 +111,7 @@ export type AskInput =
   | { mode: 'mechanic'; question: string; workshopId: string; jobId?: string; history: Turn[] };
 
 /** Why a remote answer wasn't available, so the UI can say so once. */
-export type FallbackReason = 'not-configured' | 'offline' | 'busy' | 'error' | 'refused';
+export type FallbackReason = 'not-configured' | 'offline' | 'busy' | 'error' | 'refused' | 'quota';
 
 export async function askRemote(input: AskInput): Promise<AskResult> {
   try {
@@ -122,6 +122,7 @@ export async function askRemote(input: AskInput): Promise<AskResult> {
     if (e instanceof ApiError) {
       if (e.code === 'AI_NOT_CONFIGURED') return { ok: false, reason: 'not-configured' };
       if (e.code === 'AI_REFUSED') return { ok: false, reason: 'refused', message: e.message };
+      if (e.code === 'AI_QUOTA_EXCEEDED') return { ok: false, reason: 'quota', message: e.message };
       if (e.code === 'AI_BUSY' || e.code === 'RATE_LIMITED') return { ok: false, reason: 'busy', message: e.message };
     }
     return { ok: false, reason: 'error' };
@@ -133,6 +134,7 @@ type AskResult = { ok: true; answer: RemoteAnswer } | { ok: false; reason: Fallb
 function reasonFor(code: string | undefined): FallbackReason {
   if (code === 'AI_NOT_CONFIGURED') return 'not-configured';
   if (code === 'AI_REFUSED') return 'refused';
+  if (code === 'AI_QUOTA_EXCEEDED') return 'quota';
   if (code === 'AI_BUSY' || code === 'RATE_LIMITED') return 'busy';
   return 'error';
 }
@@ -202,6 +204,8 @@ export function fallbackNote(reason: FallbackReason): string | null {
       return 'Carma is busy: answered on this phone instead.';
     case 'error':
       return 'Carma could not be reached: answered on this phone instead.';
+    case 'quota':
+      return "This month's assistant questions are used up: answered on this phone instead.";
     case 'not-configured':
     case 'refused':
       return null;
