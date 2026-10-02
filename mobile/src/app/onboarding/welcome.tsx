@@ -6,17 +6,22 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
+import { OptionSheet } from '@/components/ui/OptionSheet';
 import { T } from '@/components/ui/Typography';
 import { serverAddress } from '@/data/api/client';
 import { useSignedIn } from '@/data/auth/session';
 import { useAccount, useOnboarded, useUiState } from '@/data/hooks';
+import { getUiState } from '@/data/uiState';
 import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, signOut, type SignInOutcome } from '@/features/auth/signIn';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /**
- * Welcome. Sign in with Apple or Google; the three stripes are the Carma
- * blue, signal red and yellow. Signed in already: carry on, or finish set-up.
- * In development only, a demo account can be used without signing in.
+ * Welcome, as designed: one "Get started" into the set-up flow (Where are
+ * you based? · STEP 01). The three stripes are the Carma blue, signal red and
+ * yellow.
+ * - Not signed in: Get started opens a sheet to continue with Apple or
+ *   Google first (in development the demo account skips it).
+ * - Signed in and set up: Continue as <name>.
  */
 export default function WelcomeScreen() {
   const signedIn = useSignedIn();
@@ -24,7 +29,8 @@ export default function WelcomeScreen() {
   const mode = useUiState('mode');
   const [busy, setBusy] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [providers, setProviders] = useState({ apple: false, google: false, dev: false, reachable: true, checked: false });
+  const [sheet, setSheet] = useState(false);
+  const [providers, setProviders] = useState({ apple: false, google: false, dev: false, reachable: true, checked: false, trialDays: null as number | null });
   const [attempt, setAttempt] = useState(0);
   const devAllowed = __DEV__ && !!process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
   // With no session, the account is only knowable through the development demo account.
@@ -42,6 +48,7 @@ export default function WelcomeScreen() {
           dev: devAllowed && config.devAccount,
           reachable: config.reachable,
           checked: true,
+          trialDays: config.trialDays ?? null,
         });
       }
     })();
@@ -49,6 +56,33 @@ export default function WelcomeScreen() {
       live = false;
     };
   }, [devAllowed, attempt]);
+
+  const continueHref = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
+  const canContinue = (signedIn || providers.dev) && onboarded;
+  const canSignIn = providers.apple || providers.google;
+
+  const getStarted = () => {
+    setError(null);
+    if (signedIn || providers.dev) {
+      router.push('/onboarding/country');
+      return;
+    }
+    if (canSignIn) {
+      setSheet(true);
+      return;
+    }
+    // Nothing to sign in with: say why instead of doing nothing.
+    setError(
+      !providers.reachable
+        ? __DEV__
+          ? `Can't reach the Carma server at ${serverAddress()}. Start it with "npm run dev" in admin/, and keep this phone on the same Wi-Fi as the computer.`
+          : "Can't reach Carma. Check your connection and try again."
+        : __DEV__
+          ? 'The server offers no sign-in yet: add Google/Apple client ids, or run it with "npm run dev" for the demo account.'
+          : 'Sign-in is not available right now. Try again in a moment.'
+    );
+    setAttempt((n) => n + 1);
+  };
 
   const run = async (which: 'apple' | 'google') => {
     setBusy(which);
@@ -59,11 +93,13 @@ export default function WelcomeScreen() {
       if (!outcome.cancelled) setError(outcome.message ?? 'Sign-in failed. Try again.');
       return;
     }
-    router.replace('/');
+    setSheet(false);
+    // Returning on a new phone with a garage already: straight in. Otherwise the set-up flow.
+    if (getUiState().onboarded) router.replace(continueHref);
+    else router.push('/onboarding/country');
   };
 
-  const continueHref = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
-  const canContinue = (signedIn || providers.dev) && onboarded;
+  const trial = providers.trialDays ? `${providers.trialDays} DAYS FREE` : 'FREE TRIAL';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -95,10 +131,37 @@ export default function WelcomeScreen() {
               </Pressable>
             ) : null}
           </>
-        ) : signedIn ? (
-          <Button onPress={() => router.push('/onboarding/country')}>Set up my garage</Button>
         ) : (
           <>
+            <Button onPress={getStarted}>Get started</Button>
+            {error ? (
+              <T variant="meta" color={Colors.signal} center>
+                {error}
+              </T>
+            ) : null}
+            <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
+              {trial} · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+            </T>
+            {!signedIn && canSignIn ? (
+              <Pressable hitSlop={8} onPress={() => setSheet(true)} style={styles.link}>
+                <T variant="meta" color={Colors.body}>
+                  I already have an account
+                </T>
+              </Pressable>
+            ) : null}
+          </>
+        )}
+      </View>
+
+      <OptionSheet
+        visible={sheet}
+        title="Continue to Carma"
+        lede="Your garage is kept with your account, so it is there on any phone you sign in on."
+        options={[]}
+        onSelect={() => {}}
+        onClose={() => setSheet(false)}
+        footer={
+          <View style={styles.sheetButtons}>
             {providers.apple ? (
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
@@ -113,38 +176,14 @@ export default function WelcomeScreen() {
                 Continue with Google
               </Button>
             ) : null}
-            {providers.dev ? (
-              <Button variant={providers.apple || providers.google ? 'ghost' : 'primary'} onPress={() => router.push('/onboarding/country')}>
-                Use the demo account (development)
-              </Button>
-            ) : null}
-            {providers.checked && !providers.apple && !providers.google && !providers.dev ? (
-              <>
-                <T variant="meta" color={Colors.body} center>
-                  {!providers.reachable
-                    ? __DEV__
-                      ? `Can't reach the Carma server at ${serverAddress()}. Start it with "npm run dev" in admin/, and keep this phone on the same Wi-Fi as the computer.`
-                      : "Can't reach Carma. Check your connection and try again."
-                    : __DEV__
-                      ? 'The server offers no sign-in yet: add Google/Apple client ids, or run it with "npm run dev" for the demo account.'
-                      : 'Sign-in is not available right now. Try again in a moment.'}
-                </T>
-                <Button variant="secondary" size="md" onPress={() => setAttempt((n) => n + 1)}>
-                  Try again
-                </Button>
-              </>
-            ) : null}
             {error ? (
               <T variant="meta" color={Colors.signal} center>
                 {error}
               </T>
             ) : null}
-            <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
-              FREE TRIAL · NO CARD TO START{'\n'}YOUR RECORDS STAY READABLE WHEN IT ENDS
-            </T>
-          </>
-        )}
-      </View>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -214,5 +253,8 @@ const styles = StyleSheet.create({
   link: {
     alignSelf: 'center',
     paddingVertical: 4,
+  },
+  sheetButtons: {
+    gap: 12,
   },
 });

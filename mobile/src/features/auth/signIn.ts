@@ -14,7 +14,7 @@ import { setUiState } from '@/data/uiState';
  * is never stored; only Carma's own session is (see @/data/auth/session).
  */
 
-export type AuthConfig = { google: boolean; apple: boolean; devAccount: boolean; reachable: boolean };
+export type AuthConfig = { google: boolean; apple: boolean; devAccount: boolean; reachable: boolean; trialDays?: number | null };
 export type SignInOutcome = { ok: true; isNew: boolean } | { ok: false; cancelled?: boolean; message?: string };
 
 type SessionResponse = Session & { accountId: string; isNew: boolean };
