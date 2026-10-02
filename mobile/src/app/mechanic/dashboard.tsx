@@ -105,7 +105,7 @@ export default function MechanicHomeScreen() {
           placeholder="Job, part, customer, plate…"
           onAdd={() => router.push('/mechanic/new-job')}
           scopeLabel={workshop?.name ?? 'Workshop'}
-          onMic={() => router.push({ pathname: '/assistant/listen', params: { context: workshop?.name ?? 'Workshop' } })}
+          onMic={() => router.push({ pathname: '/assistant/listen', params: { to: 'mechanic', context: workshop?.name ?? 'Workshop' } })}
         />
         <View style={{ height: Spacing.sm }} />
       </KeyboardAvoidingView>

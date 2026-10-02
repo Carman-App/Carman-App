@@ -10,7 +10,7 @@ import { TopBar } from '@/components/ui/TopBar';
 import { pushRecent } from '@/data/uiState';
 import { setDraft } from '@/features/assistant/draftStore';
 import { answer, type Answer } from '@/features/assistant/engine';
-import { askRemote, fallbackNote, turnText, type RemoteAnswer, type Turn } from '@/features/assistant/remote';
+import { askRemoteStream, fallbackNote, turnText, type RemoteAnswer, type Turn } from '@/features/assistant/remote';
 import { useAssistantContext } from '@/features/assistant/useAssistantContext';
 import { Composer } from '@/features/home/Composer';
 import { todayIso } from '@/lib/format';
@@ -23,6 +23,8 @@ type TurnState = {
   status: 'waiting' | 'done';
   a?: Answer & { draftExtras?: RemoteAnswer['draftExtras'] };
   note?: string | null;
+  /** The answer so far while Claude is still writing it. */
+  partial?: { lead: string; body: string };
 };
 
 function clock(d: Date) {
@@ -59,7 +61,11 @@ export default function AssistantScreen() {
         .filter((t) => t.status === 'done' && t.id < turn.id && t.a)
         .slice(-6)
         .map((t) => ({ question: t.q, answer: turnText(t.a!) }));
-      void askRemote({ mode: 'owner', question: turn.q, garageId: garage.id, vehicleId: ctxRef.current.vehicle?.id, history }).then((res) => {
+      const onPartial = (partial: { lead: string; body: string }) => {
+        setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, partial } : t)));
+        scroller.current?.scrollToEnd({ animated: false });
+      };
+      void askRemoteStream({ mode: 'owner', question: turn.q, garageId: garage.id, vehicleId: ctxRef.current.vehicle?.id, history }, onPartial).then((res) => {
         let a: TurnState['a'];
         let note: string | null = null;
         if (res.ok) a = res.answer;
@@ -68,7 +74,7 @@ export default function AssistantScreen() {
           a = answer(turn.q, ctxRef.current);
           note = fallbackNote(res.reason);
         }
-        setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, status: 'done', a, note } : t)));
+        setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, status: 'done', a, note, partial: undefined } : t)));
         setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
       });
     }
@@ -90,8 +96,11 @@ export default function AssistantScreen() {
     if (!lastDraft) return;
     const extras = lastDraftTurn?.a?.draftExtras;
     const knownVehicle = extras?.vehicleId && ctx.vehicles.some((v) => v.id === extras.vehicleId) ? extras.vehicleId : undefined;
+    const sources = { ...lastDraft.sources };
+    if (!knownVehicle) delete sources.vehicle;
     setDraft({
       ...lastDraft,
+      sources,
       vehicleId: knownVehicle ?? ctx.vehicle?.id ?? ctx.vehicles[0]?.id,
       date: extras?.date && /^\d{4}-\d{2}-\d{2}$/.test(extras.date) ? extras.date : todayIso(),
       title: extras?.title,
@@ -149,6 +158,14 @@ export default function AssistantScreen() {
                       <T variant="section">{t.a.link.label} →</T>
                     </Pressable>
                   ) : null}
+                </View>
+              ) : t.partial ? (
+                <View style={styles.answer}>
+                  <T style={styles.lead}>
+                    {t.partial.lead}
+                    {t.partial.body ? <T style={styles.body}> {t.partial.body}</T> : null}
+                    <T style={styles.caret}> ▍</T>
+                  </T>
                 </View>
               ) : (
                 <T variant="meta" color={Colors.textFaint}>
@@ -265,6 +282,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: Colors.ink,
+  },
+  caret: {
+    color: Colors.accent,
   },
   link: {
     alignSelf: 'flex-start',

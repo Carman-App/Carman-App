@@ -19,7 +19,7 @@ const BARS = 22;
  * hands the sentence to Carma, which writes up the draft.
  */
 export default function ListenScreen() {
-  const { vehicleId, context } = useLocalSearchParams<{ vehicleId?: string; context?: string }>();
+  const { vehicleId, context, to, jobId } = useLocalSearchParams<{ vehicleId?: string; context?: string; to?: 'mechanic'; jobId?: string }>();
   const vehicle = useVehicle(vehicleId).data;
   const [text, setText] = useState('');
   const input = useRef<TextInput>(null);
@@ -45,7 +45,8 @@ export default function ListenScreen() {
       return;
     }
     void pushRecent(q);
-    router.replace({ pathname: '/assistant', params: { q, ...(vehicleId ? { vehicleId } : {}) } });
+    if (to === 'mechanic') router.replace({ pathname: '/mechanic/ask', params: { q, ...(jobId ? { jobId } : {}) } });
+    else router.replace({ pathname: '/assistant', params: { q, ...(vehicleId ? { vehicleId } : {}) } });
   };
 
   const scopeLine = [context, vehicle ? `${vehicle.make} ${vehicle.model}` : null].filter(Boolean).join(' · ');
@@ -78,7 +79,11 @@ export default function ListenScreen() {
           onChangeText={setText}
           autoFocus
           multiline
-          placeholder="Say what happened. Tap the microphone on your keyboard to dictate."
+          placeholder={
+            jobId
+              ? 'Say what you found and what you fitted. Tap the microphone on your keyboard to dictate.'
+              : 'Say what happened. Tap the microphone on your keyboard to dictate.'
+          }
           placeholderTextColor={Colors.textFaint}
           style={styles.transcript}
         />

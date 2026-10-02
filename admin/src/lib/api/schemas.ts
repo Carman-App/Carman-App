@@ -278,6 +278,7 @@ export const assistantRequestSchema = z
     garageId: z.string().min(1).optional(),
     vehicleId: z.string().min(1).optional(),
     workshopId: z.string().min(1).optional(),
+    jobId: z.string().min(1).optional(),
     history: z
       .array(z.object({ question: z.string().max(2000), answer: z.string().max(4000) }))
       .max(10)

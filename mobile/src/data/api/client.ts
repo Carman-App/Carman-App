@@ -106,6 +106,16 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   return url.toString();
 }
 
+/** Absolute URL for an /api/v1 path, for callers that need fetch directly (streaming). */
+export function apiUrl(path: string, query?: RequestOptions['query']): string {
+  return buildUrl(path, query);
+}
+
+/** Headers every API request carries (identity + JSON). */
+export function apiHeaders(): Record<string, string> {
+  return { 'Content-Type': 'application/json', 'x-carma-account-id': getCurrentAccountId() };
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = buildUrl(path, options.query);
   let res: Response;

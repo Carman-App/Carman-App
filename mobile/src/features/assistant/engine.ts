@@ -23,7 +23,7 @@ export type Draft = {
   notes?: string;
   category?: 'fuel' | 'service' | 'insurance' | 'loan' | 'other';
   /** Where each field was read from, shown on Review ("From the plate on the invoice"). */
-  sources: Partial<Record<'amount' | 'litres' | 'odometer' | 'place' | 'kind', string>>;
+  sources: Partial<Record<'amount' | 'litres' | 'odometer' | 'place' | 'kind' | 'vehicle', string>>;
 };
 
 export type Answer = {

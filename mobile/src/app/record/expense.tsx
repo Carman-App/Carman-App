@@ -92,7 +92,7 @@ export default function RecordFormScreen() {
       vehicleId: vehicle.id,
       date,
       origin: 'form',
-      sources: { kind: 'You chose this', amount: 'Entered by you', litres: 'Entered by you', odometer: 'Entered by you', place: 'Entered by you' },
+      sources: { kind: 'You chose this', vehicle: 'The vehicle you were adding to', amount: 'Entered by you', litres: 'Entered by you', odometer: 'Entered by you', place: 'Entered by you' },
     });
     router.push('/record/review');
   };

@@ -4,7 +4,9 @@
  * the network is down, or the call fails, callers fall back to the
  * on-device engine (`./engine.ts`) so Home still answers.
  */
-import { ApiError, NetworkError, api } from '@/data/api/client';
+import { fetch as streamingFetch } from 'expo/fetch';
+
+import { ApiError, NetworkError, api, apiHeaders, apiUrl } from '@/data/api/client';
 import type { Answer, Draft } from '@/features/assistant/engine';
 
 type RemoteDraft = {
@@ -26,10 +28,20 @@ type RemoteReply = {
   draft: RemoteDraft | null;
   link: { label: string; target: 'insights' | 'documents' | 'reminders' | 'garage' | 'timeline' | 'job_board' | 'job'; id: string | null } | null;
   jobIds: string[];
+  lines?: JobLineDraft[];
+};
+
+/** An estimate line Claude drafted from the mechanic's dictation. */
+export type JobLineDraft = {
+  kind: 'PART' | 'LABOUR' | 'SERVICE' | 'FLUID';
+  description: string;
+  cost: number;
+  priceSource: 'said' | 'history' | 'missing';
 };
 
 export type RemoteAnswer = Answer & {
   jobIds: string[];
+  lines: JobLineDraft[];
   /** Draft fields Claude filled that the Review screen also needs. */
   draftExtras?: { vehicleId?: string; title?: string; date?: string };
   source: 'claude';
@@ -74,6 +86,7 @@ function toAnswer(r: RemoteReply): RemoteAnswer {
         ...(d.litres != null ? { litres: from } : {}),
         ...(d.odometer != null ? { odometer: from } : {}),
         ...(d.place ? { place: from } : {}),
+        ...(d.vehicleId ? { vehicle: 'Carma matched it from what you said' } : {}),
       },
     };
   }
@@ -85,6 +98,7 @@ function toAnswer(r: RemoteReply): RemoteAnswer {
     draft,
     link: r.link && href ? { label: r.link.label, href } : undefined,
     jobIds: r.jobIds,
+    lines: r.lines ?? [],
     draftExtras: r.draft
       ? { vehicleId: r.draft.vehicleId ?? undefined, title: r.draft.title ?? undefined, date: r.draft.date ?? undefined }
       : undefined,
@@ -94,12 +108,12 @@ function toAnswer(r: RemoteReply): RemoteAnswer {
 
 export type AskInput =
   | { mode: 'owner'; question: string; garageId: string; vehicleId?: string; history: Turn[] }
-  | { mode: 'mechanic'; question: string; workshopId: string; history: Turn[] };
+  | { mode: 'mechanic'; question: string; workshopId: string; jobId?: string; history: Turn[] };
 
 /** Why a remote answer wasn't available, so the UI can say so once. */
 export type FallbackReason = 'not-configured' | 'offline' | 'busy' | 'error' | 'refused';
 
-export async function askRemote(input: AskInput): Promise<{ ok: true; answer: RemoteAnswer } | { ok: false; reason: FallbackReason; message?: string }> {
+export async function askRemote(input: AskInput): Promise<AskResult> {
   try {
     const reply = await api.post<RemoteReply>('assistant', input);
     return { ok: true, answer: toAnswer(reply) };
@@ -112,6 +126,71 @@ export async function askRemote(input: AskInput): Promise<{ ok: true; answer: Re
     }
     return { ok: false, reason: 'error' };
   }
+}
+
+type AskResult = { ok: true; answer: RemoteAnswer } | { ok: false; reason: FallbackReason; message?: string; partial?: boolean };
+
+function reasonFor(code: string | undefined): FallbackReason {
+  if (code === 'AI_NOT_CONFIGURED') return 'not-configured';
+  if (code === 'AI_REFUSED') return 'refused';
+  if (code === 'AI_BUSY' || code === 'RATE_LIMITED') return 'busy';
+  return 'error';
+}
+
+/**
+ * Streamed variant of askRemote: POST /api/v1/assistant/stream returns
+ * newline-delimited JSON. `onPartial` receives the answer text so far as
+ * Claude writes it; the promise resolves with the complete, validated reply.
+ */
+export async function askRemoteStream(input: AskInput, onPartial: (p: { lead: string; body: string }) => void): Promise<AskResult> {
+  let res: Response;
+  try {
+    res = (await streamingFetch(apiUrl('assistant/stream'), {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(input),
+    })) as unknown as Response;
+  } catch {
+    return { ok: false, reason: 'offline' };
+  }
+
+  if (!res.ok || !res.body) {
+    const body = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+    return { ok: false, reason: reasonFor(body?.error?.code), message: body?.error?.message };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let sawText = false;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        const event = JSON.parse(line) as
+          | { type: 'text'; lead: string; body: string }
+          | { type: 'done'; data: RemoteReply }
+          | { type: 'error'; code: string; message: string };
+        if (event.type === 'text') {
+          sawText = true;
+          onPartial({ lead: event.lead, body: event.body });
+        } else if (event.type === 'done') {
+          return { ok: true, answer: toAnswer(event.data) };
+        } else {
+          return { ok: false, reason: reasonFor(event.code), message: event.message, partial: sawText };
+        }
+      }
+      if (done) break;
+    }
+  } catch {
+    return { ok: false, reason: 'offline', partial: sawText };
+  }
+  return { ok: false, reason: 'error', partial: sawText };
 }
 
 /** One-line note shown under an answer that came from the on-device engine instead. */

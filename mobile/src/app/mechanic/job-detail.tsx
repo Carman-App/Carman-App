@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Dot, KeyValueRow, Notice } from '@/components/ui/Blocks';
-import { Button } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
@@ -71,18 +71,31 @@ export default function JobDetailScreen() {
                     {error}
                   </T>
                 ) : null}
-                <View style={styles.actions}>
-                  {editable ? (
-                    <Button variant="secondary" style={styles.flex} onPress={() => router.push({ pathname: '/mechanic/add-job-line', params: { jobId: job.id } })}>
+                {editable ? (
+                  <View style={styles.actions}>
+                    <IconButton
+                      glyph="mic"
+                      size={52}
+                      bg={Colors.cta}
+                      fg={Colors.ink}
+                      accessibilityLabel="Dictate the work"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/assistant/listen',
+                          params: { to: 'mechanic', jobId: job.id, context: `Job ${jobNumber(job, all.length ? all : [job])} · ${job.vehicleDescription ?? ''} · ${job.customer?.name ?? ''}` },
+                        })
+                      }
+                    />
+                    <Button variant="secondary" size="md" style={styles.flex} onPress={() => router.push({ pathname: '/mechanic/add-job-line', params: { jobId: job.id } })}>
                       Add a line
                     </Button>
-                  ) : null}
-                  {next ? (
-                    <Button style={styles.flex} loading={busy} disabled={job.status === 'INTAKE' && job.lines.length === 0} onPress={() => advance(job)}>
-                      {next.label}
-                    </Button>
-                  ) : null}
-                </View>
+                  </View>
+                ) : null}
+                {next ? (
+                  <Button loading={busy} disabled={job.status === 'INTAKE' && job.lines.length === 0} onPress={() => advance(job)}>
+                    {job.status === 'INTAKE' && job.lines.length === 0 ? 'Dictate or add lines first' : next.label}
+                  </Button>
+                ) : null}
               </>
             }>
             <View style={styles.head}>
@@ -179,6 +192,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   flex: {

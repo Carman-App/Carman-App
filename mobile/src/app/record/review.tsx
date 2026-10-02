@@ -74,7 +74,7 @@ export default function ReviewScreen() {
 
   const rows: { key: FieldKey | 'vehicle' | 'kind'; glyph: string; label: string; value?: string; source?: string; need: string }[] = [
     { key: 'kind', glyph: category?.glyph ?? draft.kind, label: 'Category', value: kindLabel, source: draft.sources.kind ?? 'You chose this', need: 'What kind of record' },
-    { key: 'vehicle', glyph: 'vehicle', label: 'Vehicle', value: vehicle ? `${vehicle.make} ${vehicle.model}` : undefined, source: vehicle ? 'From the scope you picked' : undefined, need: 'Which vehicle this belongs to' },
+    { key: 'vehicle', glyph: 'vehicle', label: 'Vehicle', value: vehicle ? `${vehicle.make} ${vehicle.model}` : undefined, source: vehicle ? (draft.sources.vehicle ?? 'From the scope you picked') : undefined, need: 'Which vehicle this belongs to' },
   ];
   if (draft.title !== undefined || draft.kind === 'service' || draft.kind === 'repair') {
     rows.push({ key: 'title', glyph: 'note', label: 'Work done', value: draft.title, source: draft.sources.kind ? 'From what you said' : 'Entered by you', need: 'What was done' });
@@ -182,7 +182,7 @@ export default function ReviewScreen() {
         options={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}`, meta: `${v.year} · ${formatNumber(v.odometerKm)} KM`, glyph: v.type === 'motorcycle' ? 'motorcycle' : 'vehicle' }))}
         selected={draft.vehicleId}
         onSelect={(id) => {
-          patchDraft({ vehicleId: id });
+          patchDraft({ vehicleId: id, sources: { vehicle: 'You picked this' } });
           setPickVehicle(false);
         }}
         onClose={() => setPickVehicle(false)}
