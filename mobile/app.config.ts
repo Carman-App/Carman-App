@@ -18,6 +18,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     'expo-secure-store',
     ['expo-image-picker', { cameraPermission: 'Carma uses the camera to photograph your vehicle documents and receipts.', photosPermission: false }],
   ];
+  // Native crash reporting and readable stack traces: only built in when Sentry is configured.
+  if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
+    plugins.push(['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]);
+  }
   const googleScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
   if (googleScheme) plugins.push(['@react-native-google-signin/google-signin', { iosUrlScheme: googleScheme }]);
 

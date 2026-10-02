@@ -3,6 +3,7 @@ import { UnauthorizedError, ForbiddenError } from "@/lib/api/auth";
 import { PlanLimitExceededError } from "@/lib/limits";
 import { InvalidJobTransitionError } from "@/lib/jobs/state-machine";
 import { RateLimitedError } from "@/lib/rate-limit";
+import { reportError } from "@/lib/monitoring";
 import { SignInError } from "@/lib/auth/end-user";
 
 /**
@@ -53,5 +54,6 @@ export function handleApiError(error: unknown) {
     return apiError(error.status, error.status === 503 ? "NOT_CONFIGURED" : "SIGN_IN_FAILED", error.message);
   }
   console.error(error);
+  reportError(error);
   return apiError(500, "INTERNAL_ERROR", "Something went wrong.");
 }

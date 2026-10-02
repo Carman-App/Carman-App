@@ -15,6 +15,7 @@ import { setSignedOutHandler } from '@/data/api/client';
 import { loadSession, useSessionLoaded } from '@/data/auth/session';
 import { useHydrateOnMount } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
+import { withMonitoring } from '@/lib/monitoring';
 import { Colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -26,7 +27,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  * elsewhere in the app (which this layout would otherwise re-render on)
  * never yank the user back to a redirect.
  */
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     GoogleSans_400Regular,
     GoogleSans_500Medium,
@@ -70,3 +71,5 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+export default withMonitoring(RootLayout);
