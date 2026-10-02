@@ -1,10 +1,10 @@
-import {
-  GoogleSans_400Regular,
-  GoogleSans_500Medium,
-  GoogleSans_600SemiBold,
-  GoogleSans_700Bold,
-  useFonts,
-} from '@expo-google-fonts/google-sans';
+// One import per weight: the package's main entry requires all eight files
+// (italics included, ~2 MB each), which Expo Go then downloads on every load.
+import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
+import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
+import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
+import { GoogleSans_700Bold } from '@expo-google-fonts/google-sans/700Bold';
+import { useFonts } from 'expo-font';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
