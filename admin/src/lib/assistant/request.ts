@@ -10,21 +10,12 @@ import { assistantRequestSchema } from "@/lib/api/schemas";
 import { buildGarageContext, buildWorkshopContext } from "@/lib/assistant/context";
 import { AssistantNotConfiguredError, AssistantRefusedError, type AskInput } from "@/lib/assistant/claude";
 import { currencyForRegion } from "@/lib/region";
+import { enforceLimit, RateLimitedError, type Limit } from "@/lib/rate-limit";
 
-// Each question is one model call over the caller's whole garage, so keep a
-// per-account ceiling. In-memory is enough for one server instance; move it
-// to a shared store if the API is scaled out.
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 40;
-const recent = new Map<string, number[]>();
-
-function overLimit(accountId: string): boolean {
-  const now = Date.now();
-  const hits = (recent.get(accountId) ?? []).filter((t) => now - t < WINDOW_MS);
-  hits.push(now);
-  recent.set(accountId, hits);
-  return hits.length > MAX_PER_WINDOW;
-}
+// Each question is one model call over the caller's whole garage: a short
+// burst ceiling per account, counted in the shared store so it holds across
+// every server instance (monthly per-plan quotas are in ./quota.ts).
+const ASSISTANT_BURST: Limit = { name: "assistant", max: 40, windowSeconds: 10 * 60 };
 
 export class AssistantRequestError extends Error {
   constructor(public response: Response) {
@@ -47,8 +38,13 @@ export async function prepareAssistant(req: NextRequest): Promise<AskInput> {
   }
   const input = parsed.data;
 
-  if (overLimit(account.id)) {
-    throw new AssistantRequestError(apiError(429, "RATE_LIMITED", "Too many questions in a short time. Try again in a few minutes."));
+  try {
+    await enforceLimit(ASSISTANT_BURST, account.id);
+  } catch (e) {
+    if (e instanceof RateLimitedError) {
+      throw new AssistantRequestError(apiError(429, "RATE_LIMITED", "Too many questions in a short time. Try again in a few minutes."));
+    }
+    throw e;
   }
 
   const today = new Date();

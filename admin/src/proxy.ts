@@ -26,15 +26,21 @@ const explicitAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 const CORS_ALLOW_METHODS = "GET, POST, PATCH, DELETE, OPTIONS";
-const CORS_ALLOW_HEADERS = "Content-Type, Authorization, x-carma-account-id";
+const CORS_ALLOW_HEADERS =
+  process.env.NODE_ENV === "production" ? "Content-Type, Authorization" : "Content-Type, Authorization, x-carma-account-id";
+
+// In production an origin must be listed in CORS_ALLOWED_ORIGINS; nothing is
+// reflected by default. The native apps send no Origin header and are not
+// affected — CORS only governs browsers.
+function originAllowed(origin: string): boolean {
+  if (explicitAllowedOrigins.length > 0) return explicitAllowedOrigins.includes(origin);
+  return process.env.NODE_ENV !== "production";
+}
 
 function withCors(request: NextRequest, response: NextResponse): NextResponse {
   const origin = request.headers.get("origin");
   if (!origin) return response;
-
-  const isAllowed =
-    explicitAllowedOrigins.length === 0 || explicitAllowedOrigins.includes(origin);
-  if (!isAllowed) return response;
+  if (!originAllowed(origin)) return response;
 
   response.headers.set("Access-Control-Allow-Origin", origin);
   response.headers.set("Access-Control-Allow-Credentials", "true");
