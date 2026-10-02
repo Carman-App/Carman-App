@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +11,7 @@ import { Composer } from '@/features/home/Composer';
 import { answerMechanic, type MechAnswer } from '@/features/mechanic/answer';
 import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
-type Turn = { id: number; q: string; at: Date; a: MechAnswer | null };
+type Turn = { id: number; q: string; at: Date };
 
 /** The mechanic's answer thread: replies come from the workshop's own jobs and lines. */
 export default function MechanicAskScreen() {
@@ -19,22 +19,19 @@ export default function MechanicAskScreen() {
   const workshop = useActiveWorkshop().data;
   const jobsQ = useJobs(workshop?.id ?? undefined);
   const currency = useCurrency();
-  const [turns, setTurns] = useState<Turn[]>(() => (q ? [{ id: 1, q, at: new Date(), a: null }] : []));
+  const [asked, setAsked] = useState<Turn[]>(() => (q ? [{ id: 1, q, at: new Date() }] : []));
   const [text, setText] = useState('');
   const scroller = useRef<ScrollView>(null);
   const jobs = jobsQ.data;
 
-  useEffect(() => {
-    if (!jobs) return;
-    if (turns.some((t) => !t.a)) setTurns((p) => p.map((t) => (t.a ? t : { ...t, a: answerMechanic(t.q, jobs, currency) })));
-  }, [jobs, turns, currency]);
+  const turns = useMemo(() => asked.map((t) => ({ ...t, a: jobs ? (answerMechanic(t.q, jobs, currency) as MechAnswer) : null })), [asked, jobs, currency]);
 
   const send = () => {
     const question = text.trim();
     if (!question) return;
     void pushRecent(question);
     setText('');
-    setTurns((p) => [...p, { id: p.length + 1, q: question, at: new Date(), a: jobs ? answerMechanic(question, jobs, currency) : null }]);
+    setAsked((p) => [...p, { id: p.length + 1, q: question, at: new Date() }]);
     setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
   };
 

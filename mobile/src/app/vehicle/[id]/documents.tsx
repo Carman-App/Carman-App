@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -8,6 +8,7 @@ import { IconGlyph } from '@/components/ui/IconGlyph';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useDocuments, useVehicle } from '@/data/hooks';
 import { daysUntil, formatDateWithYear } from '@/lib/format';
@@ -32,15 +33,10 @@ export default function VehicleDocumentsScreen() {
   }, [documents, filter]);
 
   return (
-    <Screen scroll contentStyle={styles.content}>
+    <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
       <QueryBoundary query={vehicleQuery} isEmpty={() => false}>
         {(vehicle) => (
           <>
-            <Pressable onPress={() => router.back()}>
-              <T variant="eyebrowStrong" color={Colors.accent}>
-                ← {vehicle.make.toUpperCase()} {vehicle.model.toUpperCase()}
-              </T>
-            </Pressable>
 
             <T variant="eyebrow" style={styles.count}>
               {documents.length === 0 ? 'NONE FILED' : `${documents.length} DOCUMENT${documents.length === 1 ? '' : 'S'}`}

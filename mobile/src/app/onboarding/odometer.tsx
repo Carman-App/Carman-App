@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   reading: {
+    outlineWidth: 0,
     flex: 1,
     fontFamily: FontFamily.bold,
     fontSize: 44,

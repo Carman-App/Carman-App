@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors } from '@/theme/tokens';
 
 type ListRowProps = {
   title: string;

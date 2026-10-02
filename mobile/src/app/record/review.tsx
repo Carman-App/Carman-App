@@ -202,6 +202,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   amountInput: {
+    outlineWidth: 0,
     fontFamily: FontFamily.bold,
     fontSize: 40,
     color: Colors.ink,
@@ -232,6 +233,7 @@ const styles = StyleSheet.create({
     paddingTop: 7,
   },
   inlineInput: {
+    outlineWidth: 0,
     fontFamily: FontFamily.medium,
     fontSize: 14,
     color: Colors.ink,

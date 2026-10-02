@@ -7,6 +7,7 @@ import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useProject, useVehicle } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
@@ -105,16 +106,11 @@ export default function VehicleProjectScreen() {
   );
 
   return (
-    <Screen scroll contentStyle={styles.content}>
+    <Screen header={<TopBar backLabel="BACK" />} scroll contentStyle={styles.content}>
       <QueryBoundary query={primaryQuery} isEmpty={() => false}>
         {({ vehicle, project }) => (
           <>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
-          <T variant="eyebrowStrong" color={Colors.accent}>
-            ← BACK
-          </T>
-        </Pressable>
         <Pressable onPress={() => router.push(`/build/${project.id}/brief`)}>
           <T variant="eyebrowStrong" color={Colors.textMuted}>
             EDIT BRIEF

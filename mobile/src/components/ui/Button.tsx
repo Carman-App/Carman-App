@@ -14,13 +14,13 @@ import { Colors, FontFamily, Radius, Size, Spacing } from '@/theme/tokens';
  * - danger:  red text action ("Decline").
  */
 type Variant = 'primary' | 'strong' | 'secondary' | 'soft' | 'ghost' | 'danger';
-type Size = 'md' | 'lg' | 'sm';
+type ButtonSize = 'md' | 'lg' | 'sm';
 
 type ButtonProps = {
   children: ReactNode;
   onPress?: () => void;
   variant?: Variant;
-  size?: Size;
+  size?: ButtonSize;
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;

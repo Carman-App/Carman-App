@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     ...Shadow.raised,
   },
   input: {
+    outlineWidth: 0,
     fontFamily: FontFamily.regular,
     fontSize: 15,
     color: Colors.ink,

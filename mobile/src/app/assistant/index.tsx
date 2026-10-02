@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,7 +15,7 @@ import { Composer } from '@/features/home/Composer';
 import { todayIso } from '@/lib/format';
 import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
-type Turn = { id: number; q: string; at: Date; a: Answer | null };
+type Turn = { id: number; q: string; at: Date };
 
 function clock(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -29,24 +29,19 @@ function clock(d: Date) {
 export default function AssistantScreen() {
   const { q, vehicleId } = useLocalSearchParams<{ q?: string; vehicleId?: string }>();
   const { ctx, loading, offline } = useAssistantContext(vehicleId);
-  const [turns, setTurns] = useState<Turn[]>(() => (q ? [{ id: 1, q, at: new Date(), a: null }] : []));
+  const [asked, setAsked] = useState<Turn[]>(() => (q ? [{ id: 1, q, at: new Date() }] : []));
   const [text, setText] = useState('');
   const scroller = useRef<ScrollView>(null);
 
-  // Answer pending turns once the garage's data has loaded.
-  useEffect(() => {
-    if (loading) return;
-    if (turns.some((t) => t.a === null)) {
-      setTurns((prev) => prev.map((t) => (t.a ? t : { ...t, a: answer(t.q, ctx) })));
-    }
-  }, [loading, ctx, turns]);
+  // Answers are derived from the garage's data, so they fill in once it loads.
+  const turns = useMemo(() => asked.map((t) => ({ ...t, a: loading ? null : (answer(t.q, ctx) as Answer) })), [asked, loading, ctx]);
 
   const send = () => {
     const question = text.trim();
     if (!question) return;
     void pushRecent(question);
     setText('');
-    setTurns((prev) => [...prev, { id: prev.length + 1, q: question, at: new Date(), a: loading ? null : answer(question, ctx) }]);
+    setAsked((prev) => [...prev, { id: prev.length + 1, q: question, at: new Date() }]);
     setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
   };
 

@@ -19,6 +19,7 @@ export default function EstimateDetailScreen() {
   const estimateQuery = useEstimate(id);
   const { data: vehicle } = useVehicle(estimateQuery.data?.vehicleId);
   const currency = useCurrency();
+  const [now] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +54,7 @@ export default function EstimateDetailScreen() {
       {(estimate: Estimate) => {
         const summary = estimate.notes ?? estimate.lines[0]?.description ?? 'Work';
         const pending = estimate.status === 'pending';
-        const ago = Math.max(0, Math.round((Date.now() - new Date(estimate.createdAt).getTime()) / 60000));
+        const ago = Math.max(0, Math.round((now - new Date(estimate.createdAt).getTime()) / 60000));
         const sent = ago < 60 ? `${ago} minutes ago` : ago < 1440 ? `${Math.round(ago / 60)} hours ago` : formatDateShort(estimate.createdAt.slice(0, 10));
         return (
           <Screen

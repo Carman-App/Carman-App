@@ -139,6 +139,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   input: {
+    outlineWidth: 0,
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: 15,

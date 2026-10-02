@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
   },
   input: {
+    outlineWidth: 0,
     fontFamily: FontFamily.medium,
     fontSize: 48,
     letterSpacing: -1,

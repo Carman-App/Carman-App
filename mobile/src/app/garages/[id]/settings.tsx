@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -19,13 +19,10 @@ export default function GarageSettingsScreen() {
   const garage = useGarage(id).data;
   const account = useAccount().data;
   const members = useGarageMembers(id).data ?? [];
-  const [name, setName] = useState('');
+  const [draftName, setName] = useState<string | null>(null);
+  const name = draftName ?? garage?.name ?? '';
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (garage) setName(garage.name);
-  }, [garage]);
 
   const changed = !!garage && name.trim().length > 0 && name.trim() !== garage.name;
   const seats = Math.max(0, 5 - members.length);

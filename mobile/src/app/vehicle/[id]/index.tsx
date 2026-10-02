@@ -29,6 +29,7 @@ export default function VehicleScreen() {
   const invoices = useInvoices(id).data ?? [];
   const currency = useCurrency();
   const [period, setPeriod] = useState<Exclude<Period, 'all'>>('year');
+  const [now] = useState(() => Date.now());
 
   const pending = estimates.find((e) => e.status === 'pending');
   const unpaid = invoices.find((i) => i.status === 'unpaid');
@@ -65,7 +66,7 @@ export default function VehicleScreen() {
           const trend = periodTrend(records, period);
           const daily = dailyAverageKm(records);
           const lastRead = records.find((r) => r.odometerAtEntry > 0);
-          const daysSince = lastRead ? Math.max(0, Math.round((Date.now() - new Date(lastRead.date + 'T00:00:00').getTime()) / 86_400_000)) : 0;
+          const daysSince = lastRead ? Math.max(0, Math.round((now - new Date(lastRead.date + 'T00:00:00').getTime()) / 86_400_000)) : 0;
           const estimateToday = daily && daysSince > 0 ? Math.round(vehicle.odometerKm + daily * daysSince) : null;
           const due = vehicle.nextServiceDueKm ?? reminders.find((r) => r.kind === 'service-due' && r.dueKm)?.dueKm;
           const readings = records.filter((r) => r.odometerAtEntry > 0).slice(0, 4);
@@ -187,7 +188,7 @@ export default function VehicleScreen() {
                         <T variant="small" color={i === 0 ? Colors.accent : Colors.body}>
                           {formatNumber(r.odometerAtEntry)}
                         </T>
-                        <T variant="small" style={styles.readingSub}>
+                        <T variant="small" style={styles.readingSub} numberOfLines={1}>
                           {recordTitle(r).split(' · ')[0]}
                         </T>
                       </View>

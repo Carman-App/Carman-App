@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { fetchProjectById } from '@/data/api/aggregates';
 import { useBuildStage, useStageModifications, useStageParts } from '@/data/hooks';
 import { qk } from '@/data/queryKeys';
@@ -78,7 +79,7 @@ export default function BuildStageScreen() {
   return (
     <QueryBoundary query={stageQuery} isEmpty={() => false}>
       {(stage: BuildStage) => (
-        <Screen
+        <Screen header={<TopBar backLabel="BACK" />}
           scroll
           contentStyle={styles.content}
           footer={
@@ -88,11 +89,6 @@ export default function BuildStageScreen() {
               </Button>
             ) : undefined
           }>
-          <Pressable onPress={() => router.back()}>
-            <T variant="eyebrowStrong" color={Colors.accent}>
-              ← BACK
-            </T>
-          </Pressable>
 
           <View style={styles.badge}>
             <T variant="eyebrowStrong" color={stage.status === 'done' ? Colors.positive : stage.status === 'in-progress' ? Colors.accent : Colors.textMuted}>

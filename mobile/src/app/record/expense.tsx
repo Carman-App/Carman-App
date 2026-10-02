@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Rule } from '@/components/ui/Blocks';
@@ -51,7 +51,7 @@ export default function RecordFormScreen() {
   const set = (id: string, v: string) => setValues((prev) => ({ ...prev, [id]: v }));
 
   // Fuel: price × litres fills the total when the total is left blank.
-  const computedAmount = useMemo(() => {
+  const computedAmount = (() => {
     const typed = parseNum(values.amount ?? '');
     if (typed !== undefined) return typed;
     if (category.key === 'fuel') {
@@ -60,7 +60,7 @@ export default function RecordFormScreen() {
       if (p && l) return Math.round(p * l);
     }
     return undefined;
-  }, [values, category.key]);
+  })();
 
   if (!vehicle) {
     return (

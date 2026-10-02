@@ -1,4 +1,7 @@
+import { View } from 'react-native';
+
 import { TopBar } from '@/components/ui/TopBar';
+import { Spacing } from '@/theme/tokens';
 
 type ModalHeaderProps = {
   title?: string;
@@ -13,5 +16,10 @@ type ModalHeaderProps = {
  * tracked label, the title centred.
  */
 export function ModalHeader({ title, eyebrow, onClose }: ModalHeaderProps) {
-  return <TopBar backGlyph="close" onBack={onClose} title={title} backLabel={eyebrow} right={title ? eyebrow : undefined} />;
+  // Sits inside padded screen content, so cancel the gutter TopBar adds itself.
+  return (
+    <View style={{ marginHorizontal: -Spacing.lg, marginBottom: Spacing.sm }}>
+      <TopBar backGlyph="close" onBack={onClose} title={title} backLabel={eyebrow} right={title ? eyebrow : undefined} />
+    </View>
+  );
 }

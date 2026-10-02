@@ -79,6 +79,7 @@ const styles = StyleSheet.create({
     width: 90,
   },
   input: {
+    outlineWidth: 0,
     flex: 1,
     textAlign: 'right',
     fontFamily: FontFamily.medium,

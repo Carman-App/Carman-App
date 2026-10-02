@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { IconButton } from '@/components/ui/Button';
+import { IconGlyph } from '@/components/ui/IconGlyph';
 import { StepCounter } from '@/components/ui/ProgressSteps';
 import { T } from '@/components/ui/Typography';
 import { Colors, Spacing } from '@/theme/tokens';
@@ -61,7 +61,7 @@ export function TopBar({ backLabel, title, right, onRight, step, onBack, backGly
         <View style={styles.side} />
       ) : (
         <Pressable onPress={goBack} hitSlop={8} style={styles.back} accessibilityRole="button" accessibilityLabel={backLabel ?? 'Back'}>
-          <IconButton glyph={backGlyph === 'close' ? 'close' : 'back'} onPress={goBack} />
+          <IconGlyph glyph={backGlyph === 'close' ? 'close' : 'back'} size={45} fg={Colors.body} scale={0.53} />
           {backLabel && !title ? (
             <T variant="eyebrow" color={Colors.body}>
               {backLabel}
@@ -74,9 +74,13 @@ export function TopBar({ backLabel, title, right, onRight, step, onBack, backGly
           {title}
         </T>
       ) : null}
-      <Pressable onPress={onRight} disabled={!onRight} hitSlop={8} style={[styles.right, title ? styles.side : null]}>
-        {rightNode}
-      </Pressable>
+      {onRight ? (
+        <Pressable onPress={onRight} hitSlop={8} style={[styles.right, title ? styles.side : null]}>
+          {rightNode}
+        </Pressable>
+      ) : (
+        <View style={[styles.right, title ? styles.side : null]}>{rightNode}</View>
+      )}
     </View>
   );
 }

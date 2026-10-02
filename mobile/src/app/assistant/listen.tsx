@@ -23,7 +23,7 @@ export default function ListenScreen() {
   const vehicle = useVehicle(vehicleId).data;
   const [text, setText] = useState('');
   const input = useRef<TextInput>(null);
-  const levels = useRef(Array.from({ length: BARS }, () => new Animated.Value(0.3))).current;
+  const [levels] = useState(() => Array.from({ length: BARS }, () => new Animated.Value(0.3)));
 
   useEffect(() => {
     const loops = levels.map((v, i) =>
@@ -128,6 +128,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   transcript: {
+    outlineWidth: 0,
     fontFamily: FontFamily.medium,
     fontSize: 24,
     lineHeight: 31,

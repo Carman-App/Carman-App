@@ -21,7 +21,8 @@ export default function MechanicHomeScreen() {
   const account = useAccount().data;
   const workshopQ = useActiveWorkshop();
   const workshop = workshopQ.data;
-  const jobs = useJobs(workshop?.id ?? undefined).data ?? [];
+  const jobsData = useJobs(workshop?.id ?? undefined).data;
+  const jobs = useMemo(() => jobsData ?? [], [jobsData]);
   const recents = useUiState('recents');
   const [text, setText] = useState('');
   const [drawer, setDrawer] = useState(false);

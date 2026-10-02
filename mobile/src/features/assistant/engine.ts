@@ -139,7 +139,8 @@ export function answer(question: string, ctx: AssistantContext): Answer {
   const money = (n: number) => formatMoney(n, ctx.currency);
 
   // Something that happened → draft a record.
-  const draft = parseDraft(q);
+  // Only a sentence carrying a figure (amount, litres, reading) describes something that happened.
+  const draft = /\d/.test(q) ? parseDraft(q) : null;
   if (draft && !/\?$/.test(q) && !/^(what|when|how|which|who|is|did|show)\b/i.test(q)) {
     const fills = recs.filter((r) => r.type === 'fuel' && r.litres && r.amount);
     let lead = `Here is the ${draft.kind === 'expense' ? 'expense' : draft.kind} I would record for ${scopeName(ctx)}.`;

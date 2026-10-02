@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { useRecord, useVehicle } from '@/data/hooks';
 import { deleteRecord, updateRecord } from '@/data/repo';
 import { formatDateLong, formatPlate } from '@/lib/format';
@@ -46,8 +47,7 @@ export default function EditRecordScreen() {
   // while that lookup query is still settling on first mount.
   if (recordQuery.isLoading) {
     return (
-      <Screen>
-        <BackLink />
+      <Screen header={<TopBar backLabel="TIMELINE" />}>
         <View style={styles.center}>
           <ActivityIndicator color={Colors.accent} />
         </View>
@@ -57,8 +57,7 @@ export default function EditRecordScreen() {
 
   if (!record) {
     return (
-      <Screen>
-        <BackLink />
+      <Screen header={<TopBar backLabel="TIMELINE" />}>
         <T variant="body" color={Colors.textMuted}>
           Record not found.
         </T>
@@ -98,12 +97,12 @@ export default function EditRecordScreen() {
 
   return (
     <Screen
+      header={<TopBar backLabel="TIMELINE" title="Edit record" />}
       footer={
         <Button variant="secondary" disabled={!changed} loading={saving} onPress={handleSave}>
           {changed ? 'Save changes' : 'No changes yet'}
         </Button>
       }>
-      <BackLink />
       <T variant="display">
         {what} · {formatPlate(vehicle?.plate)}
       </T>
@@ -151,16 +150,6 @@ export default function EditRecordScreen() {
         CORRECTIONS ARE MARKED ON THE RECORD SO THE HISTORY STAYS HONEST.
       </T>
     </Screen>
-  );
-}
-
-function BackLink() {
-  return (
-    <Pressable onPress={() => router.back()} style={styles.backLink}>
-      <T variant="eyebrowStrong" color={Colors.accent}>
-        ← TIMELINE
-      </T>
-    </Pressable>
   );
 }
 

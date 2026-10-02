@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import Svg, { Rect } from 'react-native-svg';
+
+import { Colors } from '@/theme/tokens';
+
 // The core encoder only: pure JS, no canvas/fs, safe on native and web.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { create } = require('qrcode/lib/core/qrcode') as typeof import('qrcode');
-
-import { Colors } from '@/theme/tokens';
 
 /** A scannable QR code drawn with react-native-svg. */
 export function QrCode({ value, size = 180, color = Colors.ink }: { value: string; size?: number; color?: string }) {

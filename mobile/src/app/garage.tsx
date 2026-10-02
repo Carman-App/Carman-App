@@ -23,7 +23,7 @@ import {
 } from '@/data/hooks';
 import { formatNumber } from '@/lib/format';
 import { periodRecords, periodTrend, spendSegments, sumAmount, type Period } from '@/lib/spend';
-import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
+import { Colors, FontFamily, Spacing } from '@/theme/tokens';
 import { USAGE_LABEL, type Reminder, type Vehicle, type VehicleRecord } from '@/types/domain';
 
 /** My garage: the spend summary, then each vehicle with its odometer against the next service. */

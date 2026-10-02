@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   searchInput: {
+    outlineWidth: 0,
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: 14,

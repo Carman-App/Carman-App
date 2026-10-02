@@ -14,10 +14,10 @@ export type InviteState = { email: string; carry: Record<string, GarageMember> }
 export function InvitePanel({ excludeGarageId, value, onChange }: { excludeGarageId?: string; value: InviteState; onChange: (v: InviteState) => void }) {
   const garages = useGarages().data ?? [];
   const other = garages.find((g) => g.id !== excludeGarageId);
-  const otherMembers = useGarageMembers(other?.id).data ?? [];
-  const here = useGarageMembers(excludeGarageId).data ?? [];
+  const otherMembers = useGarageMembers(other?.id).data;
+  const here = useGarageMembers(excludeGarageId).data;
   const candidates = useMemo(
-    () => otherMembers.filter((m) => m.role !== 'owner' && m.email && !here.some((h) => h.email === m.email)),
+    () => (otherMembers ?? []).filter((m) => m.role !== 'owner' && m.email && !(here ?? []).some((h) => h.email === m.email)),
     [otherMembers, here]
   );
 

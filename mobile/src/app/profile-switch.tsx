@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -43,11 +43,11 @@ export default function SwitchProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <TopBar backGlyph="close" backLabel="USING CARMA AS" />
-      <View style={styles.flex}>
+      <ScrollView style={styles.list}>
         {options.map((o) => (
           <Pressable key={o.key} onPress={() => setChoice(o.key)} style={[styles.option, choice === o.key && styles.optionOn]}>
             {choice === o.key ? <View style={styles.bar} /> : null}
-            <View style={styles.flex}>
+            <View style={[styles.flex, styles.indent]}>
               <T variant="heading" style={styles.name}>
                 {o.name}
               </T>
@@ -87,7 +87,7 @@ export default function SwitchProfileScreen() {
             </T>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
       <View style={styles.foot}>
         <Button onPress={apply}>{choice === current ? `Stay as ${picked?.name ?? first}` : `Switch to ${picked?.name ?? ''}`}</Button>
       </View>
@@ -99,6 +99,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  list: {
+    flex: 1,
   },
   flex: {
     flex: 1,
@@ -112,7 +115,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    flex: 0,
   },
   optionOn: {
     backgroundColor: Colors.surfaceWarm,
@@ -127,7 +129,8 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 22,
-    fontWeight: undefined,
+  },
+  indent: {
     paddingLeft: Spacing.sm,
   },
   radio: {
