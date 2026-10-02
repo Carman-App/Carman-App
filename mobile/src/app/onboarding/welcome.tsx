@@ -2,86 +2,55 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { OptionSheet } from '@/components/ui/OptionSheet';
 import { T } from '@/components/ui/Typography';
-import { serverAddress } from '@/data/api/client';
 import { useSignedIn } from '@/data/auth/session';
-import { useAccount, useOnboarded, useUiState } from '@/data/hooks';
+import { useUiState } from '@/data/hooks';
 import { getUiState } from '@/data/uiState';
-import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, signOut, type SignInOutcome } from '@/features/auth/signIn';
+import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, type SignInOutcome } from '@/features/auth/signIn';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /**
- * Welcome, as designed: one "Get started" into the set-up flow (Where are
- * you based? · STEP 01). The three stripes are the Carma blue, signal red and
- * yellow.
- * - Not signed in: Get started opens a sheet to continue with Apple or
- *   Google first (in development the demo account skips it).
- * - Signed in and set up: Continue as <name>.
+ * Welcome, exactly as designed (screen 01): the promise, the three stripes
+ * (Carma blue, signal red, yellow) and one Get started.
+ * Get started leads into the set-up flow (Where are you based?), or Home if
+ * this device is already set up. When the person is not signed in and Apple
+ * or Google sign-in is available, it first opens a Continue with Apple /
+ * Google sheet.
  */
 export default function WelcomeScreen() {
   const signedIn = useSignedIn();
-  const onboarded = useOnboarded();
   const mode = useUiState('mode');
   const [busy, setBusy] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
-  const [providers, setProviders] = useState({ apple: false, google: false, dev: false, reachable: true, checked: false, trialDays: null as number | null });
-  const [attempt, setAttempt] = useState(0);
-  const devAllowed = __DEV__ && !!process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
-  // With no session, the account is only knowable through the development demo account.
-  const account = useAccount().data;
-  const firstName = signedIn || providers.dev ? account?.name?.split(' ')[0] : undefined;
+  const [providers, setProviders] = useState({ apple: false, google: false });
 
   useEffect(() => {
     let live = true;
     void (async () => {
       const [config, apple] = await Promise.all([fetchAuthConfig(), appleAvailable()]);
-      if (live) {
-        setProviders({
-          apple: apple && config.apple,
-          google: config.google && googleAvailable(),
-          dev: devAllowed && config.devAccount,
-          reachable: config.reachable,
-          checked: true,
-          trialDays: config.trialDays ?? null,
-        });
-      }
+      if (live) setProviders({ apple: apple && config.apple, google: config.google && googleAvailable() });
     })();
     return () => {
       live = false;
     };
-  }, [devAllowed, attempt]);
+  }, []);
 
-  const continueHref = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
-  const canContinue = (signedIn || providers.dev) && onboarded;
-  const canSignIn = providers.apple || providers.google;
+  const home = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
+  const next = () => (getUiState().onboarded ? router.replace(home) : router.push('/onboarding/country'));
 
   const getStarted = () => {
-    setError(null);
-    if (signedIn || providers.dev) {
-      router.push('/onboarding/country');
-      return;
-    }
-    if (canSignIn) {
+    if (!signedIn && (providers.apple || providers.google)) {
+      setError(null);
       setSheet(true);
       return;
     }
-    // Nothing to sign in with: say why instead of doing nothing.
-    setError(
-      !providers.reachable
-        ? __DEV__
-          ? `Can't reach the Carma server at ${serverAddress()}. Start it with "npm run dev" in admin/, and keep this phone on the same Wi-Fi as the computer.`
-          : "Can't reach Carma. Check your connection and try again."
-        : __DEV__
-          ? 'The server offers no sign-in yet: add Google/Apple client ids, or run it with "npm run dev" for the demo account.'
-          : 'Sign-in is not available right now. Try again in a moment.'
-    );
-    setAttempt((n) => n + 1);
+    next();
   };
 
   const run = async (which: 'apple' | 'google') => {
@@ -94,12 +63,8 @@ export default function WelcomeScreen() {
       return;
     }
     setSheet(false);
-    // Returning on a new phone with a garage already: straight in. Otherwise the set-up flow.
-    if (getUiState().onboarded) router.replace(continueHref);
-    else router.push('/onboarding/country');
+    next();
   };
-
-  const trial = providers.trialDays ? `${providers.trialDays} DAYS FREE` : 'FREE TRIAL';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -120,43 +85,15 @@ export default function WelcomeScreen() {
         </View>
       </View>
       <View style={styles.foot}>
-        {canContinue ? (
-          <>
-            <Button onPress={() => router.replace(continueHref)}>{firstName ? `Continue as ${firstName}` : 'Continue'}</Button>
-            {signedIn ? (
-              <Pressable hitSlop={8} onPress={() => void signOut()} style={styles.link}>
-                <T variant="meta" color={Colors.body}>
-                  Not you? Sign out
-                </T>
-              </Pressable>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <Button onPress={getStarted}>Get started</Button>
-            {error ? (
-              <T variant="meta" color={Colors.signal} center>
-                {error}
-              </T>
-            ) : null}
-            <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
-              {trial} · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
-            </T>
-            {!signedIn && canSignIn ? (
-              <Pressable hitSlop={8} onPress={() => setSheet(true)} style={styles.link}>
-                <T variant="meta" color={Colors.body}>
-                  I already have an account
-                </T>
-              </Pressable>
-            ) : null}
-          </>
-        )}
+        <Button onPress={getStarted}>Get started</Button>
+        <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
+          7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+        </T>
       </View>
 
       <OptionSheet
         visible={sheet}
         title="Continue to Carma"
-        lede="Your garage is kept with your account, so it is there on any phone you sign in on."
         options={[]}
         onSelect={() => {}}
         onClose={() => setSheet(false)}
@@ -249,10 +186,6 @@ const styles = StyleSheet.create({
   apple: {
     height: 56,
     width: '100%',
-  },
-  link: {
-    alignSelf: 'center',
-    paddingVertical: 4,
   },
   sheetButtons: {
     gap: 12,

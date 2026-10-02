@@ -94,7 +94,8 @@ async function main() {
       await prisma.plan.upsert({ where: { code }, update: data, create: { code, subject, ...data } });
     }
     // CFG-08 trial and grace rules. Created once; afterwards edited from the console.
-    await prisma.subscriptionRules.upsert({ where: { key: "global" }, update: {}, create: { key: "global" } });
+    // 7-day trial, as promised on the app's Welcome screen. Only set when the rules are first created.
+    await prisma.subscriptionRules.upsert({ where: { key: "global" }, update: {}, create: { key: "global", trialDays: 7 } });
 
     const prado = await upsertVehicle(prisma, {
       id: "00000000-0000-4000-8000-000000000010",
