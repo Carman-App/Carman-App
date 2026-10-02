@@ -2,265 +2,238 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Card } from '@/components/ui/Card';
-import { Chip } from '@/components/ui/Chip';
-import { IconGlyph } from '@/components/ui/IconGlyph';
-import { ListRow } from '@/components/ui/ListRow';
-import { Screen } from '@/components/ui/Screen';
-import { SectionHeader } from '@/components/ui/SectionHeader';
-import { T } from '@/components/ui/Typography';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useEstimates, useInvoices, useProject, useRecords, useVehicle } from '@/data/hooks';
-import { formatDateShort, formatMoney, formatNumber, formatPlate } from '@/lib/format';
+import { Dot, MoneyFigure, Rule, SpendBar, TickBar } from '@/components/ui/Blocks';
+import { Button } from '@/components/ui/Button';
+import { Segmented } from '@/components/ui/Chip';
+import { IconGlyph } from '@/components/ui/IconGlyph';
+import { Screen } from '@/components/ui/Screen';
+import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
+import { useCurrency, useEstimates, useInvoices, useProject, useRecords, useReminders, useVehicle } from '@/data/hooks';
+import { formatDateShort, formatNumber, formatPlate } from '@/lib/format';
+import { dailyAverageKm, periodRecords, periodTrend, spendSegments, sumAmount, type Period } from '@/lib/spend';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
+import { recordTitle, sortRecords } from '@/lib/records';
 import { USAGE_LABEL } from '@/types/domain';
-import { CategoryColors, Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
 
-const CATEGORY_LABEL: Record<string, string> = {
-  fuel: 'Fuel',
-  service: 'Service',
-  repair: 'Repairs',
-  insurance: 'Insurance',
-  loan: 'Loan',
-  other: 'Other',
-};
-
-export default function VehicleHubScreen() {
+/** Vehicle: odometer, documents, reminders and the timeline for one car. */
+export default function VehicleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicleQuery = useVehicle(id);
-  const vehicle = vehicleQuery.data;
-  const recordsQuery = useRecords(id);
-  const records = useMemo(() => recordsQuery.data ?? [], [recordsQuery.data]);
+  const recordsData = useRecords(id).data;
+  const records = useMemo(() => sortRecords(recordsData), [recordsData]);
+  const reminders = useReminders(id).data ?? [];
   const project = useProject(id).data;
   const estimates = useEstimates(id).data ?? [];
   const invoices = useInvoices(id).data ?? [];
-  const [period, setPeriod] = useState<'month' | 'year'>('month');
+  const currency = useCurrency();
+  const [period, setPeriod] = useState<Exclude<Period, 'all'>>('year');
 
-  const now = useMemo(() => new Date(), []);
-  const periodRecords = useMemo(
-    () =>
-      records.filter((r) => {
-        const d = new Date(r.date + 'T00:00:00');
-        if (period === 'year') return d.getFullYear() === now.getFullYear();
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      }),
-    [records, period, now]
-  );
-  const total = periodRecords.reduce((sum, r) => sum + r.amount, 0);
-  const prevTotal = useMemo(() => {
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return records
-      .filter((r) => {
-        const d = new Date(r.date + 'T00:00:00');
-        return d.getFullYear() === prevMonth.getFullYear() && d.getMonth() === prevMonth.getMonth();
-      })
-      .reduce((sum, r) => sum + r.amount, 0);
-  }, [records, now]);
-  const change = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : 0;
-
-  const categoryTotals = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of periodRecords) {
-      const key = r.category ?? (r.type === 'repair' ? 'repair' : 'other');
-      map.set(key, (map.get(key) ?? 0) + r.amount);
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([key, amount]) => ({ key, amount, pct: total > 0 ? Math.round((amount / total) * 100) : 0 }));
-  }, [periodRecords, total]);
-
-  const lifetimeSpend = useMemo(() => records.reduce((sum, r) => sum + r.amount, 0), [records]);
-  const perKm = vehicle && vehicle.odometerKm > 0 ? lifetimeSpend / vehicle.odometerKm : 0;
-
-  const lastOdometerRecord = records.find((r) => r.odometerAtEntry != null);
-  const remainingKm = vehicle?.nextServiceDueKm ? vehicle.nextServiceDueKm - vehicle.odometerKm : null;
-  const pendingEstimate = estimates.find((e) => e.status === 'pending');
-  const unpaidInvoice = invoices.find((i) => i.status === 'unpaid');
-  const timeline = records.slice(0, 3);
+  const pending = estimates.find((e) => e.status === 'pending');
+  const unpaid = invoices.find((i) => i.status === 'unpaid');
 
   return (
-    <Screen scroll contentStyle={styles.content}>
+    <Screen
+      padded={false}
+      header={<TopBar backLabel="HOME" fallback="/home" right={<View style={styles.more}><T variant="eyebrow" color={Colors.body}>MORE</T><Dot size={6} /></View>} onRight={() => router.push(`/vehicle/${id}/details`)} />}
+      footer={
+        <View style={styles.quick}>
+          {[
+            { label: 'Fuel', key: 'fuel' },
+            { label: 'Service', key: 'service' },
+            { label: 'Expense', key: 'add' },
+          ].map((q) => (
+            <Button
+              key={q.key}
+              caps
+              size="md"
+              style={styles.quickBtn}
+              onPress={() =>
+                q.key === 'add'
+                  ? router.push({ pathname: '/record/add', params: { vehicleId: id } })
+                  : router.push({ pathname: '/record/expense', params: { vehicleId: id, categoryKey: q.key } })
+              }>
+              {q.label}
+            </Button>
+          ))}
+        </View>
+      }>
       <QueryBoundary query={vehicleQuery} isEmpty={() => false}>
         {(vehicle) => {
+          const rows = periodRecords(records, period);
+          const trend = periodTrend(records, period);
+          const daily = dailyAverageKm(records);
+          const lastRead = records.find((r) => r.odometerAtEntry > 0);
+          const daysSince = lastRead ? Math.max(0, Math.round((Date.now() - new Date(lastRead.date + 'T00:00:00').getTime()) / 86_400_000)) : 0;
+          const estimateToday = daily && daysSince > 0 ? Math.round(vehicle.odometerKm + daily * daysSince) : null;
+          const due = vehicle.nextServiceDueKm ?? reminders.find((r) => r.kind === 'service-due' && r.dueKm)?.dueKm;
+          const readings = records.filter((r) => r.odometerAtEntry > 0).slice(0, 4);
           const showProject = vehicle.usage === 'project' || !!project;
+          const links = [
+            { label: 'Details', glyph: 'info', href: `/vehicle/${id}/details` },
+            { label: 'Documents', glyph: 'document', href: `/vehicle/${id}/documents` },
+            ...(showProject ? [{ label: 'Project', glyph: 'build', href: `/vehicle/${id}/project` }] : []),
+            { label: 'Share access', glyph: 'qr', href: `/vehicle/${id}/qr` },
+            { label: 'Report', glyph: 'share', href: `/reports/expense?vehicleId=${id}` },
+          ];
           return (
             <>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
-          <T variant="eyebrowStrong" color={Colors.accent}>
-            ← GARAGE
-          </T>
-        </Pressable>
-        <Pressable onPress={() => router.push(`/vehicle/${id}/details`)}>
-          <T variant="eyebrowStrong" color={Colors.textMuted}>
-            MORE
-          </T>
-        </Pressable>
-      </View>
+              <View style={styles.head}>
+                <View style={styles.flex}>
+                  <T variant="eyebrow" color={Colors.accent}>
+                    {USAGE_LABEL[vehicle.usage]}
+                  </T>
+                  <T variant="display">
+                    {vehicle.make} {vehicle.model}
+                  </T>
+                  <T variant="eyebrow" color={Colors.slate}>
+                    {[vehicle.year, vehicle.variant, vehicle.powertrain?.toUpperCase(), formatPlate(vehicle.plate)].filter(Boolean).join(' · ')}
+                  </T>
+                </View>
+                <View style={styles.photo}>
+                  <T variant="eyebrow" color={Colors.slate} center>
+                    ADD PHOTO
+                  </T>
+                </View>
+              </View>
 
-      <T variant="eyebrow">{USAGE_LABEL[vehicle.usage]}</T>
-      <T variant="display" style={styles.title}>
-        {vehicle.make} {vehicle.model}
-      </T>
-      <T variant="body" color={Colors.textMuted}>
-        {vehicle.year} · {vehicle.powertrain ? vehicle.powertrain.toUpperCase() : 'ENGINE NOT SET'} · {formatPlate(vehicle.plate)}
-      </T>
+              {pending ? (
+                <Pressable onPress={() => router.push(`/estimates/${pending.id}`)} style={styles.estimate}>
+                  <T variant="bodyStrong">Estimate awaiting your approval</T>
+                  <T variant="eyebrow" color={Colors.signal}>
+                    {pending.workshopName} · {currency} {formatNumber(pending.total)}
+                  </T>
+                </Pressable>
+              ) : unpaid ? (
+                <Pressable onPress={() => router.push(`/invoices/${unpaid.id}`)} style={styles.estimate}>
+                  <T variant="bodyStrong">Invoice outstanding</T>
+                  <T variant="eyebrow" color={Colors.signal}>
+                    {unpaid.workshopName} · {currency} {formatNumber(unpaid.total)}
+                  </T>
+                </Pressable>
+              ) : null}
 
-      <View style={styles.photo}>
-        <IconGlyph glyph={vehicle.type === 'car' ? 'vehicle' : 'motorcycle'} size={64} />
-        <T variant="meta" style={styles.addPhoto}>
-          ADD PHOTO
-        </T>
-      </View>
+              {estimateToday ? (
+                <View style={styles.estimateOdo}>
+                  <View style={styles.flex}>
+                    <T style={styles.approx}>
+                      ≈ {formatNumber(estimateToday)} <T variant="eyebrow">TODAY</T>
+                    </T>
+                    <T variant="eyebrow" color={Colors.slate}>
+                      ESTIMATED FROM YOUR OWN AVERAGE OF {formatNumber(daily ?? 0)} KM A DAY
+                    </T>
+                  </View>
+                  <Pressable onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })} hitSlop={8}>
+                    <T variant="eyebrowStrong" color={Colors.accent}>
+                      CONFIRM
+                    </T>
+                  </Pressable>
+                </View>
+              ) : null}
+              <Rule bleed={false} />
 
-      {pendingEstimate ? (
-        <Card style={styles.estimateBanner} onPress={() => router.push(`/estimates/${pendingEstimate.id}`)}>
-          <T variant="eyebrowStrong" color={Colors.warning}>
-            ESTIMATE AWAITING YOUR APPROVAL
-          </T>
-          <T variant="bodyStrong" style={styles.estimateRow}>
-            {pendingEstimate.workshopName}
-          </T>
-          <View style={styles.estimateFooter}>
-            <T variant="numeric">{formatMoney(pendingEstimate.total)}</T>
-            <Pressable style={styles.confirmBtn} onPress={() => router.push(`/estimates/${pendingEstimate.id}`)}>
-              <T variant="bodyStrong" color={Colors.white}>
-                CONFIRM
-              </T>
-            </Pressable>
-          </View>
-        </Card>
-      ) : null}
+              <Pressable style={styles.block} onPress={() => router.push('/insights')}>
+                <View style={styles.between}>
+                  <View style={styles.row8}>
+                    <T variant="eyebrow" color={Colors.slate}>
+                      SPENT THIS:
+                    </T>
+                    <Segmented
+                      value={period}
+                      onChange={setPeriod}
+                      options={[
+                        { key: 'month', label: 'Month' },
+                        { key: 'year', label: 'Year' },
+                      ]}
+                    />
+                  </View>
+                  {trend !== null ? (
+                    <T variant="eyebrowStrong" color={Colors.accent}>
+                      {trend >= 0 ? '↗' : '↘'} {Math.abs(trend).toFixed(1)}%
+                    </T>
+                  ) : null}
+                </View>
+                <MoneyFigure currency={currency} amount={formatNumber(sumAmount(rows))} />
+                <SpendBar segments={spendSegments(rows)} />
+              </Pressable>
+              <Rule bleed={false} />
 
-      <View style={styles.periodRow}>
-        <SectionHeader title="Spent this" right={
-          <View style={styles.periodToggle}>
-            <Chip label="Month" selected={period === 'month'} onPress={() => setPeriod('month')} />
-            <Chip label="Year" selected={period === 'year'} onPress={() => setPeriod('year')} />
-          </View>
-        } />
-      </View>
-      <View style={styles.spendRow}>
-        <T variant="numericLarge">{formatMoney(total)}</T>
-        {change !== 0 ? (
-          <T variant="bodyStrong" color={change > 0 ? Colors.danger : Colors.positive}>
-            {change > 0 ? '↗' : '↘'} {Math.abs(change).toFixed(1)}%
-          </T>
-        ) : null}
-      </View>
+              <View style={[styles.block, styles.odo]}>
+                <Pressable style={styles.flex} onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })}>
+                  <T variant="eyebrow" color={Colors.slate}>
+                    ODOMETER
+                  </T>
+                  <T variant="numericLarge" style={styles.odoValue}>
+                    {formatNumber(vehicle.odometerKm)}
+                  </T>
+                  <T variant="eyebrow" color={Colors.slate}>
+                    KM{lastRead ? ` · READ ${formatDateShort(lastRead.date)}` : ''}
+                  </T>
+                  {due ? (
+                    <View style={styles.service}>
+                      <TickBar progress={1 - Math.max(0, Math.min(10000, due - vehicle.odometerKm)) / 10000} ticks={40} height={12} />
+                      <T variant="eyebrow" color={due - vehicle.odometerKm < 0 ? Colors.signal : Colors.slate}>
+                        NEXT SERVICE AT {formatNumber(due)} · {due - vehicle.odometerKm < 0 ? `${formatNumber(vehicle.odometerKm - due)} KM OVER` : `${formatNumber(due - vehicle.odometerKm)} KM AWAY`}
+                      </T>
+                    </View>
+                  ) : null}
+                </Pressable>
+                <View style={styles.readings}>
+                  {readings.map((r, i) => (
+                    <View key={r.id} style={styles.reading}>
+                      <View style={[styles.readingTick, i === 0 && { backgroundColor: Colors.accent, width: 16 }]} />
+                      <View>
+                        <T variant="small" color={i === 0 ? Colors.accent : Colors.body}>
+                          {formatNumber(r.odometerAtEntry)}
+                        </T>
+                        <T variant="small" style={styles.readingSub}>
+                          {recordTitle(r).split(' · ')[0]}
+                        </T>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <Rule bleed={false} />
 
-      <View style={styles.chipsRow}>
-        {categoryTotals.map((c) => {
-          const colors = CategoryColors[c.key as keyof typeof CategoryColors] ?? CategoryColors.other;
-          return <Chip key={c.key} label={CATEGORY_LABEL[c.key] ?? c.key} value={`${c.pct}%`} fg={colors.fg} bg={colors.bg} style={styles.chip} />;
-        })}
-      </View>
+              <View style={styles.links}>
+                {links.map((l) => (
+                  <Pressable key={l.label} onPress={() => router.push(l.href as never)} style={({ pressed }) => [styles.link, pressed && { backgroundColor: Colors.accentSoft }]}>
+                    <IconGlyph glyph={l.glyph} size={22} bg="transparent" scale={0.85} />
+                    <T variant="bodyStrong" style={{ fontSize: 13 }}>
+                      {l.label}
+                    </T>
+                  </Pressable>
+                ))}
+              </View>
+              <Rule bleed={false} />
 
-      <View style={styles.statGrid}>
-        <Card style={styles.statCard}>
-          <T variant="eyebrow">ODOMETER</T>
-          <T variant="numeric">{formatNumber(vehicle.odometerKm)}</T>
-          <T variant="meta">KM · READ {lastOdometerRecord ? formatDateShort(lastOdometerRecord.date) : '—'}</T>
-        </Card>
-        <Card style={styles.statCard}>
-          <T variant="eyebrow">NEXT SERVICE</T>
-          <T variant="numeric">{vehicle.nextServiceDueKm ? `${formatNumber(vehicle.nextServiceDueKm)} km` : 'NOT SET'}</T>
-          <T variant="meta">{remainingKm != null ? `${formatNumber(remainingKm)} KM AWAY` : ''}</T>
-        </Card>
-      </View>
-
-      <View style={styles.statGrid}>
-        <Card style={styles.statCard}>
-          <T variant="eyebrow">PER KM</T>
-          <T variant="numeric">{perKm.toFixed(2)}</T>
-          <T variant="meta">KES</T>
-        </Card>
-        {unpaidInvoice ? (
-          <Card style={styles.statCard} onPress={() => router.push(`/invoices/${unpaidInvoice.id}`)}>
-            <T variant="eyebrow" color={Colors.danger}>
-              OUTSTANDING
-            </T>
-            <T variant="numeric" color={Colors.danger}>
-              {formatMoney(unpaidInvoice.total)}
-            </T>
-            <T variant="meta">1 INVOICE</T>
-          </Card>
-        ) : (
-          <View style={styles.statCard} />
-        )}
-      </View>
-
-      <View style={styles.linksRow}>
-        <Pressable style={styles.linkChip} onPress={() => router.push(`/vehicle/${id}/details`)}>
-          <T variant="eyebrowStrong" color={Colors.textMuted}>
-            DETAILS
-          </T>
-        </Pressable>
-        <Pressable style={styles.linkChip} onPress={() => router.push(`/vehicle/${id}/documents`)}>
-          <T variant="eyebrowStrong" color={Colors.textMuted}>
-            DOCUMENTS
-          </T>
-        </Pressable>
-        {showProject ? (
-          <Pressable style={styles.linkChip} onPress={() => router.push(`/vehicle/${id}/project`)}>
-            <T variant="eyebrowStrong" color={Colors.textMuted}>
-              PROJECT
-            </T>
-          </Pressable>
-        ) : null}
-        <Pressable style={styles.linkChip} onPress={() => router.push(`/vehicle/${id}/qr`)}>
-          <T variant="eyebrowStrong" color={Colors.textMuted}>
-            SHARE / QR
-          </T>
-        </Pressable>
-      </View>
-
-      <SectionHeader title="Timeline" action={`ALL ${records.length} →`} onAction={() => router.push(`/vehicle/${id}/timeline`)} />
-      <Card padded={false} style={styles.timelineCard}>
-        {timeline.length === 0 ? (
-          <T variant="meta" style={styles.emptyTimeline}>
-            No records yet.
-          </T>
-        ) : (
-          timeline.map((r, i) => (
-            <ListRow
-              key={r.id}
-              bordered={i < timeline.length - 1}
-              title={recordTitle(r.type, r.litres)}
-              subtitle={`${formatNumber(r.odometerAtEntry)} KM`}
-              onPress={() => router.push(`/record/${r.id}/edit`)}
-              style={styles.timelineRow}
-              right={
-                <>
-                  <T variant="meta">{formatDateShort(r.date)}</T>
-                  <T variant="bodyStrong">{formatMoney(r.amount, '')}</T>
-                </>
-              }
-            />
-          ))
-        )}
-        {records.length > 3 ? (
-          <Pressable onPress={() => router.push(`/vehicle/${id}/timeline`)} style={styles.scrollMore}>
-            <T variant="eyebrow" center>
-              SCROLL FOR MORE ↓
-            </T>
-          </Pressable>
-        ) : null}
-      </Card>
-
-      <View style={styles.quickAddRow}>
-        <Pressable style={styles.quickAddBtn} onPress={() => router.push({ pathname: '/record/fuel', params: { vehicleId: id } })}>
-          <IconGlyph glyph="fuel" size={36} />
-          <T variant="meta">FUEL</T>
-        </Pressable>
-        <Pressable style={styles.quickAddBtn} onPress={() => router.push({ pathname: '/record/service', params: { vehicleId: id } })}>
-          <IconGlyph glyph="service" size={36} />
-          <T variant="meta">SERVICE</T>
-        </Pressable>
-        <Pressable style={styles.quickAddBtn} onPress={() => router.push({ pathname: '/record/expense', params: { vehicleId: id } })}>
-          <IconGlyph glyph="expense" size={36} />
-          <T variant="meta">EXPENSE</T>
-        </Pressable>
-      </View>
+              <View style={styles.block}>
+                <View style={styles.between}>
+                  <T variant="tag">TIMELINE</T>
+                  <Pressable onPress={() => router.push(`/vehicle/${id}/timeline`)} hitSlop={8}>
+                    <T variant="eyebrow" color={Colors.accent}>
+                      ALL {records.length} →
+                    </T>
+                  </Pressable>
+                </View>
+                {records.length === 0 ? <T variant="meta">No records yet. Use the buttons below to log the first one.</T> : null}
+                {records.slice(0, 4).map((r) => (
+                  <Pressable key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={styles.tl}>
+                    <T variant="eyebrow" style={styles.tlDate}>
+                      {formatDateShort(r.date)}
+                    </T>
+                    <View style={styles.flex}>
+                      <T variant="bodyStrong">{recordTitle(r)}</T>
+                      <T variant="eyebrow" color={Colors.slate}>
+                        {[r.place, r.odometerAtEntry ? `${formatNumber(r.odometerAtEntry)} KM` : null].filter(Boolean).join(' · ')}
+                      </T>
+                    </View>
+                    {r.amount ? <T variant="body">{formatNumber(r.amount)}</T> : null}
+                  </Pressable>
+                ))}
+              </View>
             </>
           );
         }}
@@ -269,120 +242,127 @@ export default function VehicleHubScreen() {
   );
 }
 
-function recordTitle(type: string, litres?: number) {
-  if (type === 'fuel') return litres ? `Fuel · ${litres} L` : 'Fuel';
-  if (type === 'service') return 'Service';
-  if (type === 'repair') return 'Repair';
-  if (type === 'part') return 'Part';
-  if (type === 'odometer') return 'Odometer reading';
-  return 'Expense';
-}
-
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-  },
-  headerRow: {
+  more: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    gap: 5,
   },
-  title: {
-    marginTop: Spacing.xxs,
+  flex: {
+    flex: 1,
+  },
+  head: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
   photo: {
+    width: 104,
+    height: 92,
+    borderRadius: 4,
+    backgroundColor: Colors.surfaceSand,
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginVertical: Spacing.lg,
+    justifyContent: 'center',
   },
-  addPhoto: {
-    letterSpacing: 1,
-  },
-  estimateBanner: {
-    marginBottom: Spacing.lg,
-    gap: 4,
-  },
-  estimateRow: {
-    marginTop: 2,
-  },
-  estimateFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.xs,
-  },
-  confirmBtn: {
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
-  periodRow: {
-    marginTop: Spacing.sm,
-  },
-  periodToggle: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  spendRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.sm,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  chip: {},
-  statGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    gap: 2,
-  },
-  linksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  linkChip: {
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 8,
-  },
-  timelineCard: {
-    padding: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  timelineRow: {
-    paddingHorizontal: Spacing.sm,
-  },
-  emptyTimeline: {
-    padding: Spacing.md,
-  },
-  scrollMore: {
-    paddingVertical: Spacing.xs,
-  },
-  quickAddRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+  estimate: {
+    backgroundColor: Colors.signalSoft,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    ...Shadow.card,
+    gap: 6,
   },
-  quickAddBtn: {
+  estimateOdo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  approx: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+    color: Colors.ink,
+    marginBottom: 4,
+  },
+  block: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    gap: 14,
+  },
+  between: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  row8: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  odo: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  odoValue: {
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  service: {
+    marginTop: 14,
+    gap: 8,
+  },
+  readings: {
+    width: 110,
+    gap: 10,
+    paddingTop: 4,
+  },
+  reading: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  readingTick: {
+    width: 10,
+    height: 1.5,
+    backgroundColor: Colors.lineStrong,
+    marginTop: 8,
+  },
+  readingSub: {
+    fontSize: 10,
+  },
+  links: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  link: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tl: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    paddingVertical: 6,
+  },
+  tlDate: {
+    width: 48,
+    paddingTop: 3,
+  },
+  quick: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickBtn: {
+    flex: 1,
+    paddingHorizontal: 8,
   },
 });

@@ -1,16 +1,18 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Dot } from '@/components/ui/Blocks';
+import { ChoiceRow } from '@/components/ui/ChoiceRow';
 import { Chip } from '@/components/ui/Chip';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useActiveGarage, useGarageRecords, useVehicles } from '@/data/hooks';
+import { useActiveGarage, useCurrency, useGarageRecords, useVehicles } from '@/data/hooks';
 import { formatDateShort, formatDateWithYear, formatMoney, formatPlate, todayIso } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
@@ -57,7 +59,9 @@ export default function ExpenseReportConfigScreen() {
   const vehicles = vehiclesQuery.data ?? [];
   const allRecords = recordsQuery.data ?? [];
 
-  const [scope, setScope] = useState<'garage' | string>('garage');
+  const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
+  const currency = useCurrency();
+  const [scope, setScope] = useState<'garage' | string>(vehicleId || 'garage');
   const [period, setPeriod] = useState<Period>('ytd');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -105,98 +109,84 @@ export default function ExpenseReportConfigScreen() {
   };
 
   return (
-    <Screen scroll contentStyle={styles.content}>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← BACK
-        </T>
-      </Pressable>
-
-      <T variant="eyebrowStrong" style={styles.eyebrow}>
-        EXPENSE REPORT
-      </T>
-      <T variant="display" style={styles.title}>
-        Export a report
-      </T>
-      <T variant="body" color={Colors.textMuted} style={styles.subtitle}>
-        Every record in the period, what it was, and who entered it. One car or the whole garage.
-      </T>
-
+    <Screen
+      padded={false}
+      header={<TopBar backLabel="BACK" right="EXPENSE REPORT" />}
+      footer={
+        <>
+          <View style={styles.summary}>
+            <Dot color={Colors.accent} size={6} />
+            <T variant="eyebrow" color={Colors.slate}>
+              {filtered.length} RECORD{filtered.length === 1 ? '' : 'S'} · {formatDateWithYear(start).toUpperCase()} — {formatDateWithYear(end).toUpperCase()} · {formatMoney(total, currency)}
+            </T>
+          </View>
+          <Button onPress={handleBuild} disabled={filtered.length === 0}>
+            {filtered.length === 0 ? 'No records in this period' : 'Build the report'}
+          </Button>
+        </>
+      }>
+      <View style={styles.head}>
+        <T variant="display">Export a report</T>
+        <T variant="lede">Every record in the period, what it was, and who entered it. One car or the whole garage.</T>
+      </View>
       <QueryBoundary query={recordsQuery} isEmpty={() => false}>
         {() => (
           <>
-            <SectionHeader title="Saved views" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              <Chip label="Monthly close" selected={false} onPress={() => {}} />
-              <Chip label={savedThisView ? 'Saved ✓' : 'Save this'} onPress={() => setSavedThisView(true)} />
-            </ScrollView>
-
-            <SectionHeader title="What to cover" />
-            <View style={styles.chipRow}>
-              <Chip label="This vehicle" selected={scope !== 'garage'} onPress={() => setScope(vehicles[0]?.id ?? 'garage')} />
-              <Chip label="Whole garage" selected={scope === 'garage'} onPress={() => setScope('garage')} />
+            <SectionHeader title="SAVED VIEWS" rule inset />
+            <View style={styles.chips}>
+              <Chip caps label="Monthly · whole garage" onPress={() => { setScope('garage'); setPeriod('month'); }} />
+              <Chip caps label="Year to date" onPress={() => setPeriod('ytd')} />
+              <Chip caps label={savedThisView ? 'Saved ✓' : 'Save this'} onPress={() => setSavedThisView(true)} />
             </View>
-            {scope !== 'garage' ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                {vehicles.map((v) => (
-                  <Chip key={v.id} label={`${v.make} ${v.model}`} selected={scope === v.id} onPress={() => setScope(v.id)} />
-                ))}
-              </ScrollView>
-            ) : null}
 
-            <SectionHeader title="Period" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
-                <Chip key={p} label={PERIOD_LABEL[p]} selected={period === p} onPress={() => setPeriod(p)} />
-              ))}
-            </ScrollView>
+            <SectionHeader title="WHAT TO COVER" rule inset />
+            {vehicles.map((v) => (
+              <ChoiceRow key={v.id} glyph={v.type === 'motorcycle' ? 'motorcycle' : 'vehicle'} title={`${v.make} ${v.model}`} sub={`ONE CAR · ${formatPlate(v.plate)}`} subCaps selected={scope === v.id} onPress={() => setScope(v.id)} />
+            ))}
+            <ChoiceRow glyph="home" title="The whole garage" sub={`${vehicles.length} VEHICLES`} subCaps selected={scope === 'garage'} onPress={() => setScope('garage')} />
+
+            <SectionHeader title="PERIOD" rule inset />
+            {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
+              <ChoiceRow
+                key={p}
+                glyph="date"
+                title={PERIOD_LABEL[p]}
+                sub={p === period ? `${formatDateWithYear(start)} — ${formatDateWithYear(end)}`.toUpperCase() : undefined}
+                subCaps
+                selected={period === p}
+                onPress={() => setPeriod(p)}
+              />
+            ))}
             {period === 'custom' ? (
-              <View style={styles.customDates}>
-                <TextField label="From" value={customStart} onChangeText={setCustomStart} placeholder="YYYY-MM-DD" />
-                <TextField label="To" value={customEnd} onChangeText={setCustomEnd} placeholder="YYYY-MM-DD" />
+              <View style={styles.custom}>
+                <TextField label="From" value={customStart} onChangeText={setCustomStart} placeholder="YYYY-MM-DD" style={styles.flex} />
+                <TextField label="To" value={customEnd} onChangeText={setCustomEnd} placeholder="YYYY-MM-DD" style={styles.flex} />
               </View>
             ) : null}
-            <T variant="meta" style={styles.rangeText}>
-              {formatDateWithYear(start)} – {formatDateWithYear(end)}
-            </T>
 
-            <SectionHeader title="Spent at" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              <Chip label="All places" selected={place === 'all'} onPress={() => setPlace('all')} />
-              {places.map((p) => (
-                <Chip key={p} label={p} selected={place === p} onPress={() => setPlace(p)} />
-              ))}
-            </ScrollView>
-
-            {duplicateInfo.count > 0 ? (
+            {places.length > 0 ? (
               <>
-                <SectionHeader title="A note for the reader" />
-                <Card style={styles.dupCard}>
-                  <T variant="bodyStrong" color={Colors.warning}>
-                    {duplicateInfo.count} possible duplicate{duplicateInfo.count === 1 ? '' : 's'}
-                    {duplicateInfo.first ? ` · ${formatPlate(vehicleById.get(duplicateInfo.first.vehicleId)?.plate)} ${formatDateShort(duplicateInfo.first.date)}` : ''}
-                  </T>
-                  <T variant="meta" color={Colors.warning}>
-                    SAME VEHICLE, SAME DAY, SAME AMOUNT. CHECK BEFORE YOU SEND — NOTHING IS MERGED FOR YOU.
-                  </T>
-                </Card>
+                <SectionHeader title="SPENT AT" rule inset />
+                <View style={styles.chips}>
+                  <Chip label="All places" selected={place === 'all'} onPress={() => setPlace('all')} />
+                  {places.map((p) => (
+                    <Chip key={p} label={p} selected={place === p} onPress={() => setPlace(p)} />
+                  ))}
+                </View>
               </>
             ) : null}
 
-            <T variant="meta" style={styles.sectionsNote}>
-              SECTIONS APPEAR WHEN THE RECORDS SUPPORT THEM. WHAT IS LEFT OUT IS STATED ON THE FIRST PAGE.
-            </T>
-
-            <Card style={styles.summaryCard}>
-              <T variant="numericLarge">{formatMoney(total)}</T>
-              <T variant="meta">
-                {filtered.length} RECORD{filtered.length === 1 ? '' : 'S'} · {formatMoney(total)}
-              </T>
-            </Card>
-
-            <Button onPress={handleBuild} disabled={filtered.length === 0}>
-              Build report · {filtered.length} record{filtered.length === 1 ? '' : 's'}
-            </Button>
+            {duplicateInfo.count > 0 ? (
+              <View style={styles.dup}>
+                <T variant="bodyStrong" color={Colors.warning}>
+                  {duplicateInfo.count} possible duplicate{duplicateInfo.count === 1 ? '' : 's'}
+                  {duplicateInfo.first ? ` · ${formatPlate(vehicleById.get(duplicateInfo.first.vehicleId)?.plate)} ${formatDateShort(duplicateInfo.first.date)}` : ''}
+                </T>
+                <T variant="eyebrow" color={Colors.warning}>
+                  SAME VEHICLE, SAME DAY, SAME AMOUNT. CHECK BEFORE YOU SEND — NOTHING IS MERGED FOR YOU.
+                </T>
+              </View>
+            ) : null}
           </>
         )}
       </QueryBoundary>
@@ -205,42 +195,36 @@ export default function ExpenseReportConfigScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
+  head: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    gap: 12,
   },
-  eyebrow: {
-    marginTop: Spacing.md,
-  },
-  title: {
-    marginTop: Spacing.xxs,
-  },
-  subtitle: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  chipRow: {
+  chips: {
     flexDirection: 'row',
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
   },
-  customDates: {
+  custom: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    padding: Spacing.lg,
   },
-  rangeText: {
-    marginBottom: Spacing.lg,
+  flex: {
+    flex: 1,
   },
-  dupCard: {
-    marginBottom: Spacing.md,
+  dup: {
     backgroundColor: Colors.warningSoft,
-    gap: 2,
+    padding: Spacing.lg,
+    gap: 6,
   },
-  sectionsNote: {
-    marginBottom: Spacing.md,
-  },
-  summaryCard: {
-    marginBottom: Spacing.lg,
-    gap: 4,
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
   },
 });

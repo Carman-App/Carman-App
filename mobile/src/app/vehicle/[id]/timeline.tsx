@@ -1,229 +1,214 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ListRow } from '@/components/ui/ListRow';
+import { IconGlyph } from '@/components/ui/IconGlyph';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
-import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useGarageMembers, useRecords, useVehicle } from '@/data/hooks';
-import { formatDateShort, formatDateWithYear, formatMoney, formatMonthYear, formatNumber } from '@/lib/format';
+import { TopBar } from '@/components/ui/TopBar';
+import { useCurrency, useRecords, useVehicle } from '@/data/hooks';
+import { formatMonthYear, formatNumber } from '@/lib/format';
+import { recordTitle, sortRecords } from '@/lib/records';
+import { CategoryColors, Colors, FontFamily, Radius, Spacing, Tracking } from '@/theme/tokens';
 import type { VehicleRecord } from '@/types/domain';
-import { Colors, Spacing } from '@/theme/tokens';
 
-type Filter = 'all' | 'service' | 'repairs' | 'fuel' | 'docs';
+type Filter = 'all' | 'fuel' | 'service' | 'docs' | 'readings';
 
-export default function VehicleTimelineScreen() {
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'fuel', label: 'Fuel' },
+  { key: 'service', label: 'Service & repair' },
+  { key: 'docs', label: 'Expenses' },
+  { key: 'readings', label: 'Readings' },
+];
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function tint(r: VehicleRecord) {
+  if (r.type === 'fuel') return CategoryColors.fuel;
+  if (r.type === 'service') return CategoryColors.service;
+  if (r.type === 'repair' || r.type === 'part') return CategoryColors.repair;
+  if (r.type === 'odometer') return CategoryColors.odometer;
+  if (r.category === 'insurance') return CategoryColors.insurance;
+  return CategoryColors.other;
+}
+
+/** Timeline: every record for one car, by month, searchable by place, part or amount. */
+export default function TimelineScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const vehicleQuery = useVehicle(id);
-  const vehicle = vehicleQuery.data;
+  const vehicle = useVehicle(id).data;
   const recordsQuery = useRecords(id);
-  const records = useMemo(() => recordsQuery.data ?? [], [recordsQuery.data]);
-  const members = useGarageMembers(vehicle?.garageId).data ?? [];
+  const records = useMemo(() => sortRecords(recordsQuery.data), [recordsQuery.data]);
+  const currency = useCurrency();
   const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
 
-  const ownerName = members.find((m) => m.role === 'owner')?.name;
-
-  const filtered = useMemo(() => {
-    if (filter === 'service') return records.filter((r) => r.type === 'service');
-    if (filter === 'repairs') return records.filter((r) => r.type === 'repair');
-    if (filter === 'fuel') return records.filter((r) => r.type === 'fuel');
-    if (filter === 'docs') return records.filter((r) => r.type === 'part' || r.type === 'expense');
-    return records;
-  }, [records, filter]);
-
-  // Grouped by calendar month (newest first), each with a running subtotal —
-  // matches the prototype's TIMELINE screen (month header + "KES n,nnn" next to it).
-  const monthGroups = useMemo(() => {
+  const groups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const shown = records.filter((r) => {
+      if (filter === 'fuel' && r.type !== 'fuel') return false;
+      if (filter === 'service' && !['service', 'repair', 'part'].includes(r.type)) return false;
+      if (filter === 'docs' && r.type !== 'expense') return false;
+      if (filter === 'readings' && r.type !== 'odometer') return false;
+      if (!q) return true;
+      return [recordTitle(r), r.place, r.notes, String(r.amount), r.enteredByMemberName].some((s) => s?.toLowerCase().includes(q));
+    });
     const map = new Map<string, VehicleRecord[]>();
-    for (const r of filtered) {
-      const key = r.date.slice(0, 7); // YYYY-MM
-      const list = map.get(key) ?? [];
-      list.push(r);
-      map.set(key, list);
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([month, items]) => ({
-        month,
-        items,
-        subtotal: items.reduce((sum, r) => sum + r.amount, 0),
-      }));
-  }, [filtered]);
-
-  // Header (make/model, "added to Carma" date) needs the vehicle; the list
-  // needs records — the page is meaningless without both, so they gate
-  // loading/error together.
-  const primaryQuery = useMemo(
-    () => ({
-      data: vehicle && recordsQuery.data ? ({ vehicle, records: recordsQuery.data } as const) : undefined,
-      isLoading: vehicleQuery.isLoading || recordsQuery.isLoading,
-      isError: vehicleQuery.isError || recordsQuery.isError,
-      error: vehicleQuery.error ?? recordsQuery.error,
-      refetch: () => {
-        vehicleQuery.refetch();
-        recordsQuery.refetch();
-      },
-    }),
-    [vehicle, recordsQuery, vehicleQuery]
-  );
+    for (const r of shown) map.set(r.date.slice(0, 7), [...(map.get(r.date.slice(0, 7)) ?? []), r]);
+    return Array.from(map.entries()).map(([month, items]) => ({ month, items, total: items.reduce((s, r) => s + r.amount, 0) }));
+  }, [records, filter, query]);
 
   return (
-    <Screen scroll contentStyle={styles.content}>
-      <QueryBoundary query={primaryQuery} isEmpty={() => false}>
-        {({ vehicle }) => (
-          <>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← {vehicle.make.toUpperCase()} {vehicle.model.toUpperCase()}
+    <Screen padded={false} header={<TopBar backLabel="VEHICLE" right={vehicle ? `${vehicle.model.toUpperCase()} · ${records.length} RECORDS` : undefined} />}>
+      <View style={styles.pad}>
+        <T variant="display" style={styles.title}>
+          Timeline
         </T>
-      </Pressable>
-
-      <T variant="eyebrow" style={styles.count}>
-        {records.length === 0 ? 'NO RECORDS YET' : `${records.length} EVENT${records.length === 1 ? '' : 'S'} · SINCE ${formatDateWithYear(vehicle.createdAt).toUpperCase()}`}
-      </T>
-      <T variant="display" style={styles.title}>
-        Timeline
-      </T>
-
-      {records.length === 0 ? (
-        <EmptyState
-          glyph="timeline"
-          title="Nothing on the record yet."
-          body="The timeline fills itself as you go. Log the next fill or service and it lands here, dated and priced, with the odometer reading attached.">
-          <Button style={styles.emptyCta} onPress={() => router.push({ pathname: '/record/add', params: { vehicleId: id } })}>
-            Log your first record
-          </Button>
-        </EmptyState>
-      ) : (
-        <>
-          <View style={styles.filterRow}>
-            <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-            <Chip label="Service" selected={filter === 'service'} onPress={() => setFilter('service')} />
-            <Chip label="Repairs" selected={filter === 'repairs'} onPress={() => setFilter('repairs')} />
-            <Chip label="Fuel" selected={filter === 'fuel'} onPress={() => setFilter('fuel')} />
-            <Chip label="Docs" selected={filter === 'docs'} onPress={() => setFilter('docs')} />
-          </View>
-
-          {monthGroups.map(({ month, items, subtotal }) => (
-            <View key={month} style={styles.group}>
-              <View style={styles.monthHeader}>
-                <T variant="eyebrow">{formatMonthYear(month)}</T>
-                <T variant="bodyStrong">{formatMoney(subtotal)}</T>
-              </View>
-              <Card padded={false} style={styles.groupCard}>
-                {items.map((r, i) => (
-                  <ListRow
-                    key={r.id}
-                    bordered={i < items.length - 1}
-                    left={
-                      <View style={styles.dateBadge}>
-                        <T variant="meta" style={styles.dateDay}>
-                          {formatDateShort(r.date).split(' ')[0]}
+        <View style={styles.search}>
+          <IconGlyph glyph="search" size={22} bg="transparent" fg={Colors.slate} scale={0.85} />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Place, part or amount" placeholderTextColor={Colors.textMuted} style={styles.searchInput} />
+        </View>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {FILTERS.map((f) => (
+          <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.filter, filter === f.key && styles.filterOn]}>
+            <T style={[styles.filterText, filter === f.key && { color: Colors.accent, fontFamily: FontFamily.bold }]}>{f.label.toUpperCase()}</T>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <QueryBoundary query={recordsQuery} isEmpty={() => false}>
+        {() =>
+          records.length === 0 ? (
+            <EmptyState glyph="timeline" title="Nothing on the record yet." body="Log the next fill or service and it lands here, dated and priced, with the odometer reading attached.">
+              <Button style={{ minWidth: 220, marginTop: Spacing.md }} onPress={() => router.push({ pathname: '/record/add', params: { vehicleId: id } })}>
+                Log your first record
+              </Button>
+            </EmptyState>
+          ) : groups.length === 0 ? (
+            <T variant="meta" style={styles.pad}>
+              Nothing matches.
+            </T>
+          ) : (
+            groups.map((g) => (
+              <View key={g.month}>
+                <View style={styles.band}>
+                  <T variant="eyebrowStrong">{formatMonthYear(g.month)}</T>
+                  <T variant="eyebrowStrong" color={Colors.slate}>
+                    {currency} {formatNumber(g.total)}
+                  </T>
+                </View>
+                {g.items.map((r) => {
+                  const d = new Date(r.date + 'T00:00:00');
+                  const c = tint(r);
+                  return (
+                    <Pressable key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
+                      <View style={styles.date}>
+                        <T variant="small" color={Colors.ink}>
+                          {d.getDate()}
                         </T>
-                        <T variant="meta">{formatDateShort(r.date).split(' ')[1]}</T>
+                        <T variant="eyebrow">{MONTHS[d.getMonth()]}</T>
                       </View>
-                    }
-                    title={recordTitle(r.type, r.litres)}
-                    subtitle={recordSubtitle(r, ownerName)}
-                    onPress={() => router.push(`/record/${r.id}/edit`)}
-                    style={styles.row}
-                    right={<T variant="bodyStrong">{formatMoney(r.amount, '')}</T>}
-                  />
-                ))}
-              </Card>
-            </View>
-          ))}
-
-          <T variant="meta" center style={styles.footnote}>
-            VEHICLE ADDED TO CARMA · {formatDateWithYear(vehicle.createdAt)}
-          </T>
-        </>
-      )}
-          </>
-        )}
+                      <View style={[styles.tile, { backgroundColor: c.bg }]} />
+                      <View style={styles.flex}>
+                        <T variant="bodyStrong">{recordTitle(r)}</T>
+                        <T variant="eyebrow" color={Colors.slate} style={styles.sub}>
+                          {[r.place, r.odometerAtEntry ? `${formatNumber(r.odometerAtEntry)} KM` : null].filter(Boolean).join(' · ')}
+                        </T>
+                        <T variant="eyebrow" color={Colors.textFaint}>
+                          ENTERED BY {r.enteredByMemberName.toUpperCase()}
+                        </T>
+                      </View>
+                      {r.amount ? <T variant="small" color={Colors.ink}>{formatNumber(r.amount)}</T> : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))
+          )
+        }
       </QueryBoundary>
     </Screen>
   );
 }
 
-function recordTitle(type: string, litres?: number) {
-  if (type === 'fuel') return litres ? `Fuel · ${litres} L` : 'Fuel';
-  if (type === 'service') return 'Service';
-  if (type === 'repair') return 'Repair';
-  if (type === 'part') return 'Part';
-  if (type === 'odometer') return 'Odometer reading';
-  return 'Expense';
-}
-
-/** Richer, category-aware subtitle: the place/detail line, then a second
- * "ADDED BY X" line when someone other than the garage owner logged it —
- * matching the prototype's TIMELINE row structure. */
-function recordSubtitle(r: VehicleRecord, ownerName?: string): string {
-  const odo = `${formatNumber(r.odometerAtEntry)} KM`;
-  let detail: string;
-  if (r.type === 'fuel') {
-    detail = r.place ? `${r.place.toUpperCase()} · FULL TANK · ${odo}` : `FULL TANK · ${odo}`;
-  } else if (r.type === 'odometer') {
-    detail = `ODOMETER READING · ${odo}`;
-  } else if (r.notes) {
-    detail = `${odo} · ${r.notes.toUpperCase()}`;
-  } else if (r.place) {
-    detail = `${odo} · ${r.place.toUpperCase()}`;
-  } else {
-    detail = odo;
-  }
-  const addedBy = r.enteredByMemberName && r.enteredByMemberName !== ownerName ? `\nADDED BY ${r.enteredByMemberName.split(' ')[0].toUpperCase()}` : '';
-  return `${detail}${addedBy}`;
-}
-
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-  },
-  count: {
-    marginTop: Spacing.md,
+  pad: {
+    paddingHorizontal: Spacing.lg,
   },
   title: {
-    marginBottom: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
-  emptyCta: {
-    marginTop: Spacing.md,
-    minWidth: 220,
-  },
-  filterRow: {
+  search: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginBottom: Spacing.lg,
+    alignItems: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    paddingHorizontal: Spacing.md,
   },
-  group: {
-    marginBottom: Spacing.md,
+  searchInput: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
+    color: Colors.ink,
   },
-  monthHeader: {
+  filters: {
+    gap: 18,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  filter: {
+    paddingBottom: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  filterOn: {
+    borderBottomColor: Colors.accent,
+  },
+  filterText: {
+    fontSize: 10,
+    letterSpacing: Tracking.label,
+    color: Colors.slate,
+  },
+  band: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: Spacing.xs,
-  },
-  groupCard: {
-    padding: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 10,
+    backgroundColor: Colors.surfaceWarm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   row: {
-    paddingHorizontal: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSoft,
   },
-  dateBadge: {
-    width: 34,
+  date: {
+    width: 30,
+    gap: 2,
   },
-  dateDay: {
-    color: Colors.text,
+  tile: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    marginTop: 1,
   },
-  footnote: {
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.md,
+  flex: {
+    flex: 1,
+  },
+  sub: {
+    marginTop: 6,
+    marginBottom: 4,
   },
 });

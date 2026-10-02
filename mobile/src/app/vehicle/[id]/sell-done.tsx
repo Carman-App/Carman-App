@@ -1,85 +1,90 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { Footnote } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { IconGlyph } from '@/components/ui/IconGlyph';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
 import { useVehicle } from '@/data/hooks';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 
+/** Handed over: the code the buyer redeems, and what the seller keeps. */
 export default function SellDoneScreen() {
-  const { id, buyer, model: modelParam } = useLocalSearchParams<{ id: string; buyer?: string; model?: string }>();
+  const { id, model: modelParam, salePrice } = useLocalSearchParams<{ id: string; buyer?: string; model?: string; salePrice?: string }>();
   const vehicle = useVehicle(id).data;
-  // The vehicle may already be gone from state (handover without keeping a
-  // read-only copy hard-deletes it server-side — see transferVehicle in
-  // @/data/repo — so this query 404s) -- fall back to the model name carried
-  // in params.
+  // The vehicle may already be gone (handover without a read-only copy deletes it), so fall back to the model carried in params.
   const model = vehicle?.model ?? modelParam ?? 'vehicle';
-
-  const code = `CARMA-${model.slice(0, 3).toUpperCase()}-0000`;
+  const plate = (vehicle?.plate && vehicle.plate !== 'UNASSIGNED' ? vehicle.plate : 'CAR').replace(/\s/g, '').slice(0, 3).toUpperCase();
+  const code = `CRM-${String(parseInt(id.replace(/\D/g, '').slice(-4) || '4417', 10)).padStart(4, '0')}-${plate}-${id.slice(-2).toUpperCase()}`;
 
   return (
-    <Screen
-      scroll
-      contentStyle={styles.content}
-      footer={<Button onPress={() => router.replace('/home')}>Back to my garage</Button>}>
-      <View style={styles.iconWrap}>
-        <IconGlyph glyph="check" size={64} bg={Colors.positiveSoft} fg={Colors.positive} />
+    <Screen footer={<Button onPress={() => router.replace('/home')}>Back to my garage</Button>}>
+      <View style={styles.body}>
+        <View style={styles.badgeRow}>
+          <View style={styles.disc} />
+          <View style={styles.pill}>
+            <T variant="eyebrowStrong" color={Colors.accent}>
+              HANDED OVER
+            </T>
+          </View>
+        </View>
+        <T variant="display">
+          The {model} and its history are with <T variant="display" style={{ textTransform: 'uppercase' }}>the buyer.</T>
+        </T>
+        <View style={styles.card}>
+          <T variant="eyebrow" color={Colors.slate}>
+            HANDOVER CODE
+          </T>
+          <T style={styles.code}>{code}</T>
+          <T variant="eyebrow" color={Colors.slate}>
+            SENT BY TEXT · EXPIRES IN 7 DAYS
+          </T>
+          <T variant="eyebrow" color={Colors.slate}>
+            {salePrice ? 'SALE PRICE KEPT IN YOUR RECORDS' : 'SALE PRICE NOT RECORDED'}
+          </T>
+        </View>
+        <Footnote>YOU KEEP A READ-ONLY COPY IF YOU CHOSE ONE. IT CANNOT BE EDITED AND IT STOPS COUNTING TOWARDS YOUR COSTS.</Footnote>
       </View>
-
-      <T variant="eyebrowStrong" color={Colors.positive} center>
-        HANDED OVER
-      </T>
-      <T variant="display" center style={styles.title}>
-        The {model} and its history are with the buyer.
-      </T>
-
-      <Card style={styles.codeCard}>
-        <T variant="eyebrow">HANDOVER CODE</T>
-        <T variant="numericLarge" style={styles.code}>
-          {code}
-        </T>
-        <T variant="meta">
-          SENT TO {buyer ? buyer.toUpperCase() : 'THE BUYER'} · EXPIRES IN 7 DAYS
-        </T>
-      </Card>
-
-      <T variant="body" color={Colors.textMuted} center style={styles.note}>
-        You keep a read-only copy of this vehicle&apos;s history in your garage.
-      </T>
-
-      <T variant="meta" center style={styles.footnote}>
-        NOTHING MOVES UNTIL THEY ACCEPT. IF THE SALE FALLS THROUGH, CANCEL THE CODE FROM VEHICLE DETAILS.
-      </T>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.xxl,
+  body: {
+    paddingTop: 72,
+    gap: Spacing.lg,
   },
-  iconWrap: {
+  badgeRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    gap: 10,
   },
-  title: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xl,
+  disc: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.accent,
+    borderWidth: 5,
+    borderColor: Colors.accentSoft,
   },
-  codeCard: {
-    gap: 4,
-    marginBottom: Spacing.xl,
+  pill: {
+    backgroundColor: Colors.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: 8,
   },
   code: {
-    marginVertical: 2,
-  },
-  note: {
-    marginBottom: Spacing.xxl,
-  },
-  footnote: {
-    marginBottom: Spacing.lg,
+    fontFamily: FontFamily.medium,
+    fontSize: 20,
+    letterSpacing: 2,
+    color: Colors.ink,
+    marginVertical: 4,
   },
 });

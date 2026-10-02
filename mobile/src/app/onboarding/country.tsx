@@ -1,130 +1,86 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { ListRow } from '@/components/ui/ListRow';
-import { ProgressSteps } from '@/components/ui/ProgressSteps';
-import { Screen } from '@/components/ui/Screen';
+import { IconGlyph } from '@/components/ui/IconGlyph';
+import { PickerSheet } from '@/components/ui/PickerSheet';
 import { T } from '@/components/ui/Typography';
 import { useOnboardingDraft } from '@/features/onboarding/context';
-import { REGION_UNITS, type Region } from '@/types/domain';
-import { Colors, Spacing } from '@/theme/tokens';
+import { COUNTRIES } from '@/features/onboarding/countries';
+import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
+import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
+import { REGION_UNITS } from '@/types/domain';
 
-// Matches the prototype's COUNTRY screen exactly: Kenya first (the sensible
-// default — all seed/demo data assumes Kenya), then the rest of the list in
-// the same order the prototype shows them (grouped roughly by region).
-const COUNTRIES: { region: Region; name: string; flag: string }[] = [
-  { region: 'KE', name: 'Kenya', flag: '🇰🇪' },
-  { region: 'UG', name: 'Uganda', flag: '🇺🇬' },
-  { region: 'TZ', name: 'Tanzania', flag: '🇹🇿' },
-  { region: 'RW', name: 'Rwanda', flag: '🇷🇼' },
-  { region: 'ET', name: 'Ethiopia', flag: '🇪🇹' },
-  { region: 'SO', name: 'Somalia', flag: '🇸🇴' },
-  { region: 'SS', name: 'South Sudan', flag: '🇸🇸' },
-  { region: 'BI', name: 'Burundi', flag: '🇧🇮' },
-  { region: 'CD', name: 'DR Congo', flag: '🇨🇩' },
-  { region: 'ZA', name: 'South Africa', flag: '🇿🇦' },
-  { region: 'ZM', name: 'Zambia', flag: '🇿🇲' },
-  { region: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' },
-  { region: 'BW', name: 'Botswana', flag: '🇧🇼' },
-  { region: 'NA', name: 'Namibia', flag: '🇳🇦' },
-  { region: 'MZ', name: 'Mozambique', flag: '🇲🇿' },
-  { region: 'MW', name: 'Malawi', flag: '🇲🇼' },
-  { region: 'AO', name: 'Angola', flag: '🇦🇴' },
-  { region: 'MU', name: 'Mauritius', flag: '🇲🇺' },
-  { region: 'NG', name: 'Nigeria', flag: '🇳🇬' },
-  { region: 'GH', name: 'Ghana', flag: '🇬🇭' },
-  { region: 'CI', name: 'Ivory Coast', flag: '🇨🇮' },
-  { region: 'SN', name: 'Senegal', flag: '🇸🇳' },
-  { region: 'CM', name: 'Cameroon', flag: '🇨🇲' },
-  { region: 'EG', name: 'Egypt', flag: '🇪🇬' },
-  { region: 'MA', name: 'Morocco', flag: '🇲🇦' },
-  { region: 'TN', name: 'Tunisia', flag: '🇹🇳' },
-  { region: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { region: 'IE', name: 'Ireland', flag: '🇮🇪' },
-  { region: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { region: 'FR', name: 'France', flag: '🇫🇷' },
-  { region: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { region: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { region: 'NL', name: 'Netherlands', flag: '🇳🇱' },
-  { region: 'PT', name: 'Portugal', flag: '🇵🇹' },
-  { region: 'PL', name: 'Poland', flag: '🇵🇱' },
-  { region: 'SE', name: 'Sweden', flag: '🇸🇪' },
-  { region: 'NO', name: 'Norway', flag: '🇳🇴' },
-  { region: 'CH', name: 'Switzerland', flag: '🇨🇭' },
-  { region: 'TR', name: 'Turkey', flag: '🇹🇷' },
-  { region: 'US', name: 'United States', flag: '🇺🇸' },
-  { region: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { region: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { region: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { region: 'AR', name: 'Argentina', flag: '🇦🇷' },
-  { region: 'CL', name: 'Chile', flag: '🇨🇱' },
-  { region: 'CO', name: 'Colombia', flag: '🇨🇴' },
-  { region: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
-  { region: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
-  { region: 'QA', name: 'Qatar', flag: '🇶🇦' },
-  { region: 'OM', name: 'Oman', flag: '🇴🇲' },
-  { region: 'IL', name: 'Israel', flag: '🇮🇱' },
-  { region: 'IN', name: 'India', flag: '🇮🇳' },
-  { region: 'PK', name: 'Pakistan', flag: '🇵🇰' },
-  { region: 'LK', name: 'Sri Lanka', flag: '🇱🇰' },
-  { region: 'BD', name: 'Bangladesh', flag: '🇧🇩' },
-  { region: 'CN', name: 'China', flag: '🇨🇳' },
-  { region: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { region: 'KR', name: 'South Korea', flag: '🇰🇷' },
-  { region: 'MY', name: 'Malaysia', flag: '🇲🇾' },
-  { region: 'SG', name: 'Singapore', flag: '🇸🇬' },
-  { region: 'ID', name: 'Indonesia', flag: '🇮🇩' },
-  { region: 'TH', name: 'Thailand', flag: '🇹🇭' },
-  { region: 'PH', name: 'Philippines', flag: '🇵🇭' },
-  { region: 'VN', name: 'Vietnam', flag: '🇻🇳' },
-  { region: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { region: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
-];
-
+/** Country. One pill opens a searchable sheet. The choice sets currency, distance and volume. */
 export default function CountryScreen() {
   const { draft, update } = useOnboardingDraft();
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState(false);
+  const country = COUNTRIES.find((c) => c.region === draft.region);
+  const units = REGION_UNITS[draft.region];
+  const label = (c: (typeof COUNTRIES)[number]) => `${c.flag}  ${c.name}`;
 
   return (
-    <Screen
+    <OnboardingScreen
+      backLabel="WELCOME"
+      step={{ step: 1, total: 6 }}
+      title="Where are you based?"
+      lede="Sets your currency and units."
       footer={
-        <Button onPress={() => router.push('/onboarding/profile')}>Continue</Button>
+        <Button disabled={!picked} onPress={() => router.push('/onboarding/profile')}>
+          Continue
+        </Button>
       }>
-      <ProgressSteps step={1} total={7} />
-      <T variant="display">Where are you based?</T>
-      <T variant="eyebrow" style={styles.sub}>
-        SETS YOUR CURRENCY AND UNITS
-      </T>
-      <View style={styles.list}>
-        {COUNTRIES.map((c) => {
-          const units = REGION_UNITS[c.region];
-          const selected = draft.region === c.region;
-          return (
-            <ListRow
-              key={c.region}
-              title={`${c.flag}  ${c.name}`}
-              meta={`${units.currency} · ${units.distance === 'km' ? 'KILOMETRES' : 'MILES'} · ${units.volume === 'L' ? 'LITRES' : 'GALLONS'}`}
-              onPress={() => update({ region: c.region })}
-              style={selected ? styles.selected : undefined}
-            />
-          );
-        })}
-      </View>
-    </Screen>
+      <Pressable onPress={() => setOpen(true)} style={({ pressed }) => [styles.pill, pressed && { borderColor: Colors.lineStrong }]}>
+        <T numberOfLines={1} style={[styles.name, { color: picked ? Colors.body : Colors.textMuted }]}>
+          {picked && country ? label(country) : 'Choose a country'}
+        </T>
+        <IconGlyph glyph="chevron-down" size={50} fg={Colors.accent} scale={0.4} />
+      </Pressable>
+      {picked ? (
+        <T variant="eyebrow" color={Colors.textFaint} style={styles.summary}>
+          {units.currency} · {units.distance === 'km' ? 'KILOMETRES' : 'MILES'} · {units.volume === 'L' ? 'LITRES' : 'GALLONS'}
+        </T>
+      ) : null}
+      <View />
+      <PickerSheet
+        visible={open}
+        title="Pick a country"
+        searchPlaceholder="Country or currency"
+        items={COUNTRIES.map(label)}
+        selected={country && picked ? label(country) : undefined}
+        onSelect={(v) => {
+          const c = COUNTRIES.find((x) => label(x) === v);
+          if (c) update({ region: c.region });
+          setPicked(true);
+          setOpen(false);
+        }}
+        onClose={() => setOpen(false)}
+      />
+    </OnboardingScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  sub: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.md,
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    height: 64,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.pill,
+    paddingLeft: Spacing.lg,
+    paddingRight: 6,
   },
-  list: {
-    marginTop: Spacing.xs,
+  name: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
   },
-  selected: {
-    backgroundColor: Colors.accentSoft,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.sm,
+  summary: {
+    marginTop: 18,
+    paddingLeft: 4,
   },
 });

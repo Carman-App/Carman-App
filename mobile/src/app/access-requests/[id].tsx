@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Rule } from '@/components/ui/Blocks';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
 import { queryClient } from '@/data/queryClient';
 import { useVehicle } from '@/data/hooks';
 import { respondToAccessRequest } from '@/data/repo';
-import { formatDateWithYear, formatNumber } from '@/lib/format';
+import { formatDateShort, formatDateWithYear, formatNumber } from '@/lib/format';
 import type { AccessRequest } from '@/types/domain';
 import { Colors, Spacing } from '@/theme/tokens';
 
@@ -80,66 +81,64 @@ export default function AccessRequestScreen() {
   return (
     <QueryBoundary query={requestQuery} isEmpty={() => false}>
       {(request: AccessRequest) => (
-        <Screen scroll contentStyle={styles.content}>
-          <Pressable onPress={() => router.back()}>
-            <T variant="eyebrowStrong" color={Colors.accent}>
-              ← BACK
-            </T>
-          </Pressable>
-
-          <T variant="eyebrow" style={styles.eyebrow}>
-            {formatDateWithYear(request.requestedAt)}
-          </T>
-          <T variant="display" style={styles.title}>
-            {request.workshopName} scanned your {vehicle?.model ?? 'vehicle'}
-          </T>
-          <T variant="meta" style={styles.contextLine}>
-            CONNECTED WORKSHOP · {request.scope}
-          </T>
-
-          <Card style={styles.sectionCard}>
-            <T variant="eyebrow" style={styles.cardHeading}>
-              THEY WILL SEE
-            </T>
-            <T variant="body">Make, model, year and VIN</T>
-            <T variant="body">Current odometer{vehicle ? ` · ${formatNumber(vehicle.odometerKm)} km` : ''}</T>
-            <T variant="body">Service and repair history</T>
-          </Card>
-
-          <Card style={styles.sectionCard}>
-            <T variant="eyebrow" style={styles.cardHeading}>
-              THEY WILL NOT SEE
-            </T>
-            <T variant="body">Parking, car washes, fines</T>
-            <T variant="body">Insurance amounts</T>
-            <T variant="body">Invoices from other mechanics</T>
-          </Card>
-
-          <T variant="body" color={Colors.textMuted} style={styles.explainer}>
-            You can revoke this at any time. Work already completed stays in your vehicle history.
-          </T>
-
-          {request.status === 'pending' ? (
-            <View style={styles.actions}>
+        <Screen
+          header={<TopBar backLabel="VEHICLE QR" right={formatDateShort(request.requestedAt.slice(0, 10))} />}
+          footer={
+            <>
               {error ? (
-                <T variant="meta" color={Colors.danger} style={styles.error}>
+                <T variant="meta" color={Colors.danger} center>
                   {error}
                 </T>
               ) : null}
-              <Button onPress={handleAllow} loading={busy}>
+              <Button loading={busy} onPress={handleAllow}>
                 Allow access
               </Button>
-              <Button variant="ghost" onPress={handleDecline} disabled={busy}>
+              <Button variant="danger" size="md" caps disabled={busy} onPress={handleDecline}>
                 Decline
               </Button>
-            </View>
-          ) : (
-            <View style={styles.resolvedBlock}>
-              <T variant="eyebrowStrong" color={request.status === 'approved' ? Colors.positive : Colors.danger}>
-                {request.status.toUpperCase()}
+            </>
+          }>
+          <View style={styles.head}>
+            <View style={styles.badge}>
+              <T variant="eyebrowStrong" color={Colors.white}>
+                ACCESS REQUEST
               </T>
             </View>
-          )}
+            <T variant="display">
+              {request.workshopName} scanned your {vehicle?.model ?? 'vehicle'}
+            </T>
+            <T variant="eyebrow" color={Colors.slate}>
+              {[vehicle ? formatNumber(vehicle.odometerKm) + ' KM' : null, `REQUESTED ${formatDateWithYear(request.requestedAt.slice(0, 10))}`].filter(Boolean).join(' · ')}
+            </T>
+          </View>
+          <Rule />
+          <T variant="eyebrow" color={Colors.slate} style={styles.section}>
+            THEY WILL SEE
+          </T>
+          {['Make, model, year and VIN', 'Current odometer', 'Service and repair history'].map((t) => (
+            <View key={t} style={styles.item}>
+              <View style={styles.square} />
+              <T variant="body" color={Colors.ink}>
+                {t}
+              </T>
+            </View>
+          ))}
+          <T variant="eyebrow" color={Colors.slate} style={styles.section}>
+            THEY WILL NOT SEE
+          </T>
+          {['Parking, car washes, fines', 'Insurance amounts', 'Invoices from other mechanics'].map((t) => (
+            <View key={t} style={styles.item}>
+              <T variant="body" color={Colors.textFaint}>
+                —
+              </T>
+              <T variant="body" color={Colors.ink}>
+                {t}
+              </T>
+            </View>
+          ))}
+          <T variant="lede" style={styles.note}>
+            You can revoke this at any time. Work already completed stays in your vehicle history.
+          </T>
         </Screen>
       )}
     </QueryBoundary>
@@ -147,39 +146,36 @@ export default function AccessRequestScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
+  head: {
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    gap: 10,
   },
-  eyebrow: {
-    marginTop: Spacing.md,
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  title: {
-    marginTop: Spacing.xxs,
+  section: {
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xs,
   },
-  contextLine: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.lg,
-  },
-  sectionCard: {
-    marginBottom: Spacing.md,
-    gap: Spacing.xxs,
-  },
-  cardHeading: {
-    marginBottom: Spacing.xxs,
-  },
-  explainer: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  actions: {
-    gap: Spacing.sm,
-  },
-  error: {
-    textAlign: 'center',
-  },
-  resolvedBlock: {
+  item: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSoft,
+  },
+  square: {
+    width: 6,
+    height: 6,
+    backgroundColor: Colors.accent,
+  },
+  note: {
+    paddingTop: Spacing.lg,
   },
 });

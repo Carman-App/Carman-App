@@ -1,80 +1,95 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import { Footnote } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
-import { ProgressSteps } from '@/components/ui/ProgressSteps';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { useVehicle } from '@/data/hooks';
-import { Colors, Spacing } from '@/theme/tokens';
+import { TopBar } from '@/components/ui/TopBar';
+import { useCurrency, useVehicle } from '@/data/hooks';
+import { Colors, FontFamily, Spacing } from '@/theme/tokens';
 
+/** Who is buying: name and phone get the handover code by text. The price is optional and private. */
 export default function SellWhoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicle = useVehicle(id).data;
+  const currency = useCurrency();
   const [buyer, setBuyer] = useState('');
   const [phone, setPhone] = useState('');
-  const [salePrice, setSalePrice] = useState('');
-
-  if (!vehicle) return null;
-
-  const canContinue = buyer.trim().length > 0;
-
-  const handleContinue = () => {
-    router.push({
-      pathname: `/vehicle/${id}/sell-what`,
-      params: { buyer: buyer.trim(), phone: phone.trim(), salePrice: salePrice.trim() },
-    });
-  };
+  const [price, setPrice] = useState('');
+  const ready = buyer.trim().length > 1 && phone.trim().length > 5;
 
   return (
     <Screen
-      contentStyle={styles.content}
+      padded={false}
+      header={<TopBar backLabel="TRANSFER" step={{ step: 1, total: 3 }} />}
       footer={
-        <Button disabled={!canContinue} onPress={handleContinue}>
-          Who is buying it?
+        <Button disabled={!ready} onPress={() => router.push({ pathname: `/vehicle/${id}/sell-what`, params: { buyer: buyer.trim(), phone: phone.trim(), salePrice: price.trim() } })}>
+          {ready ? 'Continue' : 'Name and phone first'}
         </Button>
       }>
-      <ProgressSteps step={1} total={3} />
-      <T variant="display" style={styles.title}>
-        Who is buying the {vehicle.model}?
-      </T>
-      <T variant="body" color={Colors.textMuted} style={styles.body}>
-        They get a text with the handover code. If they are not on Carma, it walks them through setting up first.
-      </T>
-
-      <TextField label="BUYER" value={buyer} onChangeText={setBuyer} placeholder="Full name" autoFocus />
-      <View style={styles.field}>
-        <TextField label="PHONE" value={phone} onChangeText={setPhone} placeholder="+254..." keyboardType="phone-pad" />
+      <View style={styles.head}>
+        <T variant="display">Who is buying the {vehicle?.model ?? 'vehicle'}?</T>
+        <T variant="lede">They get a text with the handover code. If they are not on Carma, it walks them through setting up first.</T>
       </View>
-      <View style={styles.field}>
-        <TextField
-          label="SALE PRICE"
-          value={salePrice}
-          onChangeText={(v) => setSalePrice(v.replace(/[^0-9]/g, ''))}
-          placeholder="0"
-          keyboardType="number-pad"
-          prefix="KES"
-          helper="OPTIONAL. FOR YOUR OWN RECORD ONLY."
-        />
+      <Field label="BUYER" value={buyer} onChange={setBuyer} placeholder="Full name" />
+      <Field label="PHONE" value={phone} onChange={setPhone} placeholder="+254 …" keyboard="phone-pad" />
+      <Field label="SALE PRICE" value={price} onChange={setPrice} placeholder="0" keyboard="number-pad" unit={currency} />
+      <View style={styles.note}>
+        <Footnote>THE SALE PRICE IS OPTIONAL. IT IS KEPT IN YOUR RECORDS AND IS NOT SHOWN TO THE BUYER.</Footnote>
       </View>
     </Screen>
   );
 }
 
+function Field({ label, value, onChange, placeholder, keyboard, unit }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; keyboard?: 'phone-pad' | 'number-pad'; unit?: string }) {
+  return (
+    <View style={styles.field}>
+      <T variant="eyebrow" color={Colors.slate} style={styles.fieldLabel}>
+        {label}
+      </T>
+      {unit ? (
+        <T variant="eyebrow" color={Colors.slate}>
+          {unit}
+        </T>
+      ) : null}
+      <TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={Colors.textMuted} keyboardType={keyboard} style={styles.input} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-  },
-  title: {
-    marginTop: Spacing.md,
-  },
-  body: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.xl,
+  head: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    gap: 12,
   },
   field: {
-    marginTop: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
+  },
+  fieldLabel: {
+    width: 90,
+  },
+  input: {
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: FontFamily.medium,
+    fontSize: 15,
+    color: Colors.ink,
+    padding: 0,
+  },
+  note: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
 });

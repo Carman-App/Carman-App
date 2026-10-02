@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { T } from '@/components/ui/Typography';
 import { Colors, Spacing } from '@/theme/tokens';
@@ -17,11 +17,14 @@ type SectionHeaderProps = {
   tone?: 'caps' | 'tag' | 'section';
   /** Draw the hairline above the header, as the design does between sections. */
   rule?: boolean;
+  /** Add the screen gutter, for sections inside full-bleed lists. */
+  inset?: boolean;
+  style?: ViewStyle;
 };
 
-export function SectionHeader({ title, action, onAction, right, tone = 'caps', rule }: SectionHeaderProps) {
+export function SectionHeader({ title, action, onAction, right, tone = 'caps', rule, inset, style }: SectionHeaderProps) {
   return (
-    <View style={[styles.row, rule && styles.rule]}>
+    <View style={[styles.row, rule && styles.rule, inset && styles.inset, style]}>
       <T variant={tone === 'caps' ? 'eyebrowStrong' : tone}>{title}</T>
       {action ? (
         <Pressable onPress={onAction} hitSlop={8}>
@@ -44,6 +47,10 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
+  },
+  inset: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: 0,
   },
   rule: {
     borderTopWidth: 1,

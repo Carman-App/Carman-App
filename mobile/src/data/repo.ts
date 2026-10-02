@@ -91,6 +91,7 @@ export type OnboardingPayload = {
     year: number;
     odometerKm: number;
     powertrain?: Powertrain;
+    vin?: string;
   };
 };
 
@@ -144,6 +145,7 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
     plate: 'UNASSIGNED',
     odometerKm: payload.vehicle.odometerKm,
     powertrain: payload.vehicle.powertrain?.toUpperCase(),
+    vin: payload.vehicle.vin?.trim() || undefined,
   });
 
   await setUiState({ onboarded: true, activeGarageId: garage.id });
@@ -156,6 +158,24 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
   ]);
 
   return toVehicle(rawVehicle);
+}
+
+/**
+ * Mechanic-only set up: country and business, and set up is done (no
+ * vehicle is required). Creates the workshop and points this device at the
+ * mechanic side. An owner who also fixes cars runs this after the owner
+ * set up, so their garage is kept.
+ */
+export async function completeWorkshopOnboarding(input: { region: Region; name: string; businessName: string }): Promise<{ id: string; name: string }> {
+  await api.patch<RawAccount>('account', { region: input.region, name: input.name.trim() || undefined });
+  const workshop = await api.post<{ id: string; name: string }>('workshops', { name: input.businessName.trim() });
+  const garages = await api.get<RawGarage[]>('garages').catch(() => [] as RawGarage[]);
+  await setUiState({ onboarded: true, mode: 'mechanic', activeWorkshopId: workshop.id, activeGarageId: garages[0]?.id ?? null });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: qk.account() }),
+    queryClient.invalidateQueries({ queryKey: ['workshops'] }),
+  ]);
+  return workshop;
 }
 
 /**

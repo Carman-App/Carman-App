@@ -1,59 +1,25 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { ProgressSteps } from '@/components/ui/ProgressSteps';
-import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
-import { T } from '@/components/ui/Typography';
 import { useOnboardingDraft } from '@/features/onboarding/context';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
 
-export default function CreateGarageScreen() {
+/** First garage. The garage is the container people are invited into, so it is named before any vehicle exists. */
+export default function FirstGarageScreen() {
   const { draft, update } = useOnboardingDraft();
-
+  const ok = draft.garageName.trim().length > 0;
   return (
-    <Screen
+    <OnboardingScreen
+      step={{ step: 3, total: 6 }}
+      title="Name your first garage"
+      lede="A garage holds vehicles and the people you share them with."
       footer={
-        <Button disabled={!draft.garageName.trim()} onPress={() => router.push('/onboarding/vehicle-type')}>
-          Continue
+        <Button disabled={!ok} onPress={() => router.push('/onboarding/vehicle-type')}>
+          Add the first vehicle
         </Button>
       }>
-      <ProgressSteps step={3} total={7} />
-      <T variant="display">Create your Garage</T>
-      <T variant="body" color={Colors.textMuted} style={styles.sub}>
-        A Garage keeps your vehicles, members, expenses and history together.
-      </T>
-      <View style={styles.field}>
-        <TextField
-          label="GARAGE NAME"
-          value={draft.garageName}
-          onChangeText={(v) => update({ garageName: v })}
-          placeholder="Name your garage"
-          helper="SUGGESTED: MY GARAGE · HOME · WORKSHOP"
-          autoFocus
-        />
-      </View>
-      <View style={styles.included}>
-        <T variant="eyebrow">INCLUDED: 2 GARAGES · 3 MEMBERS EACH</T>
-        <T variant="meta">YOU CAN INVITE MEMBERS LATER</T>
-      </View>
-    </Screen>
+      <TextField value={draft.garageName} onChangeText={(v) => update({ garageName: v })} placeholder="e.g. Mwangi Family" autoFocus autoCapitalize="words" />
+    </OnboardingScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  sub: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.xl,
-  },
-  field: {
-    marginBottom: Spacing.lg,
-  },
-  included: {
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: 4,
-  },
-});

@@ -1,78 +1,34 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { ProgressSteps } from '@/components/ui/ProgressSteps';
-import { Screen } from '@/components/ui/Screen';
-import { T } from '@/components/ui/Typography';
+import { ChoiceRow } from '@/components/ui/ChoiceRow';
 import { useOnboardingDraft } from '@/features/onboarding/context';
+import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
+import { Colors } from '@/theme/tokens';
 import type { AccountProfile } from '@/types/domain';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
 
-const OPTIONS: { key: AccountProfile; title: string; sub: string }[] = [
-  { key: 'owner', title: 'I own vehicles', sub: 'TRACK COSTS, SERVICE AND DOCUMENTS FOR WHAT YOU DRIVE' },
-  { key: 'mechanic', title: 'I fix vehicles', sub: 'RUN JOBS, ESTIMATES AND INVOICES FOR CUSTOMERS' },
-  { key: 'both', title: 'Both', sub: 'A PERSONAL GARAGE AND A WORKSHOP, SWITCHED FROM ONE ACCOUNT' },
+const OPTIONS: { key: AccountProfile; title: string; sub: string; glyph: string; hue: string; tint: string }[] = [
+  { key: 'owner', title: 'Personal: I own vehicles', sub: 'Track costs, service and documents for what you drive', glyph: 'vehicle', hue: Colors.accent, tint: Colors.accentSoft },
+  { key: 'mechanic', title: 'Mechanic: I fix vehicles', sub: 'Run jobs, estimates and invoices for customers', glyph: 'service', hue: Colors.orange, tint: Colors.warningSoft },
+  { key: 'both', title: 'Both', sub: 'A personal garage and a workshop, switched from one account', glyph: 'switch-profile', hue: Colors.positive, tint: Colors.positiveSoft },
 ];
 
-export default function ProfileScreen() {
+/** What brings you: owner, mechanic or both. This decides which set up runs next. */
+export default function RoleScreen() {
   const { draft, update } = useOnboardingDraft();
-
   return (
-    <Screen
+    <OnboardingScreen
+      backLabel="COUNTRY"
+      step={{ step: 2, total: 6 }}
+      title="What brings you to Carma?"
+      lede="This decides what Carma sets up first. You can change it later."
+      bleed
       footer={
-        <Button onPress={() => router.push('/onboarding/garage')}>
-          Continue · {draft.profile === 'owner' ? 'My Garage' : draft.profile === 'mechanic' ? 'My Workshop' : 'Both'}
-        </Button>
+        <Button onPress={() => router.push(draft.profile === 'mechanic' ? '/onboarding/workshop' : '/onboarding/garage')}>Continue</Button>
       }>
-      <ProgressSteps step={2} total={7} />
-      <T variant="display">What brings you to Carma?</T>
-      <T variant="body" color={Colors.textMuted} style={styles.sub}>
-        This decides what Carma sets up first. You can change it later.
-      </T>
-      <View style={styles.options}>
-        {OPTIONS.map((o) => {
-          const selected = draft.profile === o.key;
-          return (
-            <Pressable key={o.key} onPress={() => update({ profile: o.key })} style={[styles.option, selected && styles.optionSelected]}>
-              <T variant="subheading">{o.title}</T>
-              <T variant="eyebrow" style={styles.optionSub}>
-                {o.sub}
-              </T>
-            </Pressable>
-          );
-        })}
-      </View>
-      <T variant="meta" style={styles.footnote}>
-        YOU CAN ADD A WORKSHOP PROFILE LATER IF YOU START FIXING CARS.
-      </T>
-    </Screen>
+      {OPTIONS.map((o) => (
+        <ChoiceRow key={o.key} title={o.title} sub={o.sub} glyph={o.glyph} hue={o.hue} tint={o.tint} selected={draft.profile === o.key} onPress={() => update({ profile: o.key })} />
+      ))}
+    </OnboardingScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  sub: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.lg,
-  },
-  options: {
-    gap: Spacing.sm,
-  },
-  option: {
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: 6,
-  },
-  optionSelected: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accentSoft,
-  },
-  optionSub: {
-    color: Colors.textMuted,
-  },
-  footnote: {
-    marginTop: Spacing.md,
-  },
-});

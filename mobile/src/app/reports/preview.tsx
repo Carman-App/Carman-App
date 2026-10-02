@@ -1,6 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
+import { TopBar } from '@/components/ui/TopBar';
+import { Dot, MoneyFigure } from '@/components/ui/Blocks';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { useActiveGarage, useGarageReminders, useGarageRecords, useReminders, useVehicles } from '@/data/hooks';
 import { formatDateWithYear, formatMoney, formatPlate, todayIso } from '@/lib/format';
@@ -144,39 +146,53 @@ export default function ReportPreviewScreen() {
   const filenameTag = isVehicleScope ? (singleVehicle?.plate ?? 'VEHICLE').replace(/\s+/g, '') : 'GARAGE';
   const filename = `CARMA-${filenameTag}-${today.slice(0, 4)}.PDF`;
 
-  return (
-    <Screen scroll contentStyle={styles.content} footer={
-      <View style={styles.footerRow}>
-        <Button variant="secondary" style={styles.footerBtn}>
-          Export
-        </Button>
-        <Button style={styles.footerBtn}>Share</Button>
-      </View>
-    }>
-      <Pressable onPress={() => router.back()}>
-        <T variant="eyebrowStrong" color={Colors.accent}>
-          ← BACK
-        </T>
-      </Pressable>
+  const shareReport = () =>
+    Share.share({
+      title: filename,
+      message: [
+        `Carma expense report · ${isVehicleScope && singleVehicle ? `${singleVehicle.make} ${singleVehicle.model}` : 'Whole garage'}`,
+        `${formatDateWithYear(startD)} – ${formatDateWithYear(endD)}`,
+        `Total ${formatMoney(total)} · ${records.length} records`,
+        ...categoryBreakdown.map((c) => `${c.label}: ${formatMoney(c.amount, '')} (${c.pct}%)`),
+      ].join('\n'),
+    });
 
+  return (
+    <Screen
+      contentStyle={styles.content}
+      header={<TopBar backLabel="EDIT" right={filename} />}
+      footer={<Button glyph="share" onPress={shareReport}>Export or share</Button>}>
       <QueryBoundary query={recordsQuery} isEmpty={() => false}>
         {() => (
           <>
-      <Card style={styles.letterhead}>
-        <T variant="eyebrowStrong">CARMA</T>
-        <T variant="heading" style={styles.garageName}>
-          EXPENSE REPORT
+      <View style={styles.letterhead}>
+        <View style={styles.brandRow}>
+          <View style={styles.brand}>
+            <Dot color={Colors.accent} size={8} />
+            <T variant="eyebrow" color={Colors.body}>CARMA</T>
+          </View>
+          <T variant="eyebrow" color={Colors.body}>EXPENSE REPORT</T>
+        </View>
+        <T variant="display">
+          {isVehicleScope && singleVehicle ? `${singleVehicle.make} ${singleVehicle.model}` : (garage?.name ?? 'Whole garage')}
         </T>
-        <T variant="meta">{garage?.location}</T>
-        <T variant="meta" style={styles.letterMeta}>
+        <T variant="eyebrow" color={Colors.slate}>
           {isVehicleScope && singleVehicle
-            ? `${singleVehicle.make} ${singleVehicle.model} · ${formatPlate(singleVehicle.plate)}`
-            : `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'}`}
+            ? `${singleVehicle.make} · ${singleVehicle.year} · ${formatPlate(singleVehicle.plate)}`
+            : `${vehicles.length} VEHICLE${vehicles.length === 1 ? '' : 'S'}${garage?.location ? ` · ${garage.location.toUpperCase()}` : ''}`}
         </T>
-        <T variant="meta">
-          {formatDateWithYear(startD)} – {formatDateWithYear(endD)} · {isVehicleScope ? 'SINGLE VEHICLE' : 'WHOLE GARAGE'}
-        </T>
-      </Card>
+        <View style={styles.letterRule} />
+        <View style={styles.kv}>
+          <T variant="eyebrow" color={Colors.slate}>PERIOD</T>
+          <T variant="eyebrow" color={Colors.ink}>{formatDateWithYear(startD)} — {formatDateWithYear(endD)}</T>
+        </View>
+        <View style={styles.kv}>
+          <T variant="eyebrow" color={Colors.slate}>SCOPE</T>
+          <T variant="eyebrow" color={Colors.ink}>{isVehicleScope && singleVehicle ? singleVehicle.model : 'Whole garage'}</T>
+        </View>
+        <T variant="eyebrow" color={Colors.slate} style={styles.totalLabel}>TOTAL SPENT</T>
+        <MoneyFigure amount={formatMoney(total, '')} />
+      </View>
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
@@ -353,6 +369,29 @@ export default function ReportPreviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  brandRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  letterRule: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.md,
+  },
+  kv: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  totalLabel: {
+    marginTop: Spacing.lg,
+  },
   content: {
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xxxl,
@@ -360,7 +399,7 @@ const styles = StyleSheet.create({
   letterhead: {
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
-    gap: 2,
+    gap: 8,
   },
   garageName: {
     marginTop: 2,
