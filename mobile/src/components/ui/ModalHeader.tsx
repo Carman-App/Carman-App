@@ -1,8 +1,4 @@
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
-
-import { T } from '@/components/ui/Typography';
-import { Colors, Spacing } from '@/theme/tokens';
+import { TopBar } from '@/components/ui/TopBar';
 
 type ModalHeaderProps = {
   title?: string;
@@ -11,34 +7,11 @@ type ModalHeaderProps = {
   closeLabel?: string;
 };
 
-/** Header row for modal-presented flows (Add Record and its sub-steps): back/close + title. */
-export function ModalHeader({ title, eyebrow, onClose, closeLabel = 'CLOSE' }: ModalHeaderProps) {
-  const router = useRouter();
-  const handleClose = onClose ?? (() => (router.canGoBack() ? router.back() : router.replace('/(app)/(tabs)/garage')));
-  return (
-    <View style={styles.row}>
-      <View style={styles.text}>
-        {eyebrow ? <T variant="eyebrow">{eyebrow}</T> : null}
-        {title ? <T variant="subheading">{title}</T> : null}
-      </View>
-      <Pressable onPress={handleClose} hitSlop={10}>
-        <T variant="eyebrowStrong" color={Colors.textMuted}>
-          {closeLabel}
-        </T>
-      </Pressable>
-    </View>
-  );
+/**
+ * Header for modal-presented flows. Kept as a thin wrapper over `TopBar` so
+ * older call sites keep working: a close (×) button, the eyebrow as the
+ * tracked label, the title centred.
+ */
+export function ModalHeader({ title, eyebrow, onClose }: ModalHeaderProps) {
+  return <TopBar backGlyph="close" onBack={onClose} title={title} backLabel={eyebrow} right={title ? eyebrow : undefined} />;
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-  },
-  text: {
-    gap: 2,
-    flex: 1,
-  },
-});

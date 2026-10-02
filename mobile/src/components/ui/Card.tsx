@@ -1,20 +1,23 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 type CardProps = {
   children: ReactNode;
   style?: ViewStyle;
   onPress?: () => void;
   padded?: boolean;
+  /** Kept for API compatibility: every card now carries the design's tinted hairline. */
   bordered?: boolean;
+  /** Pale-blue filled card (e.g. the approval line, the cost summary). */
+  tone?: 'plain' | 'blue' | 'sand' | 'warning';
 };
 
-/** Base surface card: white on warm background, soft shadow, rounded corners. */
-export function Card({ children, style, onPress, padded = true, bordered = false }: CardProps) {
+/** Flat surface with a 1px tinted outline. The design uses no drop shadows on cards. */
+export function Card({ children, style, onPress, padded = true, tone = 'plain' }: CardProps) {
   const content = (
-    <View style={[styles.base, padded && styles.padded, bordered && styles.bordered, style]}>
+    <View style={[styles.base, padded && styles.padded, toneStyle[tone], style]}>
       {children}
     </View>
   );
@@ -26,18 +29,22 @@ export function Card({ children, style, onPress, padded = true, bordered = false
   );
 }
 
+const toneStyle = StyleSheet.create({
+  plain: {},
+  blue: { backgroundColor: Colors.accentSoft, borderColor: Colors.lineStrong },
+  sand: { backgroundColor: Colors.surfaceWarm, borderColor: 'transparent' },
+  warning: { backgroundColor: Colors.signalSoft, borderColor: 'transparent' },
+});
+
 const styles = StyleSheet.create({
   base: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
-    ...Shadow.card,
+    borderWidth: 1,
+    borderColor: Colors.line,
   },
   padded: {
-    padding: Spacing.lg,
-  },
-  bordered: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
+    padding: Spacing.md,
   },
   pressed: {
     opacity: 0.85,

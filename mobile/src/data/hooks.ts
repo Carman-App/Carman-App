@@ -12,7 +12,7 @@
  * same as before — they're local UI preference, not server data:
  * `useHydrateOnMount`, `useOnboarded`, `useActiveGarageId` (see `@/data/uiState`).
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { api } from '@/data/api/client';
 import {
@@ -45,10 +45,10 @@ import {
 } from '@/data/api/mappers';
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
-import { useActiveGarageId, useHydrateOnMount, useOnboarded } from '@/data/uiState';
-import type { Modification, PartLine, VehicleDocument, VehicleRecord } from '@/types/domain';
+import { setUiState, useActiveGarageId, useHydrateOnMount, useOnboarded, useUiState } from '@/data/uiState';
+import { REGION_UNITS, type Modification, type PartLine, type VehicleDocument, type VehicleRecord } from '@/types/domain';
 
-export { useHydrateOnMount, useOnboarded, useActiveGarageId };
+export { useHydrateOnMount, useOnboarded, useActiveGarageId, useUiState };
 
 const FULL_PAGE = { pageSize: 100 };
 
@@ -356,4 +356,174 @@ function findCached<T extends { id: string }>(keyPrefixes: string[], id: string)
     }
   }
   return null;
+}
+
+// ---------- Notifications ----------
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: qk.notifications(),
+    queryFn: () => api.getPaginated<AppNotification>('notifications', FULL_PAGE).then((r) => r.items),
+  });
+}
+
+export async function markNotificationRead(id: string) {
+  await api.post(`notifications/${id}/read`);
+  await queryClient.invalidateQueries({ queryKey: qk.notifications() });
+}
+
+// ---------- Garage-wide estimates (Home approval line) ----------
+
+/**
+ * Pending estimates across every vehicle in a garage. There is no
+ * garage-level estimates endpoint, so this fans out over the vehicles'
+ * own lists (each cached under its normal `qk.estimates` key).
+ */
+export function usePendingEstimates(vehicleIds: string[]) {
+  return useQueries({
+    queries: vehicleIds.map((id) => ({
+      queryKey: qk.estimates(id),
+      queryFn: () =>
+        api.getPaginated<RawEstimate>(`vehicles/${id}/estimates`, FULL_PAGE).then((r) => r.items.map(toEstimate)),
+    })),
+    combine: (results) => ({
+      data: results.flatMap((r) => r.data ?? []).filter((e) => e.status === 'pending'),
+      isLoading: results.some((r) => r.isLoading),
+    }),
+  });
+}
+
+// ---------- Workshop (mechanic side) ----------
+
+export type JobStatus =
+  | 'INTAKE'
+  | 'AWAITING_APPROVAL'
+  | 'APPROVED'
+  | 'IN_PROGRESS'
+  | 'READY_FOR_COLLECTION'
+  | 'INVOICED'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'DECLINED'
+  | 'CANCELLED';
+
+export type JobLineKind = 'PART' | 'LABOUR' | 'SERVICE' | 'FLUID';
+
+export type Workshop = { id: string; name: string; verifiedBadge?: boolean; createdAt: string };
+export type WorkshopCustomer = { id: string; name: string; phone: string | null; notes: string | null; createdAt: string };
+export type JobLine = { id: string; kind: JobLineKind; description: string; cost: number; createdAt: string };
+export type Job = {
+  id: string;
+  workshopId: string;
+  customerId: string;
+  vehicleId: string | null;
+  vehicleDescription: string | null;
+  faultDescription: string;
+  status: JobStatus;
+  createdAt: string;
+  updatedAt: string;
+  customer?: WorkshopCustomer;
+  lines: JobLine[];
+};
+
+type RawJobLine = Omit<JobLine, 'cost'> & { cost: string | number };
+type RawJob = Omit<Job, 'lines'> & { lines?: RawJobLine[] };
+
+function toJob(raw: RawJob): Job {
+  return { ...raw, lines: (raw.lines ?? []).map((l) => ({ ...l, cost: Number(l.cost) })) };
+}
+
+export function useWorkshops() {
+  return useQuery({
+    queryKey: ['workshops'] as const,
+    queryFn: () => api.get<Workshop[]>('workshops'),
+  });
+}
+
+/** The workshop the mechanic side is pointed at, defaulting to the first one. */
+export function useActiveWorkshop() {
+  const activeId = useUiState('activeWorkshopId');
+  const q = useWorkshops();
+  const data = q.data ? (q.data.find((w) => w.id === activeId) ?? q.data[0] ?? null) : undefined;
+  return { ...q, data };
+}
+
+export function useJobs(workshopId: string | undefined) {
+  return useQuery({
+    queryKey: ['jobs', workshopId] as const,
+    queryFn: () => api.getPaginated<RawJob>(`workshops/${workshopId}/jobs`, FULL_PAGE).then((r) => r.items.map(toJob)),
+    enabled: !!workshopId,
+  });
+}
+
+export function useJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: ['job', jobId] as const,
+    queryFn: () => api.get<RawJob>(`jobs/${jobId}`).then(toJob),
+    enabled: !!jobId,
+  });
+}
+
+export function useWorkshopCustomers(workshopId: string | undefined) {
+  return useQuery({
+    queryKey: ['workshopCustomers', workshopId] as const,
+    queryFn: () => api.getPaginated<WorkshopCustomer>(`workshops/${workshopId}/customers`, FULL_PAGE).then((r) => r.items),
+    enabled: !!workshopId,
+  });
+}
+
+async function invalidateWorkshop(workshopId?: string, jobId?: string) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['workshops'] }),
+    workshopId ? queryClient.invalidateQueries({ queryKey: ['jobs', workshopId] }) : null,
+    workshopId ? queryClient.invalidateQueries({ queryKey: ['workshopCustomers', workshopId] }) : null,
+    jobId ? queryClient.invalidateQueries({ queryKey: ['job', jobId] }) : null,
+  ]);
+}
+
+export async function createWorkshop(name: string) {
+  const w = await api.post<Workshop>('workshops', { name });
+  await setUiState({ activeWorkshopId: w.id });
+  await invalidateWorkshop();
+  return w;
+}
+
+export async function createWorkshopCustomer(workshopId: string, input: { name: string; phone?: string; notes?: string }) {
+  const c = await api.post<WorkshopCustomer>(`workshops/${workshopId}/customers`, input);
+  await invalidateWorkshop(workshopId);
+  return c;
+}
+
+export async function createJob(
+  workshopId: string,
+  input: { customerId: string; vehicleId?: string; vehicleDescription?: string; faultDescription: string }
+) {
+  const job = await api.post<RawJob>(`workshops/${workshopId}/jobs`, input);
+  await invalidateWorkshop(workshopId);
+  return toJob(job);
+}
+
+export async function addJobLine(job: Job, input: { kind: JobLineKind; description: string; cost: number }) {
+  await api.post(`jobs/${job.id}/lines`, input);
+  await invalidateWorkshop(job.workshopId, job.id);
+}
+
+export async function setJobStatus(job: Job, status: JobStatus) {
+  await api.post(`jobs/${job.id}/status`, { status });
+  await invalidateWorkshop(job.workshopId, job.id);
+}
+
+/** The account's currency code (from its region), defaulting to KES while loading. */
+export function useCurrency() {
+  const account = useAccount().data;
+  return account ? (REGION_UNITS[account.region]?.currency ?? 'KES') : 'KES';
 }

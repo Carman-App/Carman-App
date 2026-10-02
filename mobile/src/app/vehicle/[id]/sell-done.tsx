@@ -24,7 +24,7 @@ export default function SellDoneScreen() {
     <Screen
       scroll
       contentStyle={styles.content}
-      footer={<Button onPress={() => router.replace('/garage')}>Back to my garage</Button>}>
+      footer={<Button onPress={() => router.replace('/home')}>Back to my garage</Button>}>
       <View style={styles.iconWrap}>
         <IconGlyph glyph="check" size={64} bg={Colors.positiveSoft} fg={Colors.positive} />
       </View>

@@ -1,19 +1,21 @@
 import { StyleSheet, View } from 'react-native';
 
 import { T } from '@/components/ui/Typography';
-import { Colors, Radius } from '@/theme/tokens';
+import { Colors, FontFamily, Radius } from '@/theme/tokens';
 import { initials } from '@/lib/format';
 
 type AvatarProps = {
   name: string;
   size?: number;
   color?: string;
+  bg?: string;
 };
 
-export function Avatar({ name, size = 40, color = Colors.accent }: AvatarProps) {
+/** Initials disc: warm grey fill with Carma-blue initials, as on member rows. */
+export function Avatar({ name, size = 40, color = Colors.accent, bg = Colors.chip }: AvatarProps) {
   return (
-    <View style={[styles.base, { width: size, height: size, borderRadius: size / 2, backgroundColor: color + '1A' }]}>
-      <T variant="meta" color={color} style={{ fontFamily: undefined, fontSize: size * 0.36 }}>
+    <View style={[styles.base, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
+      <T color={color} style={{ fontFamily: FontFamily.medium, fontSize: Math.round(size * 0.32) }}>
         {initials(name)}
       </T>
     </View>

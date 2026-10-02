@@ -16,7 +16,7 @@ export default function VehicleAddedScreen() {
   const { draft } = useOnboardingDraft();
   const vehicle = useVehicle(draft.vehicleId).data;
 
-  const goHome = () => router.replace('/garage');
+  const goHome = () => router.replace('/home');
 
   return (
     <Screen footer={<Button onPress={goHome}>Go to My Garage</Button>}>

@@ -16,11 +16,29 @@ import { useSyncExternalStore } from 'react';
 type UiState = {
   onboarded: boolean;
   activeGarageId: string | null;
+  /** Which side of Carma this device is using: the owner garage or the mechanic workshop. */
+  mode: 'owner' | 'mechanic';
+  /** The vehicle the Home composer is scoped to (null = the whole garage). */
+  homeVehicleId: string | null;
+  /** The workshop the mechanic side is pointed at. */
+  activeWorkshopId: string | null;
+  /** Recent questions asked on Home, newest first (drawer "Recents"). */
+  recents: string[];
+  /** Notification preferences from My profile, keyed by topic. */
+  notificationPrefs: Record<string, boolean>;
 };
 
 const STORAGE_KEY = 'carma:ui-state:v1';
 
-let state: UiState = { onboarded: false, activeGarageId: null };
+let state: UiState = {
+  onboarded: false,
+  activeGarageId: null,
+  mode: 'owner',
+  homeVehicleId: null,
+  activeWorkshopId: null,
+  recents: [],
+  notificationPrefs: {},
+};
 let hydrated = false;
 let hydrating: Promise<void> | null = null;
 const listeners = new Set<() => void>();
@@ -87,4 +105,19 @@ export function useOnboarded(): boolean {
 
 export function useActiveGarageId(): string | null {
   return useSyncExternalStore(subscribeUiState, () => getUiState().activeGarageId, () => null);
+}
+
+export function useUiState<K extends keyof UiState>(key: K): UiState[K] {
+  return useSyncExternalStore(subscribeUiState, () => getUiState()[key], () => getUiState()[key]);
+}
+
+export function useMode(): UiState['mode'] {
+  return useUiState('mode');
+}
+
+/** Adds a question to the drawer's Recents, de-duplicated and capped at 20. */
+export async function pushRecent(question: string): Promise<void> {
+  const q = question.trim();
+  if (!q) return;
+  await setUiState({ recents: [q, ...state.recents.filter((r) => r !== q)].slice(0, 20) });
 }
