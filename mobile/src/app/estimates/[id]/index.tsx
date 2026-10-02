@@ -1,22 +1,24 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { QueryBoundary } from '@/components/data/QueryBoundary';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Dot, KeyValueRow, Notice } from '@/components/ui/Blocks';
 import { Screen } from '@/components/ui/Screen';
 import { T } from '@/components/ui/Typography';
-import { useEstimate, useVehicle } from '@/data/hooks';
+import { TopBar } from '@/components/ui/TopBar';
+import { useCurrency, useEstimate, useVehicle } from '@/data/hooks';
 import { respondToEstimate } from '@/data/repo';
 import { formatDateShort, formatMoney, formatNumber, formatPlate } from '@/lib/format';
 import type { Estimate } from '@/types/domain';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 export default function EstimateDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const estimateQuery = useEstimate(id);
   const { data: vehicle } = useVehicle(estimateQuery.data?.vehicleId);
+  const currency = useCurrency();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,75 +52,67 @@ export default function EstimateDetailScreen() {
     <QueryBoundary query={estimateQuery} isEmpty={() => false}>
       {(estimate: Estimate) => {
         const summary = estimate.notes ?? estimate.lines[0]?.description ?? 'Work';
+        const pending = estimate.status === 'pending';
+        const ago = Math.max(0, Math.round((Date.now() - new Date(estimate.createdAt).getTime()) / 60000));
+        const sent = ago < 60 ? `${ago} minutes ago` : ago < 1440 ? `${Math.round(ago / 60)} hours ago` : formatDateShort(estimate.createdAt.slice(0, 10));
         return (
-          <Screen scroll contentStyle={styles.content}>
-            <Pressable onPress={() => router.back()}>
-              <T variant="eyebrowStrong" color={Colors.accent}>
-                ← BACK
+          <Screen
+            padded={false}
+            header={
+              <TopBar
+                title="Approval"
+                right={
+                  pending ? (
+                    <View style={styles.waiting}>
+                      <Dot />
+                      <T variant="meta">Waiting on you</T>
+                    </View>
+                  ) : (
+                    estimate.status === 'approved' ? 'Authorised' : 'Declined'
+                  )
+                }
+              />
+            }
+            headerRule
+            footer={
+              pending ? (
+                <>
+                  {error ? (
+                    <T variant="meta" color={Colors.danger} center>
+                      {error}
+                    </T>
+                  ) : null}
+                  <View style={styles.actions}>
+                    <Button variant="primary" fullWidth={false} disabled={busy} onPress={handleDecline} style={styles.notNow}>
+                      Not now
+                    </Button>
+                    <Button loading={busy} onPress={handleApprove} style={styles.flex}>
+                      Authorise
+                    </Button>
+                  </View>
+                </>
+              ) : undefined
+            }>
+            <View style={styles.head}>
+              <T variant="display">
+                {estimate.workshopName} wants to add {estimate.lines.length > 1 ? 'work' : 'a repair'}
               </T>
-            </Pressable>
-
-            <T variant="eyebrow" style={styles.eyebrow}>
-              EST {estimate.id.toUpperCase()} · SENT {formatDateShort(estimate.createdAt)}
-            </T>
-            {estimate.status === 'pending' ? (
-              <View style={styles.badge}>
-                <T variant="eyebrowStrong" color={Colors.warning}>
-                  AWAITING YOUR APPROVAL
-                </T>
-              </View>
-            ) : null}
-
-            <T variant="display" style={styles.title}>
-              {summary} estimate
-            </T>
-            <T variant="body" color={Colors.textMuted}>
-              {estimate.workshopName}
-              {vehicle ? ` · ${formatPlate(vehicle.plate)} · ${formatNumber(vehicle.odometerKm)} km` : ''}
-            </T>
-
-            <Card style={styles.linesCard}>
-              {estimate.lines.map((l, i) => (
-                <View key={l.id} style={[styles.lineRow, i > 0 && styles.lineRowBorder]}>
-                  <T variant="bodyStrong" style={styles.lineDesc}>
-                    {l.description}
-                  </T>
-                  <T variant="bodyStrong">{formatMoney(l.cost, '')}</T>
-                </View>
-              ))}
-            </Card>
-
-            <View style={styles.totalRow}>
-              <T variant="eyebrow">ESTIMATED TOTAL</T>
-              <T variant="numericLarge">{formatMoney(estimate.total)}</T>
+              <T variant="meta">
+                {summary} · {formatMoney(estimate.total, currency)} · sent {sent}
+              </T>
             </View>
-
-            <T variant="body" color={Colors.textMuted} style={styles.explainer}>
-              Approving this does not move any money. {estimate.workshopName} will invoice you after the work, and the
-              cost joins your vehicle history automatically.
-            </T>
-
-            {estimate.status === 'pending' ? (
-              <View style={styles.actions}>
-                {error ? (
-                  <T variant="meta" color={Colors.danger} style={styles.error}>
-                    {error}
-                  </T>
-                ) : null}
-                <Button onPress={handleApprove} loading={busy}>
-                  Approve
-                </Button>
-                <Button variant="danger" onPress={handleDecline} disabled={busy}>
-                  Decline estimate
-                </Button>
-              </View>
-            ) : (
-              <View style={styles.resolvedBlock}>
-                <T variant="eyebrowStrong" color={estimate.status === 'approved' ? Colors.positive : Colors.danger}>
-                  {estimate.status.toUpperCase()}
-                </T>
-              </View>
-            )}
+            <KeyValueRow label="Vehicle" value={vehicle ? `${vehicle.model}${vehicle.plate ? ` · ${formatPlate(vehicle.plate)}` : ''}` : '—'} />
+            <KeyValueRow label="Work" value={summary} />
+            {estimate.lines.map((l) => (
+              <KeyValueRow key={l.id} label="" value={l.description} sub={formatMoney(l.cost, currency)} />
+            ))}
+            <KeyValueRow label="Amount" value={formatMoney(estimate.total, currency)} />
+            <KeyValueRow label="From" value={estimate.workshopName} />
+            <KeyValueRow label="Sent" value={sent} />
+            {vehicle ? <KeyValueRow label="Odometer" value={`${formatNumber(vehicle.odometerKm)} km`} last /> : null}
+            <Notice style={styles.notice}>
+              {`Authorising adds this ${estimate.lines.length > 1 ? 'work' : 'repair'} to the ${vehicle?.model ?? 'vehicle'} and tells ${estimate.workshopName} to go ahead. Nothing is paid from Carma.`}
+            </Notice>
           </Screen>
         );
       }}
@@ -127,57 +121,26 @@ export default function EstimateDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-  },
-  eyebrow: {
-    marginTop: Spacing.md,
-  },
-  badge: {
-    backgroundColor: Colors.warningSoft,
-    alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    marginTop: Spacing.xs,
-  },
-  title: {
-    marginTop: Spacing.xs,
-  },
-  linesCard: {
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.md,
-    gap: 0,
-  },
-  lineRow: {
+  waiting: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
+    alignItems: 'center',
+    gap: 6,
   },
-  lineRowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
+  head: {
+    padding: Spacing.lg,
+    gap: 10,
   },
-  lineDesc: {
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  totalRow: {
-    gap: 2,
-    marginBottom: Spacing.lg,
-  },
-  explainer: {
-    marginBottom: Spacing.xl,
+  notice: {
+    marginTop: Spacing.lg,
   },
   actions: {
-    gap: Spacing.sm,
+    flexDirection: 'row',
+    gap: 8,
   },
-  error: {
-    textAlign: 'center',
+  notNow: {
+    paddingHorizontal: Spacing.lg,
   },
-  resolvedBlock: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
+  flex: {
+    flex: 1,
   },
 });

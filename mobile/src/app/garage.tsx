@@ -90,7 +90,7 @@ export default function GarageScreen() {
               </View>
               <T variant="eyebrow" color={Colors.slate}>
                 {vehicles.length} VEHICLE{vehicles.length === 1 ? '' : 'S'} · {members.length} MEMBER{members.length === 1 ? '' : 'S'}
-                {garage.location ? ` · ${garage.location.split(',').pop()?.trim().toUpperCase()}` : ''}
+                {garage.location && garage.location !== 'Not set' ? ` · ${garage.location.split(',').pop()?.trim().toUpperCase()}` : ''}
               </T>
             </Pressable>
             <Rule bleed={false} />
