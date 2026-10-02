@@ -6,7 +6,7 @@ import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBo
 import { GoogleSans_700Bold } from '@expo-google-fonts/google-sans/700Bold';
 import { useFonts } from 'expo-font';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { router, Stack } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
@@ -27,6 +27,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  * elsewhere in the app (which this layout would otherwise re-render on)
  * never yank the user back to a redirect.
  */
+// True once this JS runtime has started. A real launch (or a full reload)
+// starts a new runtime; Fast Refresh does not, so saving a file keeps your place.
+let launched = false;
+
 function RootLayout() {
   const [fontsLoaded] = useFonts({
     GoogleSans_400Regular,
@@ -47,6 +51,17 @@ function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // Every launch starts at Welcome. Expo Go (and Android) reopen the app on
+  // the last screen's URL, e.g. /record/add, which would skip it.
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!ready || launched) return;
+    launched = true;
+    if (pathname !== '/' && pathname !== '/onboarding/welcome') {
+      requestAnimationFrame(() => router.replace('/onboarding/welcome'));
+    }
+  }, [ready, pathname]);
 
   if (!ready) return null;
 
