@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
-import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Platform, TurboModuleRegistry } from 'react-native';
 
 import { api, ApiError } from '@/data/api/client';
 import { clearSession, getSession, saveSession, type Session } from '@/data/auth/session';
@@ -30,6 +31,10 @@ export async function fetchAuthConfig(): Promise<AuthConfig> {
 type GoogleModule = typeof import('@react-native-google-signin/google-signin');
 function loadGoogle(): GoogleModule | null {
   if (Platform.OS === 'web') return null;
+  // Expo Go has no native Google module; loading the library there throws (and
+  // shows a red error even when caught), so check before requiring it.
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
+  if (!TurboModuleRegistry.get('RNGoogleSignin')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('@react-native-google-signin/google-signin') as GoogleModule;
