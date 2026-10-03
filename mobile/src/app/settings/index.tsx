@@ -105,17 +105,22 @@ export default function MyProfileScreen() {
           <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
         </Pressable>
       ))}
-      <Pressable
-        onPress={async () => {
-          await signOut();
-          router.replace('/onboarding/welcome');
-        }}
-        style={styles.row}>
-        <IconGlyph glyph="logout" size={22} bg="transparent" fg={Colors.signal} scale={0.85} />
-        <T variant="bodyStrong" color={Colors.signal} style={styles.flex}>
-          Sign out of this phone
-        </T>
-      </Pressable>
+      {/* Signing out only means something after Google or Apple sign-in. Without
+          it (development), the same action just starts this phone over at Welcome;
+          the account's data on the server is kept. */}
+      {signedIn || __DEV__ ? (
+        <Pressable
+          onPress={async () => {
+            await signOut();
+            router.replace('/onboarding/welcome');
+          }}
+          style={styles.row}>
+          <IconGlyph glyph={signedIn ? 'logout' : 'swap'} size={22} bg="transparent" fg={Colors.signal} scale={0.85} />
+          <T variant="bodyStrong" color={Colors.signal} style={styles.flex}>
+            {signedIn ? 'Sign out of this phone' : 'Start again on this phone'}
+          </T>
+        </Pressable>
+      ) : null}
 
       <SectionHeader title="PRIVACY" tone="tag" rule inset />
       {[
