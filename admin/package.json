@@ -14,6 +14,7 @@
     "seed": "tsx prisma/seed.ts",
     "seed:demo": "tsx prisma/seed.ts --demo",
     "db:wipe": "tsx scripts/wipe-data.ts",
+    "test-accounts": "tsx scripts/test-accounts.ts",
     "worker": "node --conditions=react-server --import tsx src/worker/index.ts"
   },
   "dependencies": {

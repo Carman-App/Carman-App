@@ -163,6 +163,16 @@ Sent through Expo's push service, which delivers to Apple and Google.
    My profile → Notifications decide which kinds are pushed. Every
    notification also appears in the in-app list.
 
+## Test accounts (development)
+
+`npm run test-accounts` (in `admin/`) creates five people to try the app as:
+a new owner (set-up from the start), an owner with two vehicles and history,
+a member of that garage, a mechanic with a workshop and an open job, and an
+owner whose trial is over at the Free plan's limit. Run it again to reset
+them; `npm run test-accounts -- --remove` deletes them. In the app (a
+development build or Expo Go, not signed in): My profile → Test accounts.
+The list only exists under `npm run dev`; never run the script on production.
+
 ## Starting over (delete all data)
 
 `npm run db:wipe` (in `admin/`) deletes every account and everything people

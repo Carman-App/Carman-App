@@ -20,6 +20,7 @@ import Constants from 'expo-constants';
 
 import { clearSession, getSession, loadSession, saveSession, type Session } from '@/data/auth/session';
 import { Platform } from 'react-native';
+import { getTestAccountId, loadTestAccount } from '@/data/auth/testAccount';
 
 /** Same shape admin/src/lib/api/response.ts emits for paginated list endpoints. */
 export type PaginationMeta = {
@@ -118,7 +119,7 @@ export function serverAddress(): string {
  * calling this function rather than reading the env var directly.
  */
 export function getCurrentAccountId(): string {
-  const id = process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
+  const id = getTestAccountId() ?? process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID;
   if (!id) {
     throw new Error(
       'EXPO_PUBLIC_DEV_ACCOUNT_ID is not set. Copy mobile/.env.example to .env.local and fill it in (see admin/.env DEV_ACCOUNT_ID).'
@@ -205,7 +206,8 @@ export async function apiHeaders(): Promise<Record<string, string>> {
     session = (await refreshAccessToken()) ?? getSession();
   }
   if (session) return { 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` };
-  if (__DEV__ && process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID) {
+  if (__DEV__) await loadTestAccount();
+  if (__DEV__ && (getTestAccountId() || process.env.EXPO_PUBLIC_DEV_ACCOUNT_ID)) {
     return { 'Content-Type': 'application/json', 'x-carma-account-id': getCurrentAccountId() };
   }
   return { 'Content-Type': 'application/json' };

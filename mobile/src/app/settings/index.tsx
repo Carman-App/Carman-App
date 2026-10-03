@@ -12,6 +12,7 @@ import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
+import { useSignedIn } from '@/data/auth/session';
 import { useAccount, useActiveGarage, useUiState } from '@/data/hooks';
 import { setNotificationPrefs, updateAccount } from '@/data/repo';
 import { openLegal } from '@/features/auth/legal';
@@ -34,6 +35,7 @@ export default function MyProfileScreen() {
   const account = useAccount().data;
   const garage = useActiveGarage().data;
   const mode = useUiState('mode');
+  const signedIn = useSignedIn();
   const prefs = account?.notificationPrefs ?? {};
   const [picking, setPicking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -93,6 +95,8 @@ export default function MyProfileScreen() {
         { label: garage ? `${garage.name} settings` : 'Garage settings', go: () => garage && router.push(`/garages/${garage.id}/settings`) },
         { label: 'Subscription and billing', go: () => router.push('/settings/billing') },
         { label: 'Offline and sync', go: () => router.push('/sync') },
+        // Development builds only, and only when not signed in: act as a test account.
+        ...(__DEV__ && !signedIn ? [{ label: 'Test accounts', go: () => router.push('/settings/test-accounts') }] : []),
       ].map((r) => (
         <Pressable key={r.label} onPress={r.go} style={styles.row}>
           <T variant="bodyStrong" style={styles.flex}>
