@@ -30,8 +30,11 @@ and offers managed Postgres and Redis works.
 4. **Seed plans once** (safe to re-run; never overwrites prices):
    `docker run --rm -e DATABASE_URL=<direct url> carma-worker npm run seed`
    The seed also creates a demo account. Delete it in production, or seed plans only.
-5. **Create the first admin:** `npm run create-admin` in the worker image with
-   `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` set. Create a **second** admin:
+5. **Create the first admin:** `npm run create-admin` asks for the email, name
+   and password (locally, or `docker run -it … carma-worker npm run create-admin`).
+   Unattended: set `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` and run
+   `npm run create-admin -- --from-env`. Run it again with the same email to
+   change the password or reset two-factor for someone who lost their phone. Create a **second** admin:
    deleting accounts, exporting data, publishing config and changing roles all
    need a second admin to approve (Console → Approvals).
 6. **Start** the web service (port 3000, health check `GET /api/health`) and
