@@ -82,7 +82,7 @@ export default function HomeScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
           <Pressable onPress={() => setDrawer(true)} accessibilityLabel="Open menu">
-            <Avatar name={account?.name ?? 'You'} size={44} />
+            <Avatar name={account?.name ?? ''} size={44} />
             {hasAlerts ? (
               <View style={styles.alertDot}>
                 <Dot size={9} />
@@ -163,7 +163,7 @@ export default function HomeScreen() {
       <Drawer
         visible={drawer}
         onClose={() => setDrawer(false)}
-        name={account?.name ?? 'You'}
+        name={account?.name ?? ''}
         items={drawerItems}
         recents={recents}
         onRecent={ask}

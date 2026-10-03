@@ -11,7 +11,7 @@ import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { Dot, MoneyFigure } from '@/components/ui/Blocks';
 import { QueryBoundary } from '@/components/data/QueryBoundary';
-import { useActiveGarage, useGarageReminders, useGarageRecords, useReminders, useVehicles } from '@/data/hooks';
+import { useActiveGarage, useCurrency, useGarageReminders, useGarageRecords, useReminders, useVehicles } from '@/data/hooks';
 import { formatDateWithYear, formatMoney, formatPlate, todayIso } from '@/lib/format';
 import type { Vehicle, VehicleRecord } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
@@ -50,6 +50,7 @@ export default function ReportPreviewScreen() {
 
   const garageQuery = useActiveGarage();
   const garage = garageQuery.data;
+  const currency = useCurrency();
   const vehiclesQuery = useVehicles(garage?.id);
   const recordsQuery = useGarageRecords(garage?.id);
   const gRemindersQuery = useGarageReminders(garage?.id);
@@ -249,7 +250,7 @@ export default function ReportPreviewScreen() {
         {costPerKm != null ? (
           <>
             <T variant="numericLarge">{costPerKm.toFixed(2)}</T>
-            <T variant="meta">KES PER KM</T>
+            <T variant="meta">{currency} PER KM</T>
           </>
         ) : (
           <T variant="meta" color={Colors.textMuted}>

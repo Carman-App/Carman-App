@@ -112,7 +112,7 @@ export default function MechanicHomeScreen() {
       <Drawer
         visible={drawer}
         onClose={() => setDrawer(false)}
-        name={account?.name ?? 'You'}
+        name={account?.name ?? ''}
         items={items}
         recents={recents}
         onRecent={ask}

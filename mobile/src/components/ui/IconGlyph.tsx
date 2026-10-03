@@ -40,6 +40,7 @@ import StopIcon from '@hugeicons/core-free-icons/StopIcon';
 import Upload01Icon from '@hugeicons/core-free-icons/Upload01Icon';
 import UserAdd01Icon from '@hugeicons/core-free-icons/UserAdd01Icon';
 import UserMultipleIcon from '@hugeicons/core-free-icons/UserMultipleIcon';
+import UserIcon from '@hugeicons/core-free-icons/UserIcon';
 import UserSwitchIcon from '@hugeicons/core-free-icons/UserSwitchIcon';
 import WifiOff01Icon from '@hugeicons/core-free-icons/WifiOff01Icon';
 import Alert02Icon from '@hugeicons/core-free-icons/Alert02Icon';
@@ -168,6 +169,7 @@ const ICONS: Record<string, IconSvgElement> = {
   stop: StopIcon,
   'user-add': UserAdd01Icon,
   members: UserMultipleIcon,
+  person: UserIcon,
   'switch-profile': UserSwitchIcon,
   offline: WifiOff01Icon,
 };

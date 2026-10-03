@@ -93,7 +93,7 @@ export function Drawer({ visible, onClose, name, items, recents, onRecent, onNew
           </ScrollView>
           <View style={styles.foot}>
             <Pressable onPress={onSwitch} accessibilityLabel={switchLabel} style={styles.switch}>
-              <Avatar name={switchLabel} size={44} bg={Colors.ink} color={Colors.white} />
+              <IconGlyph glyph="swap" size={44} bg={Colors.ink} fg={Colors.white} />
             </Pressable>
             <Pressable
               onPress={() => {

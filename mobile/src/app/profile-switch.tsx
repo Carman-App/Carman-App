@@ -22,7 +22,7 @@ export default function SwitchProfileScreen() {
   const members = useGarageMembers(garage?.id).data ?? [];
   const workshops = useWorkshops().data ?? [];
   const [choice, setChoice] = useState<string>(mode === 'mechanic' ? (activeWorkshopId ?? workshops[0]?.id ?? 'owner') : 'owner');
-  const first = account?.name.split(' ')[0] || 'You';
+  const first = account?.name.trim().split(' ')[0] || 'Personal';
 
   const options = [
     { key: 'owner', name: first, meta: `PERSONAL · ${vehicles.length} VEHICLE${vehicles.length === 1 ? '' : 'S'} · ${garages.length} GARAGE${garages.length === 1 ? '' : 'S'}` },

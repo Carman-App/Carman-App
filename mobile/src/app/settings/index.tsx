@@ -53,13 +53,13 @@ export default function MyProfileScreen() {
             {account?.email ?? ''}
           </T>
         </View>
-        <Avatar name={account?.name ?? 'You'} size={52} />
+        <Avatar name={account?.name ?? ''} size={52} />
       </View>
       <Pressable onPress={() => router.push('/profile-switch')} style={styles.switch}>
         <View style={styles.flex}>
           <T variant="bodyStrong">Switch profile</T>
           <T variant="eyebrow" color={Colors.slate}>
-            {(account?.name.split(' ')[0] ?? 'YOU').toUpperCase()} · {mode === 'mechanic' ? 'MECHANIC' : 'PERSONAL'}
+            {[account?.name.trim().split(' ')[0]?.toUpperCase(), mode === 'mechanic' ? 'MECHANIC' : 'PERSONAL'].filter(Boolean).join(' · ')}
           </T>
         </View>
         <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
