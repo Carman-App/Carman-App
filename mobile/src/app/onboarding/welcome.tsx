@@ -1,73 +1,30 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
-import { OptionSheet } from '@/components/ui/OptionSheet';
 import { T } from '@/components/ui/Typography';
 import { useSignedIn } from '@/data/auth/session';
 import { useUiState } from '@/data/hooks';
 import { getUiState } from '@/data/uiState';
-import { appleAvailable, fetchAuthConfig, googleAvailable, signInWithApple, signInWithGoogle, type SignInOutcome } from '@/features/auth/signIn';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /**
  * Welcome, exactly as designed (screen 01): the promise, the three stripes
  * (Carma blue, signal red, yellow) and one Get started.
  * Get started leads into the set-up flow (Where are you based?), or Home if
- * this device is already set up. When the person is not signed in and Apple
- * or Google sign-in is available, it first opens a Continue with Apple /
- * Google sheet.
+ * this device is already set up. When nobody is signed in it first opens the
+ * sign-in page (Continue with Apple / Google, ./sign-in.tsx).
  */
 export default function WelcomeScreen() {
   const signedIn = useSignedIn();
   const mode = useUiState('mode');
-  const [busy, setBusy] = useState<'apple' | 'google' | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState(false);
-  const [providers, setProviders] = useState({ apple: false, google: false });
-
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      const [config, apple] = await Promise.all([fetchAuthConfig(), appleAvailable()]);
-      const appleOn = apple && config.apple;
-      // App Store 4.8: on iPhone, Google sign-in is offered only alongside Sign in with Apple.
-      const googleOn = config.google && googleAvailable() && (Platform.OS !== 'ios' || appleOn);
-      if (live) setProviders({ apple: appleOn, google: googleOn });
-    })();
-    return () => {
-      live = false;
-    };
-  }, []);
-
   const home = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
   const next = () => (getUiState().onboarded ? router.replace(home) : router.push('/onboarding/country'));
 
-  const getStarted = () => {
-    if (!signedIn && (providers.apple || providers.google)) {
-      setError(null);
-      setSheet(true);
-      return;
-    }
-    next();
-  };
-
-  const run = async (which: 'apple' | 'google') => {
-    setBusy(which);
-    setError(null);
-    const outcome: SignInOutcome = which === 'apple' ? await signInWithApple() : await signInWithGoogle();
-    setBusy(null);
-    if (!outcome.ok) {
-      if (!outcome.cancelled) setError(outcome.message ?? 'Sign-in failed. Try again.');
-      return;
-    }
-    setSheet(false);
-    next();
-  };
+  // Not signed in: the sign-in page first (Continue with Apple / Google).
+  const getStarted = () => (signedIn ? next() : router.push('/onboarding/sign-in'));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -94,36 +51,6 @@ export default function WelcomeScreen() {
         </T>
       </View>
 
-      <OptionSheet
-        visible={sheet}
-        title="Continue to Carma"
-        options={[]}
-        onSelect={() => {}}
-        onClose={() => setSheet(false)}
-        footer={
-          <View style={styles.sheetButtons}>
-            {providers.apple ? (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={28}
-                style={styles.apple}
-                onPress={() => void run('apple')}
-              />
-            ) : null}
-            {providers.google ? (
-              <Button variant="secondary" glyph="google" loading={busy === 'google'} disabled={!!busy} onPress={() => void run('google')}>
-                Continue with Google
-              </Button>
-            ) : null}
-            {error ? (
-              <T variant="meta" color={Colors.signal} center>
-                {error}
-              </T>
-            ) : null}
-          </View>
-        }
-      />
     </SafeAreaView>
   );
 }
@@ -185,12 +112,5 @@ const styles = StyleSheet.create({
   },
   trial: {
     lineHeight: 16,
-  },
-  apple: {
-    height: 56,
-    width: '100%',
-  },
-  sheetButtons: {
-    gap: 12,
   },
 });
