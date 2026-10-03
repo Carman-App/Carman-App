@@ -79,6 +79,14 @@ Carma talks to Postgres directly (Prisma), so it needs Supabase's **database
 connection strings**, not the project URL or publishable/anon key (those are
 for Supabase's client libraries, which Carma doesn't use).
 
+**Quickest:** from the repo root run `node scripts/setup-supabase.mjs`. It asks
+for the project URL and the database password, finds the region, writes both
+URLs into `admin/.env`, runs the migrations and the seed, and (if you give it
+S3 keys from Storage → S3 Connection) sets up document storage on Supabase
+Storage with a private `documents` bucket.
+
+By hand:
+
 1. Supabase dashboard → your project → **Connect** (top bar).
 2. Copy the **Transaction pooler** string (port 6543) into `DATABASE_URL` and
    the **Session pooler** string (port 5432) into `DIRECT_DATABASE_URL`, in
