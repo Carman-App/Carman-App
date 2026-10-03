@@ -11,10 +11,28 @@ import { setOnce } from "@/lib/redis";
  */
 const ACTIVITY_WINDOW_SECONDS = 15 * 60;
 
-export function recordActivity(accountId: string): void {
+export type DeviceInfo = { platform: string | null; os: string | null; model: string | null; appVersion: string | null; build: string | null };
+
+/** The app's device headers (x-carma-platform, x-carma-os, x-carma-device, x-carma-app-version, x-carma-app-build). */
+export function deviceFromHeaders(h: Headers): DeviceInfo | null {
+  const clip = (v: string | null) => (v ? v.slice(0, 80) : null);
+  const d = {
+    platform: clip(h.get("x-carma-platform")),
+    os: clip(h.get("x-carma-os")),
+    model: clip(h.get("x-carma-device")),
+    appVersion: clip(h.get("x-carma-app-version")),
+    build: clip(h.get("x-carma-app-build")),
+  };
+  return d.platform || d.appVersion ? d : null;
+}
+
+export function recordActivity(accountId: string, device?: DeviceInfo | null): void {
   void setOnce(`active:${accountId}`, ACTIVITY_WINDOW_SECONDS).then((first) => {
     if (!first) return;
-    return prisma.account.update({ where: { id: accountId }, data: { lastApiRequestAt: new Date() } }).then(
+    const now = new Date();
+    return prisma.account
+      .update({ where: { id: accountId }, data: { lastApiRequestAt: now, ...(device ? { lastDevice: { ...device, at: now.toISOString() } } : {}) } })
+      .then(
       () => undefined,
       () => undefined,
     );

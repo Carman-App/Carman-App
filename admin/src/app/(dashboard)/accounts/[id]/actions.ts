@@ -51,17 +51,53 @@ export async function resendVerificationCode(_prev: ActionState, formData: FormD
   return recordHonestNoOp(
     accountId,
     "account.resend_code",
-    "No real OTP/session system exists yet — this records operator intent; wire to a real provider when end-user auth lands.",
+    "Carma signs in with Google or Apple, so there is no code to resend; the person signs in again with the same Google or Apple account. Recorded for the audit trail.",
   );
 }
 
+/**
+ * Reset sign-in: ends every session this account has (each phone must sign
+ * in with Google or Apple again) and stops push notifications to its phones.
+ */
 export async function resetSignIn(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await requireRole(ACCOUNT_QUICK_ACTION_ROLES);
   const accountId = String(formData.get("accountId") || "");
-  return recordHonestNoOp(
-    accountId,
-    "account.reset_sign_in",
-    "No real OTP/session system exists yet — this records operator intent; wire to a real provider when end-user auth lands.",
+  const account = await prisma.account.findUnique({ where: { id: accountId }, select: { id: true } });
+  if (!account) return { error: "Account not found." };
+
+  const now = new Date();
+  const [sessions, phones] = await prisma.$transaction([
+    prisma.endUserRefreshToken.updateMany({
+      where: { accountId, revokedAt: null, usedAt: null, expiresAt: { gt: now } },
+      data: { revokedAt: now, revokedReason: "Signed out by Carma support" },
+    }),
+    prisma.pushToken.deleteMany({ where: { accountId } }),
+  ]);
+  await writeAdminAuditLog(
+    { adminId: admin.adminId },
+    { action: "account.reset_sign_in", entityType: "Account", entityId: accountId, targetAccountId: accountId, metadata: { sessionsEnded: sessions.count, phonesRemoved: phones.count } },
   );
+  revalidatePath(`/accounts/${accountId}`);
+  return { ok: true, message: `Signed out everywhere: ${sessions.count} session(s) ended, ${phones.count} phone(s) removed from push.` };
+}
+
+/** Re-reads this account's App Store / Google Play purchases (RevenueCat) and updates its plan. */
+export async function syncStoreSubscription(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await requireRole(ACCOUNT_QUICK_ACTION_ROLES);
+  const accountId = String(formData.get("accountId") || "");
+  const { storeBillingConfigured, syncStoreSubscriptions } = await import("@/lib/billing/store");
+  if (!storeBillingConfigured()) return { error: "In-app purchases are not set up on this server (REVENUECAT_SECRET_API_KEY)." };
+  try {
+    await syncStoreSubscriptions(accountId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "The store could not be reached." };
+  }
+  await writeAdminAuditLog(
+    { adminId: admin.adminId },
+    { action: "account.store_sync", entityType: "Account", entityId: accountId, targetAccountId: accountId },
+  );
+  revalidatePath(`/accounts/${accountId}`);
+  return { ok: true, message: "Synced with the App Store / Google Play." };
 }
 
 export async function unlockAccount(_prev: ActionState, formData: FormData): Promise<ActionState> {

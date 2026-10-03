@@ -17,6 +17,7 @@
  */
 
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 
 import { clearSession, getSession, loadSession, saveSession, type Session } from '@/data/auth/session';
 import { Platform } from 'react-native';
@@ -200,7 +201,25 @@ const REFRESH_EARLY_MS = 60_000;
  * refreshed shortly before it expires. Without one, in development only, the
  * fixed dev account id (the server ignores it in production).
  */
+/**
+ * Which phone and app build is calling, for the console's account page
+ * (device, OS, app version). No identifiers: model and versions only.
+ */
+const DEVICE_HEADERS: Record<string, string> = {
+  'x-carma-platform': Platform.OS,
+  'x-carma-os': String(Device.osVersion ?? Platform.Version ?? ''),
+  'x-carma-device': [Device.manufacturer, Device.modelName].filter(Boolean).join(' '),
+  'x-carma-app-version': Constants.expoConfig?.version ?? '',
+  'x-carma-app-build': String(
+    Platform.OS === 'ios' ? (Constants.expoConfig?.ios?.buildNumber ?? '') : (Constants.expoConfig?.android?.versionCode ?? ''),
+  ),
+};
+
 export async function apiHeaders(): Promise<Record<string, string>> {
+  return { ...DEVICE_HEADERS, ...(await authHeaders()) };
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
   let session = getSession() ?? (await loadSession());
   if (session && new Date(session.accessTokenExpiresAt).getTime() - Date.now() < REFRESH_EARLY_MS) {
     session = (await refreshAccessToken()) ?? getSession();

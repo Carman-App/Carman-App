@@ -708,6 +708,11 @@ model Account {
   // Every notification is still listed in the in-app feed.
   notificationPrefs Json? @db.JsonB
 
+  // ACCT-09: the phone and app build last used, from the app's request
+  // headers ({ platform, os, model, appVersion, build, at }); refreshed with
+  // lastApiRequestAt (at most every 15 minutes).
+  lastDevice Json? @db.JsonB
+
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   pushTokens          PushToken[]
   profiles            AccountProfile[]

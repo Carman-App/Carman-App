@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { ProfileType } from "@/generated/prisma/enums";
 import { verifyAccessToken } from "@/lib/auth/end-user";
-import { recordActivity } from "@/lib/activity";
+import { deviceFromHeaders, recordActivity } from "@/lib/activity";
 import { clientIp, enforceLimit, enforceLimits, LIMITS } from "@/lib/rate-limit";
 
 export type RequestAccount = Prisma.AccountGetPayload<{ include: { user: true } }>;
@@ -66,7 +66,7 @@ export async function getRequestAccount(req: NextRequest): Promise<RequestAccoun
   if (!resolved) return null;
   let account = await prisma.account.findUnique({ where: { id: resolved.id }, include: { user: true } });
   if (!account && resolved.dev) account = await provisionDevAccount(resolved.id);
-  if (account) recordActivity(account.id);
+  if (account) recordActivity(account.id, deviceFromHeaders(req.headers));
   return account;
 }
 

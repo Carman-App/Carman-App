@@ -192,7 +192,18 @@ export default async function AccountsPage({
           href={(row) => `/accounts/${row.id}`}
           emptyLabel="No accounts yet. They're created when someone signs up in the mobile app."
           columns={[
-            { header: "Name", cell: (row) => row.user.name },
+            {
+              header: "Name",
+              cell: (row) => (
+                <span>
+                  {row.user.name || "—"}
+                  {/* Development test accounts (npm run test-accounts) and the app's empty test account. */}
+                  {row.user.email.endsWith("@carma.test") || (row.user.email.startsWith("dev-") && row.user.email.endsWith("@users.carma.invalid")) ? (
+                    <span className="ml-2"><Badge value="TEST" /></span>
+                  ) : null}
+                </span>
+              ),
+            },
             { header: "Email", cell: (row) => row.user.email },
             { header: "Region", cell: (row) => row.region },
             {

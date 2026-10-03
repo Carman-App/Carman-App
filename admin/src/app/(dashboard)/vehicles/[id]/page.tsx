@@ -8,6 +8,7 @@ import { Badge } from "@/components/badge";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { requireRole, ACCOUNTS_ROLES } from "@/lib/auth/rbac";
 import { flagOdometerTrail, MAX_PLAUSIBLE_KM_PER_DAY, type OdometerFlag } from "@/lib/garages/odometer-flags";
+import { AccessSection, BuildsSection, WorkshopPapersSection } from "./app-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,8 @@ export default async function VehicleDetailPage({
           { label: "Type", value: <Badge value={vehicle.type} /> },
           { label: "Usage", value: <Badge value={vehicle.usage} /> },
           { label: "Powertrain", value: vehicle.powertrain ?? "—" },
+          { label: "Transmission", value: vehicle.transmission ?? "—" },
+          { label: "Variant", value: vehicle.variant ?? "—" },
           { label: "Odometer", value: `${vehicle.odometerKm.toLocaleString()} km` },
           { label: "Next service due", value: vehicle.nextServiceDueKm ? `${vehicle.nextServiceDueKm.toLocaleString()} km` : "—" },
           { label: "VIN", value: vehicle.vin ?? "—" },
@@ -192,6 +195,18 @@ export default async function VehicleDetailPage({
             { header: "Opened", cell: (r) => formatDate(r.createdAt) },
           ]}
         />
+      </Section>
+
+      <Section title="Workshop access">
+        <AccessSection vehicleId={vehicle.id} />
+      </Section>
+
+      <Section title="Inspections, estimates and invoices">
+        <WorkshopPapersSection vehicleId={vehicle.id} />
+      </Section>
+
+      <Section title="Build (project vehicle)">
+        <BuildsSection vehicleId={vehicle.id} />
       </Section>
 
       <Section title="Sale / transfer history (GAR-06)">

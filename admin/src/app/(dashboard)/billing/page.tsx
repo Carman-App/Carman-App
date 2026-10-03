@@ -195,6 +195,10 @@ export default async function BillingPage() {
         />
       </Section>
 
+      <Section title="Bought in the app (App Store / Google Play)">
+        <StoreSubscriptionsSection />
+      </Section>
+
       <Section title="Plan catalog">
         <DataTable
           rows={plans}
@@ -256,6 +260,46 @@ export default async function BillingPage() {
           ]}
         />
       </Section>
+    </div>
+  );
+}
+
+/** Subscriptions sold through store billing (RevenueCat): by store, and the latest ones. */
+async function StoreSubscriptionsSection() {
+  const [byStore, latest] = await Promise.all([
+    prisma.subscription.groupBy({ by: ["store", "status", "willRenew"], where: { store: { not: null } }, _count: { _all: true } }),
+    prisma.subscription.findMany({
+      where: { store: { not: null } },
+      include: { plan: true, account: { include: { user: true } }, workshop: true },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+    }),
+  ]);
+  return (
+    <div className="space-y-3">
+      <DataTable
+        rows={byStore.map((r, i) => ({ id: String(i), ...r }))}
+        emptyLabel="Nothing bought in the app yet (needs RevenueCat set up — DEPLOY.md, Subscriptions setup)."
+        columns={[
+          { header: "Store", cell: (r) => r.store },
+          { header: "Status", cell: (r) => <Badge value={r.status} /> },
+          { header: "Auto-renew", cell: (r) => (r.willRenew === false ? "Off" : "On") },
+          { header: "Subscriptions", cell: (r) => r._count._all },
+        ]}
+      />
+      <DataTable
+        rows={latest}
+        href={(r) => (r.accountId ? `/accounts/${r.accountId}` : `/workshops/${r.workshopId}`)}
+        emptyLabel=""
+        columns={[
+          { header: "Who", cell: (r) => r.account?.user.name || r.workshop?.name || "—" },
+          { header: "Plan", cell: (r) => r.plan.name },
+          { header: "Product", cell: (r) => r.storeProductId ?? "—" },
+          { header: "Status", cell: (r) => <Badge value={r.status} /> },
+          { header: "Period ends", cell: (r) => formatDate(r.currentPeriodEnd) },
+          { header: "Renews", cell: (r) => (r.willRenew === false ? "No" : "Yes") },
+        ]}
+      />
     </div>
   );
 }

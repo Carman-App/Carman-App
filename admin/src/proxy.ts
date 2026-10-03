@@ -26,8 +26,10 @@ const explicitAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 const CORS_ALLOW_METHODS = "GET, POST, PATCH, DELETE, OPTIONS";
+// The app's device headers (src/lib/activity.ts), for the console's ACCT-09.
+const DEVICE_HEADERS = "x-carma-platform, x-carma-os, x-carma-device, x-carma-app-version, x-carma-app-build";
 const CORS_ALLOW_HEADERS =
-  process.env.NODE_ENV === "production" ? "Content-Type, Authorization" : "Content-Type, Authorization, x-carma-account-id";
+  `Content-Type, Authorization, ${DEVICE_HEADERS}` + (process.env.NODE_ENV === "production" ? "" : ", x-carma-account-id");
 
 // In production an origin must be listed in CORS_ALLOWED_ORIGINS; nothing is
 // reflected by default. The native apps send no Origin header and are not

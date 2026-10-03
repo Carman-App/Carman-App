@@ -6,8 +6,13 @@ import {
   resetSignIn,
   unlockAccount,
   manualVerifyEmail,
+  syncStoreSubscription,
   type ActionState,
 } from "./actions";
+
+export function StoreSyncButton({ accountId }: { accountId: string }) {
+  return <QuickActionButton accountId={accountId} action={syncStoreSubscription} label="Sync with App Store / Google Play" />;
+}
 
 function QuickActionButton({
   accountId,

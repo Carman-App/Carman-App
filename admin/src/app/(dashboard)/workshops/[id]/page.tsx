@@ -82,6 +82,14 @@ export default async function WorkshopDetailPage({
             ),
           },
           {
+            label: "Town",
+            value: workshop.town ?? "—",
+          },
+          {
+            label: "How they work",
+            value: workshop.teamSize ? { SOLO: "On their own", HELPER: "With a helper", TEAM: "A workshop team" }[workshop.teamSize] : "—",
+          },
+          {
             label: "Verified",
             value: workshop.verifiedBadge ? (
               <span className="text-emerald-600">
@@ -117,11 +125,14 @@ export default async function WorkshopDetailPage({
       <Section title="Subscriptions">
         <DataTable
           rows={workshop.subscriptions}
-          emptyLabel="No subscription on file — treated as unlimited by plan-limit checks."
+          emptyLabel="No subscription yet: the free trial starts the first time the workshop uses Carma."
           columns={[
             { header: "Plan", cell: (r) => r.plan.name },
             { header: "Status", cell: (r) => <Badge value={r.status} /> },
             { header: "Trial ends", cell: (r) => formatDate(r.trialEndsAt) },
+            { header: "Period ends", cell: (r) => formatDate(r.currentPeriodEnd) },
+            { header: "Paid through", cell: (r) => (r.store ? `${r.store}${r.storeProductId ? ` · ${r.storeProductId}` : ""}` : "Carma (trial / console)") },
+            { header: "Renews", cell: (r) => (r.store ? (r.willRenew === false ? "No — ends at period end" : "Yes") : "—") },
           ]}
         />
       </Section>

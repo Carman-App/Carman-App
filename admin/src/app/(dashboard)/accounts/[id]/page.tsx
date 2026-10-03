@@ -7,7 +7,8 @@ import { Badge } from "@/components/badge";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { requireRole, ACCOUNTS_ROLES, canRunDangerousAccountAction, canRunAccountQuickAction } from "@/lib/auth/rbac";
 import { REGION_LABELS, currencyForRegion } from "@/lib/region";
-import { QuickActionsPanel } from "./quick-actions-panel";
+import { QuickActionsPanel, StoreSyncButton } from "./quick-actions-panel";
+import { AssistantSection, DeviceSection, NotificationsSection, SignInSection } from "./app-sections";
 import { SuspendPanel } from "./suspend-panel";
 import { DeletePanel, RestorePanel } from "./delete-panel";
 import { RegionPanel } from "./region-panel";
@@ -370,8 +371,24 @@ export default async function AccountDetailPage({
             { header: "Status", cell: (r) => <Badge value={r.status} /> },
             { header: "Trial ends", cell: (r) => formatDate(r.trialEndsAt) },
             { header: "Period ends", cell: (r) => formatDate(r.currentPeriodEnd) },
+            // Bought in the app (App Store / Google Play through RevenueCat), or set by Carma.
+            { header: "Paid through", cell: (r) => (r.store ? `${r.store}${r.storeProductId ? ` · ${r.storeProductId}` : ""}` : "Carma (trial / console)") },
+            { header: "Renews", cell: (r) => (r.store ? (r.willRenew === false ? "No — ends at period end" : "Yes") : "—") },
           ]}
         />
+        {canQuick ? <StoreSyncButton accountId={account.id} /> : null}
+      </Section>
+
+      <Section title="Sign-in and sessions">
+        <SignInSection accountId={account.id} userId={account.userId} />
+      </Section>
+
+      <Section title="Notifications">
+        <NotificationsSection accountId={account.id} prefs={account.notificationPrefs} />
+      </Section>
+
+      <Section title="Assistant">
+        <AssistantSection accountId={account.id} workshopId={account.workshopsOwned[0]?.id ?? null} />
       </Section>
 
       <Section title="Billing history (MON-06)">
@@ -379,16 +396,7 @@ export default async function AccountDetailPage({
       </Section>
 
       <Section title="Device / app version (ACCT-09)">
-        <DetailView
-          title="Device"
-          subtitle="Not tracked anywhere in this codebase — there is no device-registration table and the mobile app has no telemetry, so 'flagged when behind current release' can't be computed here."
-          fields={[
-            { label: "Device", value: "Not yet tracked" },
-            { label: "OS", value: "Not yet tracked" },
-            { label: "App build", value: "Not yet tracked" },
-            { label: "Last seen", value: "Not yet tracked" },
-          ]}
-        />
+        <DeviceSection accountId={account.id} lastDevice={account.lastDevice} />
       </Section>
 
       <Section title="Tickets">

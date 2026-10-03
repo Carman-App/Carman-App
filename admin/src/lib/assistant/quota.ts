@@ -33,7 +33,8 @@ const monthKey = (s: QuotaSubject) => {
   return `ai:used:${s.subject}:${s.id}:${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-async function usedThisMonth(s: QuotaSubject): Promise<number> {
+/** Questions used so far this calendar month (UTC), for the console. */
+export async function usedThisMonth(s: QuotaSubject): Promise<number> {
   return Number((await getJson<number>(monthKey(s))) ?? 0);
 }
 
