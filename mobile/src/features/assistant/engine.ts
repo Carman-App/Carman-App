@@ -253,6 +253,6 @@ export function answer(question: string, ctx: AssistantContext): Answer {
 
 /** The suggestions shown above the composer on Home. */
 export function ownerSuggestions(vehicle?: Vehicle): string[] {
-  const name = vehicle?.model ?? 'the car';
-  return ['Fuel this month', 'When is insurance due', `What has the ${name} cost per km`, 'Service history', 'Reminders I have set'];
+  const perKm = vehicle?.model ? `What has the ${vehicle.model} cost per km` : 'What has the car cost per km';
+  return ['Fuel this month', 'When is insurance due', perKm, 'Service history', 'Reminders I have set'];
 }
