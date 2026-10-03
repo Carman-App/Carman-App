@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,16 +38,8 @@ import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
 export default function HomeScreen() {
   const account = useAccount().data;
   const garage = useActiveGarage().data;
-  const garagesQuery = useGarages();
-  const garages = garagesQuery.data ?? [];
+  const garages = useGarages().data ?? [];
 
-  // This phone remembers finishing set-up, but the account has no garage (its
-  // data was deleted, or a different account is in use): start set-up again.
-  useEffect(() => {
-    if (garagesQuery.isSuccess && garagesQuery.data.length === 0) {
-      void setUiState({ onboarded: false, activeGarageId: null, homeVehicleId: null }).then(() => router.replace('/onboarding/welcome'));
-    }
-  }, [garagesQuery.isSuccess, garagesQuery.data]);
   const vehicles = useVehicles(garage?.id).data ?? [];
   const members = useGarageMembers(garage?.id).data ?? [];
   const homeVehicleId = useUiState('homeVehicleId');

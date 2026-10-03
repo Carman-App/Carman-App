@@ -8,8 +8,8 @@ import { useFonts } from 'expo-font';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { router, Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { StatusBar } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StatusBar, StyleSheet, View } from 'react-native';
 
 import { setSignedOutHandler } from '@/data/api/client';
 import { loadSession, useSessionLoaded } from '@/data/auth/session';
@@ -50,22 +50,27 @@ function RootLayout() {
     setSignedOutHandler(() => router.replace('/onboarding/welcome'));
   }, []);
 
-  useEffect(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => {});
-  }, [ready]);
-
   // Every launch opens on Welcome, or on the unfinished set-up step with its
   // answers. Expo Go (and Android) reopen the app on the last screen's URL,
   // e.g. /record/add, which would otherwise skip both. "/" is handled by index.
+  // Until that redirect has happened the splash stays up and a blank cover
+  // hides the reopened screen, so it never flashes before Welcome.
   const pathname = usePathname();
+  const [routed, setRouted] = useState(launched);
   useEffect(() => {
     if (!ready || launched) return;
     launched = true;
-    if (pathname === '/') return;
     void launchTarget().then((target) => {
-      if (target !== pathname) router.replace(target);
+      // "/" is redirected by app/index.tsx itself.
+      if (pathname !== '/' && target !== pathname) router.replace(target);
+      // One frame for the new screen to render before uncovering.
+      setTimeout(() => setRouted(true), 50);
     });
   }, [ready, pathname]);
+
+  useEffect(() => {
+    if (ready && routed) SplashScreen.hideAsync().catch(() => {});
+  }, [ready, routed]);
 
   if (!ready) return null;
 
@@ -87,6 +92,7 @@ function RootLayout() {
         <Stack.Screen name="garages/[id]/invite" options={{ presentation: 'modal' }} />
         <Stack.Screen name="vehicle/add" options={{ presentation: 'modal' }} />
       </Stack>
+      {!routed ? <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} /> : null}
     </QueryClientProvider>
   );
 }

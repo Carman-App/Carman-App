@@ -1,30 +1,46 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { T } from '@/components/ui/Typography';
-import { useSignedIn } from '@/data/auth/session';
 import { useUiState } from '@/data/hooks';
-import { getUiState } from '@/data/uiState';
+import { api } from '@/data/api/client';
+import { getUiState, setUiState } from '@/data/uiState';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /**
  * Welcome, exactly as designed (screen 01): the promise, the three stripes
  * (Carma blue, signal red, yellow) and one Get started.
  * Get started leads into the set-up flow (Where are you based?), or Home if
- * this device is already set up. When nobody is signed in it first opens the
- * sign-in page (Continue with Apple / Google, ./sign-in.tsx).
+ * this device is already set up and the account still has a garage. The
+ * sign-in page (./sign-in.tsx) is kept for later and not linked yet.
  */
 export default function WelcomeScreen() {
-  const signedIn = useSignedIn();
   const mode = useUiState('mode');
   const home = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
-  const next = () => (getUiState().onboarded ? router.replace(home) : router.push('/onboarding/country'));
+  const [checking, setChecking] = useState(false);
 
-  // Not signed in: the sign-in page first (Continue with Apple / Google).
-  const getStarted = () => (signedIn ? next() : router.push('/onboarding/sign-in'));
+  // Set up on this phone before: go home, but only if the account still has a
+  // garage (its data may have been deleted since); otherwise set up again.
+  const next = async () => {
+    if (!getUiState().onboarded) return router.push('/onboarding/country');
+    if (mode !== 'mechanic') {
+      setChecking(true);
+      const garages = await api.get<unknown[]>('garages').catch(() => null);
+      setChecking(false);
+      if (garages && garages.length === 0) {
+        await setUiState({ onboarded: false, activeGarageId: null, homeVehicleId: null });
+        return router.push('/onboarding/country');
+      }
+    }
+    router.replace(home);
+  };
+
+  // Sign-in (./sign-in.tsx) is not part of the flow yet: Get started goes straight to set-up.
+  const getStarted = () => void next();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -45,7 +61,7 @@ export default function WelcomeScreen() {
         </View>
       </View>
       <View style={styles.foot}>
-        <Button onPress={getStarted}>Get started</Button>
+        <Button onPress={getStarted} loading={checking}>Get started</Button>
         <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
           7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
         </T>
