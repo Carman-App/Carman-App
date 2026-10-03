@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate",
     "dev": "next dev -p 4000 -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
@@ -15,6 +16,7 @@
     "seed:demo": "tsx prisma/seed.ts --demo",
     "db:wipe": "tsx scripts/wipe-data.ts",
     "test-accounts": "tsx scripts/test-accounts.ts",
+    "preworker": "prisma generate",
     "worker": "node --conditions=react-server --import tsx src/worker/index.ts"
   },
   "dependencies": {
