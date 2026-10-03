@@ -10,7 +10,13 @@ import { useOnboardingDraft } from '@/features/onboarding/context';
 import { COUNTRIES } from '@/features/onboarding/countries';
 import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
 import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
-import { REGION_UNITS } from '@/types/domain';
+import { REGION_UNITS, type Region } from '@/types/domain';
+
+/** "KES · KILOMETRES · LITRES", as the design lists each country. */
+function unitsLine(region: Region): string {
+  const u = REGION_UNITS[region];
+  return `${u.currency} · ${u.distance === 'km' ? 'KILOMETRES' : 'MILES'} · ${u.volume === 'L' ? 'LITRES' : 'GALLONS'}`;
+}
 
 /** Country. One pill opens a searchable sheet. The choice sets currency, distance and volume. */
 export default function CountryScreen() {
@@ -18,13 +24,12 @@ export default function CountryScreen() {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState(false);
   const country = COUNTRIES.find((c) => c.region === draft.region);
-  const units = REGION_UNITS[draft.region];
   const label = (c: (typeof COUNTRIES)[number]) => `${c.flag}  ${c.name}`;
 
   return (
     <OnboardingScreen
       backLabel="WELCOME"
-      step={{ step: 1, total: draft.profile === 'mechanic' ? 4 : 7 }}
+      step={{ step: 1, total: 6 }}
       title="Where are you based?"
       lede="Sets your currency and units."
       footer={
@@ -40,7 +45,7 @@ export default function CountryScreen() {
       </Pressable>
       {picked ? (
         <T variant="eyebrow" color={Colors.textFaint} style={styles.summary}>
-          {units.currency} · {units.distance === 'km' ? 'KILOMETRES' : 'MILES'} · {units.volume === 'L' ? 'LITRES' : 'GALLONS'}
+          {unitsLine(draft.region)}
         </T>
       ) : null}
       <View />
@@ -49,10 +54,12 @@ export default function CountryScreen() {
         title="Pick a country"
         searchPlaceholder="Country or currency"
         items={COUNTRIES.map(label)}
+        itemMeta={Object.fromEntries(COUNTRIES.map((c) => [label(c), unitsLine(c.region)]))}
+        emptyHint="TRY A CURRENCY CODE LIKE KES OR EUR."
         selected={country && picked ? label(country) : undefined}
         onSelect={(v) => {
           const c = COUNTRIES.find((x) => label(x) === v);
-          if (c) update({ region: c.region });
+          if (c) update({ region: c.region, unit: REGION_UNITS[c.region].distance === 'mi' ? 'mi' : 'km' });
           setPicked(true);
           setOpen(false);
         }}

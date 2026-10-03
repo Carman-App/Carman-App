@@ -81,6 +81,20 @@ enum Powertrain {
   DIESEL
   HYBRID
   ELECTRIC
+  PLUG_IN_HYBRID
+  OTHER
+}
+
+enum WorkshopTeamSize {
+  SOLO
+  HELPER
+  TEAM
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+  SEMI_AUTO
 }
 
 enum ExpenseCategory {
@@ -828,6 +842,9 @@ model Vehicle {
   photo            String?
   vin              String?
   powertrain       Powertrain?
+  transmission     Transmission?
+  // Trim or edition from set-up ("TX-L", "ABS"); free text, optional.
+  variant          String?
   nextServiceDueKm Int?
   color            String?
   createdAt        DateTime     @default(now())
@@ -1139,6 +1156,10 @@ model Workshop {
   id        String   @id @default(cuid())
   ownerId   String
   name      String
+  // From set-up ("What goes on your invoices?"): the town printed on
+  // invoices, and how the mechanic works (on their own, with a helper, a team).
+  town      String?
+  teamSize  WorkshopTeamSize?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

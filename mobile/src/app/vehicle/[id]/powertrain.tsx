@@ -16,7 +16,9 @@ const POWERTRAINS: { key: Powertrain; label: string; sub: string; glyph: string 
   { key: 'petrol', label: 'Petrol', sub: 'FUEL RECORDS · LITRES', glyph: 'fuel' },
   { key: 'diesel', label: 'Diesel', sub: 'FUEL RECORDS · LITRES', glyph: 'fuel' },
   { key: 'hybrid', label: 'Hybrid', sub: 'FUEL · LITRES', glyph: 'fuel' },
-  { key: 'electric', label: 'Electric', sub: 'CHARGING · KWH', glyph: 'odometer' },
+  { key: 'electric', label: 'Electric', sub: 'CHARGING · KWH', glyph: 'charging' },
+  { key: 'plug-in-hybrid', label: 'Plug-in Hybrid', sub: 'FUEL + CHARGING', glyph: 'charging' },
+  { key: 'other', label: 'Other', sub: 'NO FUEL TRACKING', glyph: 'other' },
 ];
 
 /** What powers the vehicle: decides whether records ask for litres or kWh. */

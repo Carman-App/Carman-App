@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
     const workshop = await prisma.workshop.create({
       data: {
         name: parsed.data.name,
+        town: parsed.data.town || undefined,
+        teamSize: parsed.data.teamSize,
         ownerId: account.id,
         members: {
           create: {

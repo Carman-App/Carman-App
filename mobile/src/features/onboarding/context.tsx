@@ -4,48 +4,54 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { clearProgress, isResumableStep, loadProgress, saveProgress } from '@/features/onboarding/progress';
 import { getUiState } from '@/data/uiState';
 
-import type { AccountProfile, Powertrain, Region, VehicleType, VehicleUsage } from '@/types/domain';
+import type { AccountProfile, Powertrain, Region, Transmission, VehicleType, VehicleUsage } from '@/types/domain';
 
 export type OnboardingDraft = {
   name: string;
   email: string;
   region: Region;
-  profile: AccountProfile;
+  /** Unset until chosen: the design never picks for the person. */
+  profile?: AccountProfile;
   garageName: string;
   garageLocation: string;
-  vehicleType: VehicleType;
-  usage: VehicleUsage;
+  vehicleType?: VehicleType;
+  usage?: VehicleUsage;
   make: string;
   model: string;
   variant: string;
-  year: number;
+  year?: number;
   powertrain?: Powertrain;
-  transmission?: 'automatic' | 'manual';
+  transmission?: Transmission;
   vin: string;
   odometerKm: number;
+  /** The odometer's unit on the first-reading screen (SWITCH KM / MI); saved in km. */
+  unit: 'km' | 'mi';
   vehicleId?: string;
   businessName: string;
   businessTown: string;
   teamSize?: 'solo' | 'helper' | 'team';
+  /** The workshop this set-up created, so going Back and on again updates it. */
+  workshopId?: string;
 };
 
 const DEFAULT_DRAFT: OnboardingDraft = {
   name: '',
   email: '',
   region: 'KE',
-  profile: 'owner',
+  profile: undefined,
   garageName: '',
   garageLocation: '',
-  vehicleType: 'car',
-  usage: 'daily',
+  vehicleType: undefined,
+  usage: undefined,
   make: '',
   model: '',
   variant: '',
-  year: new Date().getFullYear(),
+  year: undefined,
   powertrain: undefined,
   transmission: undefined,
   vin: '',
   odometerKm: 0,
+  unit: 'km',
   vehicleId: undefined,
   businessName: '',
   businessTown: '',

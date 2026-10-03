@@ -14,6 +14,11 @@ type ChipProps = {
   onPress?: () => void;
   selected?: boolean;
   glyph?: string;
+  /**
+   * The set-up screens' option chip (powertrain, transmission, "On my own"):
+   * outlined; once chosen soft blue with a blue outline and blue text.
+   */
+  outline?: boolean;
   /** Tracked uppercase label at 10px, as on "MONTH · YEAR · ALL TIME". */
   caps?: boolean;
   /** Compact (28px) badge size. */
@@ -22,10 +27,10 @@ type ChipProps = {
 };
 
 /** Pill used for filters, choice chips and status badges. */
-export function Chip({ label, value, fg, bg, onPress, selected, glyph, caps, small, style }: ChipProps) {
+export function Chip({ label, value, fg, bg, onPress, selected, glyph, outline, caps, small, style }: ChipProps) {
   const Wrapper = onPress ? Pressable : View;
   const isBadge = !!bg && !selected;
-  const ink = selected ? Colors.white : (fg ?? Colors.body);
+  const ink = outline ? (selected ? Colors.accent : Colors.slate) : selected ? Colors.white : (fg ?? Colors.body);
   return (
     <Wrapper
       onPress={onPress}
@@ -36,10 +41,10 @@ export function Chip({ label, value, fg, bg, onPress, selected, glyph, caps, sma
         small && styles.small,
         caps && styles.capsBox,
         isBadge ? { backgroundColor: bg, borderColor: 'transparent' } : null,
-        selected && styles.selected,
+        outline ? (selected ? styles.outlineOn : styles.outlineOff) : selected && styles.selected,
         style,
       ]}>
-      {glyph ? <IconGlyph glyph={glyph} size={20} bg="transparent" fg={selected ? Colors.white : Colors.accent} scale={0.85} /> : null}
+      {glyph ? <IconGlyph glyph={glyph} size={20} bg="transparent" fg={selected && !outline ? Colors.white : Colors.accent} scale={0.85} /> : null}
       <T
         numberOfLines={1}
         color={ink}
@@ -109,6 +114,14 @@ export function StatPill({ label, children }: StatPillProps) {
 }
 
 const styles = StyleSheet.create({
+  outlineOff: {
+    borderColor: 'rgba(19,75,156,0.16)',
+    backgroundColor: Colors.white,
+  },
+  outlineOn: {
+    borderColor: 'rgba(19,75,156,0.55)',
+    backgroundColor: Colors.accentSoft,
+  },
   base: {
     minHeight: 40,
     paddingHorizontal: Spacing.md,

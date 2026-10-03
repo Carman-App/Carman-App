@@ -16,24 +16,40 @@ type ChoiceRowProps = {
   multi?: boolean;
   /** Tracked uppercase subtitle. */
   subCaps?: boolean;
+  /** A second, smaller icon in the tile (design: "Both" shows the car and the wrench). */
+  glyph2?: string;
 };
 
 /**
- * Full-bleed choice row: soft tile, title + muted sub, radio on the right.
- * The onboarding pickers ("Personal: I own vehicles", "Car", "Daily driver").
+ * Full-bleed choice row, as in the design's set-up pickers ("Personal: I own
+ * vehicles", "Car", "Daily driver"): a 44px tile (soft blue, or solid blue
+ * with a white icon once chosen), title + note, radio on the right.
  */
-export function ChoiceRow({ title, sub, glyph, selected, onPress, hue, tint, multi, subCaps }: ChoiceRowProps) {
+export function ChoiceRow({ title, sub, glyph, glyph2, selected, onPress, hue, tint, multi, subCaps }: ChoiceRowProps) {
+  const tileBg = selected ? (hue ?? Colors.accent) : (tint ?? Colors.accentSoft);
+  const iconFg = selected ? Colors.white : (hue ?? Colors.accent);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole={multi ? 'checkbox' : 'radio'}
       accessibilityState={{ checked: !!selected }}
-      style={({ pressed }) => [styles.row, selected && styles.rowOn, pressed && { opacity: 0.85 }]}>
-      <IconGlyph glyph={glyph ?? 'vehicle'} size={36} shape="tile" bg={selected ? Colors.white : (tint ?? Colors.accentSoft)} fg={hue ?? Colors.accent} />
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
+      {glyph2 ? (
+        <View style={[styles.tile, { backgroundColor: tileBg }]}>
+          <View style={styles.dualTop}>
+            <IconGlyph glyph={glyph ?? 'vehicle'} size={26} bg="transparent" fg={iconFg} scale={0.66} />
+          </View>
+          <View style={styles.dualBottom}>
+            <IconGlyph glyph={glyph2} size={22} bg="transparent" fg={iconFg} scale={0.68} />
+          </View>
+        </View>
+      ) : (
+        <IconGlyph glyph={glyph ?? 'vehicle'} size={44} shape="tile" bg={tileBg} fg={iconFg} />
+      )}
       <View style={styles.text}>
         <T variant="bodyStrong">{title}</T>
         {sub ? (
-          <T variant={subCaps ? 'eyebrow' : 'meta'} color={subCaps ? Colors.slate : Colors.textFaint}>
+          <T variant={subCaps ? 'eyebrow' : 'meta'} color={subCaps ? Colors.slate : selected ? Colors.slate : Colors.textFaint}>
             {sub}
           </T>
         ) : null}
@@ -55,19 +71,31 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.line,
   },
-  rowOn: {
-    backgroundColor: Colors.accentSoft,
+  tile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dualTop: {
+    transform: [{ translateY: -4 }],
+    marginRight: -5,
+  },
+  dualBottom: {
+    transform: [{ translateY: 5 }],
   },
   text: {
     flex: 1,
     gap: 6,
   },
   mark: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: Colors.chipStrong,
+    borderColor: 'rgba(19,75,156,0.24)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -79,9 +107,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
     backgroundColor: Colors.accent,
   },
 });

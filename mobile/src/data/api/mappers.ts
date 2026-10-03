@@ -48,6 +48,7 @@ import type {
   Modification,
   PartLine,
   Powertrain,
+  Transmission,
   ProjectBuild,
   Region,
   Reminder,
@@ -172,7 +173,14 @@ const POWERTRAIN: Record<string, Powertrain> = {
   DIESEL: 'diesel',
   HYBRID: 'hybrid',
   ELECTRIC: 'electric',
+  PLUG_IN_HYBRID: 'plug-in-hybrid',
+  OTHER: 'other',
 };
+
+const TRANSMISSION: Record<string, Transmission> = { MANUAL: 'manual', AUTOMATIC: 'automatic', SEMI_AUTO: 'semi-auto' };
+
+/** 'plug-in-hybrid' → 'PLUG_IN_HYBRID', 'semi-auto' → 'SEMI_AUTO': the server's enum spelling. */
+export const toApiEnum = (v: string | undefined) => (v ? v.toUpperCase().replace(/-/g, '_') : undefined);
 
 export type RawVehicle = {
   id: string;
@@ -187,6 +195,8 @@ export type RawVehicle = {
   photo: string | null;
   vin: string | null;
   powertrain: string | null;
+  transmission?: string | null;
+  variant?: string | null;
   nextServiceDueKm: number | null;
   color: string | null;
   createdAt: string;
@@ -198,8 +208,7 @@ export function toVehicle(raw: RawVehicle): Vehicle {
     garageId: raw.garageId,
     make: raw.make,
     model: raw.model,
-    // Not a real column server-side — see module doc. Never round-trips.
-    variant: undefined,
+    variant: raw.variant ?? undefined,
     year: raw.year,
     type: VEHICLE_TYPE[raw.type] ?? 'car',
     usage: VEHICLE_USAGE[raw.usage] ?? 'daily',
@@ -208,6 +217,7 @@ export function toVehicle(raw: RawVehicle): Vehicle {
     photo: raw.photo ?? undefined,
     vin: raw.vin ?? undefined,
     powertrain: raw.powertrain ? POWERTRAIN[raw.powertrain] : undefined,
+    transmission: raw.transmission ? TRANSMISSION[raw.transmission] : undefined,
     nextServiceDueKm: raw.nextServiceDueKm ?? undefined,
     color: raw.color ?? undefined,
     createdAt: toDateOnly(raw.createdAt) ?? raw.createdAt,

@@ -6,7 +6,7 @@ import { Footnote } from '@/components/ui/Blocks';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { FieldRow, TextField } from '@/components/ui/TextField';
+import { FieldInput, FieldRow } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { completeWorkshopOnboarding } from '@/data/repo';
 import { useOnboardingDraft } from '@/features/onboarding/context';
@@ -20,14 +20,24 @@ export default function WorkshopSetupScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const country = COUNTRIES.find((c) => c.region === draft.region);
-  const ok = draft.businessName.trim().length > 1;
+  // Design: Create the profile once the business is named and "How you work" is chosen.
+  const ok = draft.businessName.trim().length > 1 && !!draft.teamSize;
 
   const create = async () => {
     setSaving(true);
     setError(null);
     try {
-      await completeWorkshopOnboarding({ region: draft.region, name: draft.name, businessName: draft.businessName });
-      router.replace('/onboarding/first-job');
+      const workshop = await completeWorkshopOnboarding({
+        region: draft.region,
+        name: draft.name,
+        businessName: draft.businessName,
+        town: draft.businessTown,
+        teamSize: draft.teamSize,
+        workshopId: draft.workshopId,
+      });
+      update({ workshopId: workshop.id });
+      setSaving(false);
+      router.push('/onboarding/first-job');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
       setSaving(false);
@@ -36,7 +46,8 @@ export default function WorkshopSetupScreen() {
 
   return (
     <OnboardingScreen
-      step={{ step: 3, total: 4 }}
+      backLabel="BACK"
+      step={{ step: 1, total: 2, label: 'WORKSHOP' }}
       title="What goes on your invoices?"
       lede="Name, country and town. No logo, bank details or tax form."
       bleed
@@ -54,15 +65,15 @@ export default function WorkshopSetupScreen() {
       }>
       <SectionHeader title="BUSINESS" rule inset />
       <View style={styles.fields}>
-        <TextField value={draft.businessName} onChangeText={(v) => update({ businessName: v })} placeholder="Business name, e.g. Joe’s Auto" autoCapitalize="words" />
-        <FieldRow label="Country" value={country?.name} caret={false} />
-        <TextField value={draft.businessTown} onChangeText={(v) => update({ businessTown: v })} placeholder="Town" autoCapitalize="words" />
+        <FieldInput label="Business" value={draft.businessName} onChangeText={(v) => update({ businessName: v })} placeholder="e.g. Joe’s Auto" />
+        <FieldRow label="Country" value={country?.name} caret={false} valueColor={Colors.body} />
+        <FieldInput label="Town" value={draft.businessTown} onChangeText={(v) => update({ businessTown: v })} placeholder="e.g. Nairobi" />
       </View>
       <SectionHeader title="HOW YOU WORK" rule inset />
       <View style={styles.chips}>
-        <Chip label="On my own" selected={draft.teamSize === 'solo'} onPress={() => update({ teamSize: 'solo' })} />
-        <Chip label="With a helper" selected={draft.teamSize === 'helper'} onPress={() => update({ teamSize: 'helper' })} />
-        <Chip label="A workshop team" selected={draft.teamSize === 'team'} onPress={() => update({ teamSize: 'team' })} />
+        <Chip outline label="On my own" selected={draft.teamSize === 'solo'} onPress={() => update({ teamSize: 'solo' })} />
+        <Chip outline label="With a helper" selected={draft.teamSize === 'helper'} onPress={() => update({ teamSize: 'helper' })} />
+        <Chip outline label="A workshop team" selected={draft.teamSize === 'team'} onPress={() => update({ teamSize: 'team' })} />
       </View>
       <View style={styles.note}>
         <Footnote>EVERY JOB RECORDS WHO DID THE WORK, SO A HELPER OR A TEAM CAN BE ADDED WITHOUT RESTARTING SET UP.</Footnote>

@@ -6,7 +6,7 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { handleApiError, NotFoundError } from "@/lib/api/errors";
 import { updateVehicleSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
-import type { Powertrain, VehicleType, VehicleUsage } from "@/generated/prisma/enums";
+import type { Powertrain, Transmission, VehicleType, VehicleUsage } from "@/generated/prisma/enums";
 
 // GET /api/v1/vehicles/:id
 // Chain: auth -> account -> membership/ownership -> resource.
@@ -59,6 +59,7 @@ export async function PATCH(
         type: data.type as VehicleType | undefined,
         usage: data.usage as VehicleUsage | undefined,
         powertrain: data.powertrain as Powertrain | undefined,
+        transmission: data.transmission as Transmission | undefined,
       },
     });
 

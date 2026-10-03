@@ -87,13 +87,49 @@ type FieldRowProps = {
   caret?: boolean;
   disabled?: boolean;
   valueColor?: string;
+  caretColor?: string;
 };
 
 /**
  * Pill with a tracked key on the left and the value on the right, e.g.
  * "MAKE ............ Toyota ▾". Used for pickers and read-only summaries.
  */
-export function FieldRow({ label, value, placeholder = 'Select', onPress, caret = true, disabled, valueColor }: FieldRowProps) {
+/**
+ * Editable version of FieldRow: tracked label on the left, typed value on the
+ * right (design: VARIANT "TX-L · optional", BUSINESS "Joe's Auto", TOWN).
+ */
+export function FieldInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  autoCapitalize = 'words',
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={[styles.row, focused && styles.focused]}>
+      <T style={styles.rowKey}>{label}</T>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={Colors.slate}
+        autoCapitalize={autoCapitalize}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={[styles.input, styles.inputRight]}
+      />
+    </View>
+  );
+}
+
+export function FieldRow({ label, value, placeholder = 'Select', onPress, caret = true, disabled, valueColor, caretColor }: FieldRowProps) {
   const has = !!value;
   return (
     <Pressable
@@ -105,7 +141,7 @@ export function FieldRow({ label, value, placeholder = 'Select', onPress, caret 
         <T numberOfLines={1} style={[styles.rowValueText, { color: valueColor ?? (has ? Colors.accent : Colors.textMuted) }]}>
           {has ? value : placeholder}
         </T>
-        {caret && onPress ? <View style={[styles.caret, { borderTopColor: has ? Colors.accent : Colors.textFaint }]} /> : null}
+        {caret && onPress ? <View style={[styles.caret, { borderTopColor: caretColor ?? (has ? Colors.accent : Colors.textFaint) }]} /> : null}
       </View>
     </Pressable>
   );
@@ -146,6 +182,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.15,
     color: Colors.body,
     paddingVertical: 12,
+  },
+  inputRight: {
+    textAlign: 'right',
+    fontSize: 14,
+    minWidth: 0,
+    paddingHorizontal: 0,
   },
   inputMultiline: {
     minHeight: 72,

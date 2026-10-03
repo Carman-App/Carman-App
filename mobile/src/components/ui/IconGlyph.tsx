@@ -13,7 +13,6 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react-native';
 import Add01Icon from '@hugeicons/core-free-icons/Add01Icon';
 import ArrowDown01Icon from '@hugeicons/core-free-icons/ArrowDown01Icon';
 import ArrowLeft02Icon from '@hugeicons/core-free-icons/ArrowLeft02Icon';
-import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
 import ArrowUp01Icon from '@hugeicons/core-free-icons/ArrowUp01Icon';
 import ArrowUpRight01Icon from '@hugeicons/core-free-icons/ArrowUpRight01Icon';
 import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon';
@@ -41,6 +40,10 @@ import Upload01Icon from '@hugeicons/core-free-icons/Upload01Icon';
 import UserAdd01Icon from '@hugeicons/core-free-icons/UserAdd01Icon';
 import UserMultipleIcon from '@hugeicons/core-free-icons/UserMultipleIcon';
 import UserIcon from '@hugeicons/core-free-icons/UserIcon';
+import Road01Icon from '@hugeicons/core-free-icons/Road01Icon';
+import BatteryCharging01Icon from '@hugeicons/core-free-icons/BatteryCharging01Icon';
+import Motorbike02Icon from '@hugeicons/core-free-icons/Motorbike02Icon';
+import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
 import UserSwitchIcon from '@hugeicons/core-free-icons/UserSwitchIcon';
 import WifiOff01Icon from '@hugeicons/core-free-icons/WifiOff01Icon';
 import Alert02Icon from '@hugeicons/core-free-icons/Alert02Icon';
@@ -170,6 +173,11 @@ const ICONS: Record<string, IconSvgElement> = {
   'user-add': UserAdd01Icon,
   members: UserMultipleIcon,
   person: UserIcon,
+  // Set-up (design: hgi-road-01, hgi-battery-charging-01, hgi-motorbike-02, hgi-arrow-right-01).
+  road: Road01Icon,
+  charging: BatteryCharging01Icon,
+  motorbike: Motorbike02Icon,
+  'arrow-right': ArrowRight01Icon,
   'switch-profile': UserSwitchIcon,
   offline: WifiOff01Icon,
 };

@@ -9,11 +9,12 @@ import { useOnboardingDraft } from '@/features/onboarding/context';
 import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
 import { Colors, FontFamily, Spacing } from '@/theme/tokens';
 
+// Design (screen "First job"): rows open the job board, the third a new job.
 const STEPS = [
-  { title: 'Add a customer', body: 'A name and a phone number is enough to start.' },
-  { title: 'Add their vehicle', body: 'Registration, make and model. The owner can connect it to their own garage later.' },
-  { title: 'Open the first job', body: 'Reported problem, estimate, then the invoice when the work is done.' },
-];
+  { title: 'Add a customer', body: 'A name and a phone number is enough to start.', href: '/mechanic/add-customer' },
+  { title: 'Add their vehicle', body: 'Registration, make and model. The owner can connect it to their own garage later.', href: '/mechanic/job-board' },
+  { title: 'Open the first job', body: 'Reported problem, estimate, then the invoice when the work is done.', href: '/mechanic/new-job' },
+] as const;
 
 /** First job: the activation path stays visible without blocking entry to the app. */
 export default function FirstJobScreen() {
@@ -23,30 +24,29 @@ export default function FirstJobScreen() {
 
   return (
     <OnboardingScreen
-      hideBack
-      step={{ step: 4, total: 4 }}
+      backLabel="BACK"
+      step={{ step: 2, total: 2, label: 'WORKSHOP' }}
       title={`${name} is open`}
       lede="Three steps put the first job on the board. None of them block you."
       bleed
       footer={
         <>
-          <Button onPress={() => router.replace('/mechanic/new-job')}>Open the workshop</Button>
-          {draft.profile === 'both' ? (
-            <Pressable
-              hitSlop={8}
-              onPress={async () => {
-                await setUiState({ mode: 'owner' });
-                router.replace('/home');
-              }}>
-              <T variant="meta" center>
-                Back to my own garage
-              </T>
-            </Pressable>
-          ) : null}
+          <Button onPress={() => router.replace('/mechanic/dashboard')}>Open the workshop</Button>
+          <Pressable
+            hitSlop={8}
+            onPress={async () => {
+              await setUiState({ mode: 'owner' });
+              // A mechanic-only account has no garage yet: start one.
+              router.replace(draft.profile === 'both' ? '/home' : '/garages/add');
+            }}>
+            <T variant="meta" color={Colors.textFaint} center>
+              Back to my own garage
+            </T>
+          </Pressable>
         </>
       }>
       {STEPS.map((s, i) => (
-        <View key={s.title} style={styles.row}>
+        <Pressable key={s.title} onPress={() => router.push(s.href)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.accentSoft }]}>
           <View style={[styles.num, i === 0 && styles.numOn]}>
             <T style={[styles.numText, i === 0 && { color: Colors.white }]}>{i + 1}</T>
           </View>
@@ -59,7 +59,7 @@ export default function FirstJobScreen() {
           <T variant="eyebrow" color={i === 0 ? Colors.positive : Colors.textFaint}>
             {i === 0 ? 'READY' : 'NEXT'}
           </T>
-        </View>
+        </Pressable>
       ))}
     </OnboardingScreen>
   );

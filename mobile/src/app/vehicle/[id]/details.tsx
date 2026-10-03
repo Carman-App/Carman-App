@@ -11,7 +11,7 @@ import { useVehicle } from '@/data/hooks';
 import { formatNumber, formatPlate } from '@/lib/format';
 import { Colors, Spacing } from '@/theme/tokens';
 
-const POWERTRAIN_LABEL: Record<string, string> = { petrol: 'Petrol', diesel: 'Diesel', hybrid: 'Hybrid', electric: 'Electric' };
+const POWERTRAIN_LABEL: Record<string, string> = { petrol: 'Petrol', diesel: 'Diesel', hybrid: 'Hybrid', electric: 'Electric', 'plug-in-hybrid': 'Plug-in Hybrid', other: 'Other' };
 
 /** Vehicle details: identity first, then the optional fields that sharpen cost per km and service intervals. */
 export default function VehicleDetailsScreen() {

@@ -169,7 +169,9 @@ export const USAGE_LABEL: Record<VehicleUsage, string> = {
   commercial: 'COMMERCIAL',
 };
 
-export type Powertrain = 'petrol' | 'diesel' | 'hybrid' | 'electric';
+export type Powertrain = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'plug-in-hybrid' | 'other';
+
+export type Transmission = 'manual' | 'automatic' | 'semi-auto';
 
 export type Vehicle = {
   id: string;
@@ -187,6 +189,7 @@ export type Vehicle = {
   photo?: string;
   vin?: string;
   powertrain?: Powertrain;
+  transmission?: Transmission;
   nextServiceDueKm?: number;
   color?: string;
   /** ISO date the vehicle was added to Carma. Set once, at creation, in completeOnboarding/addVehicle. */

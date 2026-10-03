@@ -28,6 +28,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     'expo-apple-authentication',
     'expo-secure-store',
     ['expo-image-picker', { cameraPermission: 'Carma uses the camera to photograph your vehicle documents and receipts.', photosPermission: false }],
+    // Scan VIN: reads the barcode on the VIN sticker. No microphone.
+    ['expo-camera', { cameraPermission: 'Carma uses the camera to photograph your vehicle documents and receipts, and to read the barcode on the VIN sticker.', recordAudioAndroid: false }],
     // Push notifications (src/features/notifications/push.ts). Android
     // delivery also needs the Firebase file (GOOGLE_SERVICES_JSON below).
     ['expo-notifications', { color: '#134B9C' }],

@@ -27,6 +27,7 @@ import {
   toOdometerRecord,
   toReminder,
   toServiceOrRepairRecord,
+  toApiEnum,
   toVehicle,
   type RawAccount,
   type RawDocument,
@@ -52,6 +53,7 @@ import type {
   Modification,
   PartLine,
   Powertrain,
+  Transmission,
   ProjectBuild,
   Region,
   Reminder,
@@ -92,6 +94,7 @@ export type OnboardingPayload = {
     year: number;
     odometerKm: number;
     powertrain?: Powertrain;
+    transmission?: Transmission;
     vin?: string;
   };
 };
@@ -140,7 +143,9 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
     // Not collected at onboarding (prototype screen 07 has no plate field) but required server-side — see module doc.
     plate: 'UNASSIGNED',
     odometerKm: payload.vehicle.odometerKm,
-    powertrain: payload.vehicle.powertrain?.toUpperCase(),
+    powertrain: toApiEnum(payload.vehicle.powertrain),
+    transmission: toApiEnum(payload.vehicle.transmission),
+    variant: payload.vehicle.variant?.trim() || undefined,
     vin: payload.vehicle.vin?.trim() || undefined,
   });
 
@@ -163,9 +168,20 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
  * mechanic side. An owner who also fixes cars runs this after the owner
  * set up, so their garage is kept.
  */
-export async function completeWorkshopOnboarding(input: { region: Region; name: string; businessName: string }): Promise<{ id: string; name: string }> {
+export async function completeWorkshopOnboarding(input: {
+  region: Region;
+  name: string;
+  businessName: string;
+  town?: string;
+  teamSize?: 'solo' | 'helper' | 'team';
+  /** Set when this set-up already created the workshop (the person went Back): update it instead. */
+  workshopId?: string;
+}): Promise<{ id: string; name: string }> {
   await api.patch<RawAccount>('account', { region: input.region, name: input.name.trim() || undefined });
-  const workshop = await api.post<{ id: string; name: string }>('workshops', { name: input.businessName.trim() });
+  const body = { name: input.businessName.trim(), town: input.town?.trim() || undefined, teamSize: input.teamSize?.toUpperCase() };
+  const workshop = input.workshopId
+    ? await api.patch<{ id: string; name: string }>(`workshops/${input.workshopId}`, body)
+    : await api.post<{ id: string; name: string }>('workshops', body);
   const garages = await api.get<RawGarage[]>('garages').catch(() => [] as RawGarage[]);
   await setUiState({ onboarded: true, mode: 'mechanic', activeWorkshopId: workshop.id, activeGarageId: garages[0]?.id ?? null });
   await clearProgress();
@@ -310,7 +326,7 @@ export async function addVehicle(input: Omit<Vehicle, 'id'>): Promise<Vehicle> {
     odometerKm: input.odometerKm,
     photo: input.photo,
     vin: input.vin,
-    powertrain: input.powertrain?.toUpperCase(),
+    powertrain: toApiEnum(input.powertrain),
     nextServiceDueKm: input.nextServiceDueKm,
     color: input.color,
   });
@@ -329,7 +345,7 @@ export async function updateVehicle(vehicleId: string, patch: Partial<Vehicle>):
     odometerKm: patch.odometerKm,
     photo: patch.photo,
     vin: patch.vin,
-    powertrain: patch.powertrain?.toUpperCase(),
+    powertrain: toApiEnum(patch.powertrain),
     nextServiceDueKm: patch.nextServiceDueKm,
     color: patch.color,
   });

@@ -6,6 +6,7 @@ import {
   VehicleType,
   VehicleUsage,
   Powertrain,
+  Transmission,
   BuildStageStatus,
   EstimateDecisionType,
   ReportScope,
@@ -60,6 +61,8 @@ export const createVehicleSchema = z.object({
   photo: z.string().trim().max(2000).optional(),
   vin: z.string().trim().max(50).optional(),
   powertrain: z.enum(enumValues(Powertrain)).optional(),
+  transmission: z.enum(enumValues(Transmission)).optional(),
+  variant: z.string().trim().max(100).optional(),
   nextServiceDueKm: z.number().int().nonnegative().optional(),
   color: z.string().trim().max(50).optional(),
 });
@@ -244,7 +247,13 @@ export const updateAccountSchema = z
 
 export const createWorkshopSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  town: z.string().trim().max(120).optional(),
+  teamSize: z.enum(["SOLO", "HELPER", "TEAM"]).optional(),
 });
+
+export const updateWorkshopSchema = createWorkshopSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, { message: "No fields to update." });
 
 export const createWorkshopCustomerSchema = z.object({
   name: z.string().trim().min(1).max(200),

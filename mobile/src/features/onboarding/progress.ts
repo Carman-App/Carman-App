@@ -16,7 +16,7 @@ export type OnboardingProgress = { step: string; draft: OnboardingDraft; savedAt
 
 /** Steps worth resuming: everything after Welcome and before the finish screens. */
 export function isResumableStep(path: string): boolean {
-  return path.startsWith('/onboarding/') && !['/onboarding/welcome', '/onboarding/sign-in', '/onboarding/vehicle-added', '/onboarding/first-job'].includes(path);
+  return path.startsWith('/onboarding/') && !['/onboarding/welcome', '/onboarding/sign-in', '/onboarding/vin-scan', '/onboarding/vehicle-added', '/onboarding/first-job'].includes(path);
 }
 
 export async function loadProgress(): Promise<OnboardingProgress | null> {

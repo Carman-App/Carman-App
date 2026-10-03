@@ -38,6 +38,10 @@ type PickerSheetProps = {
   searchPlaceholder?: string;
   /** Offer "Use “typed text”" when what was typed is not in the list (makes and models). */
   allowCustom?: boolean;
+  /** A tracked line under each item ("KES · KILOMETRES · LITRES"); also searched. */
+  itemMeta?: Record<string, string>;
+  /** Shown under "NOTHING MATCHES …" when the filter finds nothing. */
+  emptyHint?: string;
 };
 
 export function PickerSheet({
@@ -50,13 +54,15 @@ export function PickerSheet({
   onClose,
   searchPlaceholder = 'Type to filter',
   allowCustom = false,
+  itemMeta,
+  emptyHint,
 }: PickerSheetProps) {
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? items.filter((item) => item.toLowerCase().includes(q)) : items;
-  }, [items, query]);
+    return q ? items.filter((item) => `${item} ${itemMeta?.[item] ?? ''}`.toLowerCase().includes(q)) : items;
+  }, [items, itemMeta, query]);
 
   const typed = query.trim().replace(/\s+/g, ' ');
   const showCustom = allowCustom && typed.length > 0 && !items.some((i) => i.toLowerCase() === typed.toLowerCase());
@@ -123,17 +129,28 @@ export function PickerSheet({
               const active = item === selected;
               return (
                 <Pressable style={styles.row} onPress={() => handlePick(item)}>
-                  <T variant="bodyStrong" color={active ? Colors.accent : Colors.body} style={styles.rowLabel}>
-                    {item}
-                  </T>
+                  <View style={styles.rowLabel}>
+                    <T variant="bodyStrong" color={active ? Colors.accent : Colors.body}>
+                      {item}
+                    </T>
+                    {itemMeta?.[item] ? (
+                      <T variant="eyebrow" color={active ? Colors.accent : Colors.textFaint}>
+                        {itemMeta[item]}
+                      </T>
+                    ) : null}
+                  </View>
                   {active ? <HugeiconsIcon icon={Tick02Icon} size={18} color={Colors.accent} /> : null}
                 </Pressable>
               );
             }}
             ListEmptyComponent={
               showCustom ? null : (
-                <T variant="body" color={Colors.textMuted} style={styles.empty}>
-                  {allowCustom && items.length === 0 ? 'Type the name above.' : 'No matches.'}
+                <T variant={emptyHint ? 'eyebrow' : 'body'} color={Colors.textMuted} style={styles.empty}>
+                  {allowCustom && items.length === 0
+                    ? 'Type the name above.'
+                    : emptyHint
+                      ? `NOTHING MATCHES ${query.trim().toUpperCase()}.\n${emptyHint}`
+                      : 'No matches.'}
                 </T>
               )
             }

@@ -8,7 +8,7 @@ import { parsePagination } from "@/lib/api/pagination";
 import { createVehicleSchema } from "@/lib/api/schemas";
 import { assertCanCreateVehicle } from "@/lib/limits";
 import { writeAuditLog } from "@/lib/audit";
-import type { Powertrain, VehicleType, VehicleUsage } from "@/generated/prisma/enums";
+import type { Powertrain, Transmission, VehicleType, VehicleUsage } from "@/generated/prisma/enums";
 
 // GET /api/v1/vehicles?garageId=... — vehicles in a garage the caller
 // belongs to, paginated. NOTE: added alongside the mobile integration pass
@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
         photo: input.photo,
         vin: input.vin,
         powertrain: input.powertrain as Powertrain | undefined,
+        transmission: input.transmission as Transmission | undefined,
+        variant: input.variant || undefined,
         nextServiceDueKm: input.nextServiceDueKm,
         color: input.color,
       },
