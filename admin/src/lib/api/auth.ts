@@ -2,6 +2,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { ProfileType } from "@/generated/prisma/enums";
 import { verifyAccessToken } from "@/lib/auth/end-user";
 import { recordActivity } from "@/lib/activity";
 import { clientIp, enforceLimit, enforceLimits, LIMITS } from "@/lib/rate-limit";
@@ -27,19 +28,44 @@ export function devAccountHeaderAllowed(): boolean {
   return process.env.NODE_ENV === "development" && process.env.ALLOW_DEV_ACCOUNT_HEADER !== "false";
 }
 
-async function resolveAccountId(req: NextRequest): Promise<string | null> {
+async function resolveAccountId(req: NextRequest): Promise<{ id: string; dev: boolean } | null> {
   const auth = req.headers.get("authorization");
   if (auth?.toLowerCase().startsWith("bearer ")) {
-    return verifyAccessToken(auth.slice(7).trim());
+    const id = await verifyAccessToken(auth.slice(7).trim());
+    return id ? { id, dev: false } : null;
   }
-  if (devAccountHeaderAllowed()) return req.headers.get("x-carma-account-id");
+  if (devAccountHeaderAllowed()) {
+    const id = req.headers.get("x-carma-account-id");
+    return id ? { id, dev: true } : null;
+  }
   return null;
 }
 
+/**
+ * Development only: the app's test account (DEV_ACCOUNT_ID) is created empty
+ * the first time it is used, so a fresh or wiped database works without
+ * demo data. Set-up in the app then fills in the name, country and garage.
+ */
+async function provisionDevAccount(id: string): Promise<RequestAccount | null> {
+  if (id !== (process.env.DEV_ACCOUNT_ID || "00000000-0000-4000-8000-000000000001")) return null;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data: { email: `dev-${id}@users.carma.invalid`, name: "" } });
+      await tx.account.create({ data: { id, userId: user.id } });
+      await tx.accountProfile.create({ data: { accountId: id, type: ProfileType.OWNER, isActive: true } });
+      return tx.account.findUniqueOrThrow({ where: { id }, include: { user: true } });
+    });
+  } catch {
+    // Two first requests raced: the other one created it.
+    return prisma.account.findUnique({ where: { id }, include: { user: true } });
+  }
+}
+
 export async function getRequestAccount(req: NextRequest): Promise<RequestAccount | null> {
-  const accountId = await resolveAccountId(req);
-  if (!accountId) return null;
-  const account = await prisma.account.findUnique({ where: { id: accountId }, include: { user: true } });
+  const resolved = await resolveAccountId(req);
+  if (!resolved) return null;
+  let account = await prisma.account.findUnique({ where: { id: resolved.id }, include: { user: true } });
+  if (!account && resolved.dev) account = await provisionDevAccount(resolved.id);
   if (account) recordActivity(account.id);
   return account;
 }

@@ -10,7 +10,7 @@
  *   2. writes DATABASE_URL (transaction pooler, port 6543) and
  *      DIRECT_DATABASE_URL (session pooler, port 5432) into admin/.env,
  *      keeping a .bak copy,
- *   3. runs the migrations and loads the plans and demo data,
+ *   3. runs the migrations and loads the plans and settings (no demo data),
  *   4. optionally sets up file storage on Supabase Storage (S3 keys from
  *      Storage → S3 Connection) and creates the private bucket.
  * Safe to run again.
@@ -127,7 +127,7 @@ async function main() {
   const run = (args) => spawnSync(process.platform === "win32" ? "npx.cmd" : "npx", args, { cwd: admin, stdio: "inherit", shell: process.platform === "win32" });
   console.log("\nRunning migrations…");
   if (run(["prisma", "migrate", "deploy"]).status !== 0) process.exit(1);
-  console.log("Loading the plans and demo account…");
+  console.log("Loading the plans and settings…");
   if (run(["tsx", "prisma/seed.ts"]).status !== 0) process.exit(1);
 
   if (keyId && keySecret) {

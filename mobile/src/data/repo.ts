@@ -97,30 +97,25 @@ export type OnboardingPayload = {
 };
 
 /**
- * There is no `POST /api/v1/account` — no real end-user auth yet, so there's
- * no way to create a brand-new account from nothing (see AGENTS.md's
- * Identity section). Onboarding instead becomes "first-time setup of the
- * pre-provisioned dev account" (admin/prisma/seed.ts): it updates that
- * account's region/name, updates the one seeded garage's name/location, and
- * creates the vehicle the user just described against that garage — all
- * under the fixed `x-carma-account-id` identity from `getCurrentAccountId()`.
+ * Finishes owner set-up for the signed-in account (or the development test
+ * account): saves the name and country, uses the account's first garage or
+ * creates one, and adds the vehicle just described.
  *
- * Two real API gaps surface here (see mappers.ts's module doc for the rest):
- * - `plate` is required server-side but never collected during onboarding —
- *   sent as a placeholder until the user sets a real one from Vehicle Details.
- * - Switching the active profile to MECHANIC would 422: the seeded account
- *   only has an OWNER `AccountProfile` row, and there's no endpoint to
- *   create an additional profile of a different type. Onboarding only
- *   forwards the profile switch when it's a no-op (staying OWNER).
+ * - `plate` is required server-side but not collected during set-up; a
+ *   placeholder is sent until it is set from Vehicle Details.
+ * - Only the OWNER profile is switched to here; the mechanic side has its
+ *   own set-up (completeWorkshopOnboarding).
  */
 export async function completeOnboarding(payload: OnboardingPayload): Promise<Vehicle> {
   const garages = await api.get<RawGarage[]>('garages');
-  const garage = garages[0];
-  if (!garage) {
-    throw new Error(
-      'No garage exists for this dev account yet. Run `npm run seed` from admin/ to provision one (see admin/prisma/seed.ts).'
-    );
-  }
+  const name = payload.garageName.trim();
+  const location = payload.garageLocation.trim();
+  const garage =
+    garages[0] ??
+    (await api.post<RawGarage>('garages', {
+      name: name || (payload.name.trim() ? `${payload.name.trim().split(' ')[0]}'s garage` : 'My garage'),
+      location: location || 'Not set',
+    }));
 
   await api.patch<RawAccount>('account', {
     region: payload.region,
@@ -128,10 +123,10 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Ve
     activeProfileType: payload.profile === 'mechanic' ? undefined : 'OWNER',
   });
 
-  if (payload.garageName.trim() || payload.garageLocation.trim()) {
+  if (garages[0] && (name || location)) {
     await api.patch<RawGarage>(`garages/${garage.id}`, {
-      name: payload.garageName.trim() || undefined,
-      location: payload.garageLocation.trim() || undefined,
+      name: name || undefined,
+      location: location || undefined,
     });
   }
 

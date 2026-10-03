@@ -12,6 +12,8 @@
     "setup:supabase": "node scripts/setup-supabase.mjs",
     "setup:db": "node scripts/setup-db.mjs",
     "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed.ts --demo",
+    "db:wipe": "tsx scripts/wipe-data.ts",
     "worker": "node --conditions=react-server --import tsx src/worker/index.ts"
   },
   "dependencies": {

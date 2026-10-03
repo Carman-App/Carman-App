@@ -29,7 +29,7 @@ and offers managed Postgres and Redis works.
    `docker run --rm -e DATABASE_URL=<direct url> carma-worker npx prisma migrate deploy`
 4. **Seed plans once** (safe to re-run; never overwrites prices):
    `docker run --rm -e DATABASE_URL=<direct url> carma-worker npm run seed`
-   The seed also creates a demo account. Delete it in production, or seed plans only.
+   It loads plans and settings only; `npm run seed:demo` adds a demo account (never in production).
 5. **Create the first admin:** `npm run create-admin` asks for the email, name
    and password (locally, or `docker run -it … carma-worker npm run create-admin`).
    Unattended: set `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` and run
@@ -46,7 +46,7 @@ and offers managed Postgres and Redis works.
 
 Locally, `npm run setup:db` (in `admin/`) creates the `carma` database user and
 database on your Postgres, writes `DATABASE_URL`, runs the migrations and
-loads the demo data (it asks once for the Postgres admin password).
+loads the plans and settings (it asks once for the Postgres admin password).
 Locally, `node scripts/setup-env.mjs` (from the repo root) creates or updates
 `admin/.env` and `mobile/.env.local` from the `.env.example` files: it adds
 missing settings, generates the secrets, clears example placeholders and never
@@ -162,6 +162,14 @@ Sent through Expo's push service, which delivers to Apple and Google.
    asks permission when set-up is done and registers the phone; settings in
    My profile → Notifications decide which kinds are pushed. Every
    notification also appears in the in-app list.
+
+## Starting over (delete all data)
+
+`npm run db:wipe` (in `admin/`) deletes every account and everything people
+recorded from the database in `DATABASE_URL`, after you type the database's
+name to confirm. Admin logins, the audit log, plans, prices and console
+settings are kept. Files in the storage bucket are not touched. It cannot be
+undone, so check `DATABASE_URL` points where you think it does.
 
 ## Security checklist
 

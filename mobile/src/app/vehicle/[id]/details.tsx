@@ -40,7 +40,7 @@ export default function VehicleDetailsScreen() {
             <KeyValueRow tone="caps" label="Year" value={String(v.year)} />
             <KeyValueRow tone="caps" label="Trim" value={v.variant || '—'} />
             <KeyValueRow tone="caps" label="Colour" value={v.color ?? '—'} />
-            <KeyValueRow tone="caps" label="Service every" value={v.nextServiceDueKm ? `10,000 km · next ${formatNumber(v.nextServiceDueKm)}` : '—'} />
+            <KeyValueRow tone="caps" label="Next service" value={v.nextServiceDueKm ? `Next at ${formatNumber(v.nextServiceDueKm)} km` : '—'} />
             <KeyValueRow
               tone="caps"
               label="Powertrain"

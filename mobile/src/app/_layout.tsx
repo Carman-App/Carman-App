@@ -79,7 +79,6 @@ function RootLayout() {
         <Stack.Screen name="record/pick-vehicle" options={{ presentation: 'modal' }} />
         <Stack.Screen name="record/expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="record/odometer-roll" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="record/pick-place" options={{ presentation: 'modal' }} />
         <Stack.Screen name="record/saved" options={{ presentation: 'modal' }} />
         <Stack.Screen name="doc/scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="build/stage/[stageId]/add-modification" options={{ presentation: 'modal' }} />

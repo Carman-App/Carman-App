@@ -10,7 +10,7 @@
  *   2. creates the "carma" database owned by it (or takes over an existing one),
  *   3. writes DATABASE_URL into admin/.env (or admin/.env.local if that is
  *      where you keep it), keeping a .bak copy,
- *   4. runs the migrations and loads the demo data.
+ *   4. runs the migrations and loads the plans and settings.
  * Safe to run again: it only resets the carma user's password.
  */
 import { spawnSync } from "node:child_process";
@@ -97,7 +97,7 @@ async function main() {
   const run = (args) => spawnSync(process.platform === "win32" ? "npx.cmd" : "npx", args, { cwd: admin, stdio: "inherit", shell: process.platform === "win32" });
   console.log("Running migrations…");
   if (run(["prisma", "migrate", "deploy"]).status !== 0) process.exit(1);
-  console.log("Loading the demo account and plans…");
+  console.log("Loading the plans and settings…");
   if (run(["tsx", "prisma/seed.ts"]).status !== 0) process.exit(1);
 
   console.log("\nDone. Start the server with: npm run dev");
