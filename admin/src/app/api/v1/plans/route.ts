@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
         name: p.name,
         features: p.features,
         trialDays: p.trialDays,
+        // In-app purchase products that buy this plan; the app shows the
+        // store's own price for them. Empty = not sold in the app.
+        storeProductIds: p.storeProductIds,
         limits: { garages: p.maxGarages, vehicles: p.maxVehicles, seats: p.maxSeats, jobsPerMonth: p.maxJobsPerMonth, staff: p.maxStaff },
         price: p.prices[0] ? { currency, amountCents: p.prices[0].priceCents } : null,
       })),

@@ -13,7 +13,8 @@ the API must be live on **https** before you submit.
 | In-app account deletion (App Store 5.1.1(v), Play account deletion policy) | My profile → Delete my account; `DELETE /api/v1/account`; data purged after 30 days by the worker |
 | Public account-deletion page for the Play listing | `https://<your-api>/legal/delete-account` |
 | Privacy policy and terms, reachable in the app and on the web | My profile → Privacy; `/legal/privacy`, `/legal/terms` |
-| No purchases outside store billing, no prices or "pay elsewhere" prompts | Plan & billing is informational only |
+| Subscriptions only through App Store / Google Play billing, with Restore purchases, Manage subscription and the auto-renew terms on the purchase screen (3.1.1, 3.1.2) | My profile → Subscription and billing |
+| Push notifications only after the system permission prompt; each kind can be turned off | My profile → Notifications |
 | Only the permissions used: camera (document photos), internet | Microphone, storage and overlay permissions are removed (`android.blockedPermissions`); dictation uses the keyboard's microphone |
 | Camera permission text | `mobile/app.config.ts` (expo-image-picker plugin) |
 | Export compliance: standard HTTPS only | `ITSAppUsesNonExemptEncryption: false` |
@@ -34,15 +35,14 @@ the API must be live on **https** before you submit.
 3. **Legal pages:** set `SUPPORT_EMAIL` and `COMPANY_NAME` on the server, and
    have the privacy policy and terms (`admin/src/app/legal/`) reviewed for your
    company and countries. They describe what the code does today.
-4. **Payments — required before you charge anyone.** Subscriptions must be sold
-   through App Store / Google Play billing (App Store 3.1.1, Play Payments
-   policy). That is not built yet. Until it is, accounts get the free trial and
-   then the Free plan, nothing is sold in the app, and you can ship like that.
-   To sell plans: add in-app purchases (for example RevenueCat with
-   `react-native-purchases`), create the subscription products in both
-   consoles, and have the store's server notifications update the
-   `Subscription` rows. Ask me and I'll build it.
-5. **Build and upload:** `eas build --profile production --platform all`, then
+4. **Subscriptions:** create the products, RevenueCat and the webhook
+   (DEPLOY.md → Subscriptions setup). In App Store Connect each subscription
+   needs a display name, description, price, and a review screenshot of the
+   Plan & billing screen; submit them with the app version. Without the
+   RevenueCat keys the app shows plans without buy buttons and sells nothing.
+5. **Push notifications:** EAS project id, iOS push key and Firebase for
+   Android (DEPLOY.md → Push notifications setup).
+6. **Build and upload:** `eas build --profile production --platform all`, then
    `eas submit` (or upload in the consoles).
 
 ## App Store Connect
@@ -55,7 +55,8 @@ the API must be live on **https** before you submit.
 - **Review notes (suggested):** *Carma records a vehicle's costs, service and
   documents. Sign in with Apple, tap Get started and add a vehicle. The
   assistant on Home answers from the account's own records. Account deletion:
-  My profile → Delete my account. No purchases are offered in this version.*
+  My profile → Delete my account. Subscriptions: My profile → Subscription
+  and billing (sandbox purchases work for review).*
 - **App Privacy ("nutrition label")** — data linked to the user, not used for
   tracking:
   - Contact info: name, email address — App functionality.
@@ -63,7 +64,8 @@ the API must be live on **https** before you submit.
     records, questions to the assistant) — App functionality.
   - Identifiers: user ID — App functionality.
   - Diagnostics: crash data — App functionality (only if Sentry is enabled).
-  - Purchases, location, contacts, browsing, health: not collected.
+  - Purchases: purchase history — App functionality (which plan the account bought).
+  - Location, contacts, browsing, health: not collected.
 - **Screenshots:** 6.9" and 6.5" iPhone. Welcome, Home with an answer, a
   vehicle timeline, a record form, documents, the mechanic job board.
 
@@ -81,7 +83,9 @@ the API must be live on **https** before you submit.
   - App activity: other user-generated content — collected, app functionality.
   - App info and performance: crash logs, diagnostics — collected, analytics /
     app functionality (only if Sentry is enabled).
-  - Device or other IDs: not collected. Location: not collected.
+  - Financial info: purchase history — collected, app functionality.
+  - Device or other IDs: push notification token — collected, app functionality.
+  - Location: not collected.
 - **Content rating:** complete the questionnaire (no user-to-user public
   content, no gambling): Everyone.
 - **Target audience:** 18+ (vehicle owners and mechanics).

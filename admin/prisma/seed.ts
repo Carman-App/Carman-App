@@ -90,9 +90,21 @@ async function main() {
       { code: "WORKSHOP_STANDARD", assistantMonthlyQuota: 500, subject: "WORKSHOP", name: "Workshop", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 3, features: ["Unlimited jobs", "3 staff"] },
       { code: "WORKSHOP_FLEET", assistantMonthlyQuota: 2000, subject: "WORKSHOP", name: "Fleet", maxGarages: null, maxVehicles: null, maxSeats: null, maxJobsPerMonth: null, maxStaff: 12, features: ["Unlimited jobs", "12 staff", "API access"] },
     ] as const;
+    // In-app purchase products (App Store Connect / Play Console, through
+    // RevenueCat) that buy each paid plan. Create products with these ids in
+    // both stores. Only set when a plan has none, so console edits stay.
+    const storeProducts: Record<string, string[]> = {
+      OWNER_PERSONAL: ["carma_personal_monthly", "carma_personal_annual"],
+      OWNER_PRO: ["carma_pro_monthly", "carma_pro_annual"],
+      WORKSHOP_STANDARD: ["carma_workshop_monthly", "carma_workshop_annual"],
+      WORKSHOP_FLEET: ["carma_fleet_monthly", "carma_fleet_annual"],
+    };
     for (const { code, subject, ...limits } of plans) {
       const data = { ...limits, features: [...limits.features] };
-      await prisma.plan.upsert({ where: { code }, update: data, create: { code, subject, ...data } });
+      const plan = await prisma.plan.upsert({ where: { code }, update: data, create: { code, subject, ...data, storeProductIds: storeProducts[code] ?? [] } });
+      if (plan.storeProductIds.length === 0 && storeProducts[code]) {
+        await prisma.plan.update({ where: { code }, data: { storeProductIds: storeProducts[code] } });
+      }
     }
     // CFG-08 trial and grace rules. Created once; afterwards edited from the console.
     // 7-day trial, as promised on the app's Welcome screen. Only set when the rules are first created.

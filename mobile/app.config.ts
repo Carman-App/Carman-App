@@ -8,6 +8,8 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  *   server's APPLE_AUDIENCES.
  * - EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME: the reversed iOS client id
  *   (com.googleusercontent.apps.…). Google sign-in is only built in when set.
+ * - EAS_PROJECT_ID: the EAS project (push notifications); GOOGLE_SERVICES_JSON:
+ *   the Firebase file for Android push.
  * Google and Apple sign-in need a development build (`npx expo run:ios`,
  * `npx expo run:android` or EAS), not Expo Go.
  */
@@ -26,6 +28,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     'expo-apple-authentication',
     'expo-secure-store',
     ['expo-image-picker', { cameraPermission: 'Carma uses the camera to photograph your vehicle documents and receipts.', photosPermission: false }],
+    // Push notifications (src/features/notifications/push.ts). Android
+    // delivery also needs the Firebase file (GOOGLE_SERVICES_JSON below).
+    ['expo-notifications', { color: '#134B9C' }],
   ];
   // Native crash reporting and readable stack traces: only built in when Sentry is configured.
   if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
@@ -47,6 +52,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: process.env.EXPO_PUBLIC_ANDROID_PACKAGE || config.android?.package,
+      // Firebase config for Android push (an EAS "file" environment variable).
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || config.android?.googleServicesFile,
+    },
+    // The EAS project: push tokens are issued per project (`eas init` prints the id).
+    extra: {
+      ...config.extra,
+      eas: { ...(config.extra?.eas as object | undefined), ...(process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : {}) },
     },
     plugins,
   };

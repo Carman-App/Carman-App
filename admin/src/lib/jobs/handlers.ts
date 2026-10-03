@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notificationProvider, notify } from "@/lib/notifications/provider";
 import { buildAccountDataExport } from "@/lib/privacy/export";
 import { purgeSelfDeletedAccounts } from "@/lib/accounts/self-delete";
+import { syncStoreSubscriptions } from "@/lib/billing/store";
 import { DataExportStatus, NotificationType, ReminderKind } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import type { JobName, JobPayloads } from "./queue";
@@ -19,6 +20,7 @@ async function deliverNotification({ notificationId }: JobPayloads["notification
   const n = await prisma.notification.findUnique({ where: { id: notificationId } });
   if (!n) return; // deleted since: nothing to deliver
   await notificationProvider.send({
+    id: n.id,
     accountId: n.accountId,
     type: n.type,
     title: n.title,
@@ -97,6 +99,7 @@ const HANDLERS: { [N in JobName]: (data: JobPayloads[N]) => Promise<void> } = {
   "reminders.scan": scanReminders,
   "privacy.export": generateExport,
   "accounts.purge": purgeAccounts,
+  "billing.sync": ({ accountId }) => syncStoreSubscriptions(accountId),
 };
 
 export async function runJob<N extends JobName>(name: N, data: JobPayloads[N]): Promise<void> {

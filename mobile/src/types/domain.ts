@@ -106,6 +106,10 @@ export type Account = {
   plan: 'free' | 'personal' | 'pro';
   /** The owner-side plan in force, from GET /account. Null when the server has no plans set up. */
   planState: PlanState | null;
+  /** The workshop's plan when this account runs a workshop. */
+  workshopPlanState: PlanState | null;
+  /** Which kinds of notification are pushed (My profile → Notifications). Missing key = default. */
+  notificationPrefs: Record<string, boolean>;
 };
 
 export type PlanLimits = { garages: number | null; vehicles: number | null; seats: number | null; jobsPerMonth?: number | null; staff?: number | null };
@@ -117,6 +121,12 @@ export type PlanState = {
   state: 'trial' | 'active' | 'grace' | 'free';
   trialEndsAt: string | null;
   limits: PlanLimits;
+  /** APP_STORE / PLAY_STORE when bought in the app; null for trials and plans set by Carma. */
+  store?: string | null;
+  storeProductId?: string | null;
+  /** False once auto-renew is off: the plan ends at currentPeriodEnd. */
+  willRenew?: boolean | null;
+  currentPeriodEnd?: string | null;
 };
 
 export type PlanOption = {
@@ -125,6 +135,8 @@ export type PlanOption = {
   features: string[];
   limits: PlanLimits;
   price: { currency: string; amountCents: number } | null;
+  /** In-app purchase products that buy this plan. Empty = not sold in the app. */
+  storeProductIds?: string[];
 };
 
 export type GarageMemberRole = 'owner' | 'member' | 'pending';

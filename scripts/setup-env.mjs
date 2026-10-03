@@ -7,7 +7,7 @@
  * - admin/.env and mobile/.env.local are created if missing.
  * - Every setting in the example that you don't have yet (in that file or in
  *   its .env/.env.local sibling) is appended with the example's value.
- * - Secrets (AUTH_JWT_SECRET, SESSION_SECRET) are generated when missing or
+ * - Secrets (AUTH_JWT_SECRET, SESSION_SECRET, REVENUECAT_WEBHOOK_AUTH) are generated when missing or
  *   still the example placeholder; a real secret is never replaced.
  * - Example placeholders ("replace-with-…") are emptied, so the server treats
  *   that setting as not set up instead of trying a fake key.
@@ -27,7 +27,7 @@ const TARGETS = [
   { dir: "mobile", file: ".env.local", siblings: [".env", ".env.local"] },
 ];
 
-const SECRETS = { AUTH_JWT_SECRET: 48, SESSION_SECRET: 32 };
+const SECRETS = { AUTH_JWT_SECRET: 48, SESSION_SECRET: 32, REVENUECAT_WEBHOOK_AUTH: 32 };
 const isPlaceholder = (v) => /replace-with|change-me|^\s*$/.test(v);
 
 /** Parses KEY=value lines (quoted or not), ignoring comments. */

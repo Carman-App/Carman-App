@@ -93,6 +93,8 @@ export type RawAccount = {
   user: RawUser;
   profiles: RawAccountProfile[];
   plan?: PlanState | null;
+  workshopPlan?: PlanState | null;
+  notificationPrefs?: Record<string, boolean> | null;
 };
 
 export function toAccount(raw: RawAccount): Account {
@@ -111,6 +113,8 @@ export function toAccount(raw: RawAccount): Account {
     activeProfile,
     plan: raw.plan?.code === 'OWNER_PRO' ? 'pro' : raw.plan?.code === 'OWNER_PERSONAL' ? 'personal' : 'free',
     planState: raw.plan ?? null,
+    workshopPlanState: raw.workshopPlan ?? null,
+    notificationPrefs: raw.notificationPrefs ?? {},
   };
 }
 

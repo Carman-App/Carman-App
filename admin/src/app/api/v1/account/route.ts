@@ -6,9 +6,29 @@ import { handleApiError, NotFoundError } from "@/lib/api/errors";
 import { updateAccountSchema } from "@/lib/api/schemas";
 import { writeAuditLog } from "@/lib/audit";
 import { PlanSubject, type ProfileType, type Region } from "@/generated/prisma/enums";
-import { getPlanState } from "@/lib/limits";
+import { getPlanState, type PlanState } from "@/lib/limits";
 import { deleteOwnAccount } from "@/lib/accounts/self-delete";
 import { clientIp } from "@/lib/rate-limit";
+
+async function planPayload(ps: PlanState | null) {
+  if (!ps) return null;
+  // How the plan is paid, for "Renews on …" / "Ends on …" and Manage subscription.
+  const sub =
+    ps.state !== "free" && ps.subscriptionId
+      ? await prisma.subscription.findUnique({ where: { id: ps.subscriptionId }, select: { store: true, storeProductId: true, willRenew: true, currentPeriodEnd: true } })
+      : null;
+  return {
+    code: ps.plan.code,
+    name: ps.plan.name,
+    state: ps.state,
+    trialEndsAt: ps.trialEndsAt,
+    limits: { garages: ps.plan.maxGarages, vehicles: ps.plan.maxVehicles, seats: ps.plan.maxSeats, jobsPerMonth: ps.plan.maxJobsPerMonth, staff: ps.plan.maxStaff },
+    store: sub?.store ?? null,
+    storeProductId: sub?.storeProductId ?? null,
+    willRenew: sub?.willRenew ?? null,
+    currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+  };
+}
 
 // GET /api/v1/account — the caller's own Account, user, profiles and owner-side plan.
 // Chain: auth -> account -> resource.
@@ -24,19 +44,15 @@ export async function GET(req: NextRequest) {
       throw new NotFoundError("Account not found.");
     }
 
-    // The owner-side plan in force (starts the no-card trial on first read).
-    const ps = await getPlanState(PlanSubject.OWNER, account.id);
-    const plan = ps
-      ? {
-          code: ps.plan.code,
-          name: ps.plan.name,
-          state: ps.state,
-          trialEndsAt: ps.trialEndsAt,
-          limits: { garages: ps.plan.maxGarages, vehicles: ps.plan.maxVehicles, seats: ps.plan.maxSeats },
-        }
-      : null;
+    // The owner-side plan in force (starts the no-card trial on first read),
+    // and the workshop's when the account runs one.
+    const workshop = await prisma.workshop.findFirst({ where: { ownerId: account.id }, select: { id: true }, orderBy: { createdAt: "asc" } });
+    const [plan, workshopPlan] = await Promise.all([
+      planPayload(await getPlanState(PlanSubject.OWNER, account.id)),
+      workshop ? getPlanState(PlanSubject.WORKSHOP, workshop.id).then(planPayload) : null,
+    ]);
 
-    return apiOk({ ...full, plan });
+    return apiOk({ ...full, plan, workshopPlan });
   } catch (error) {
     return handleApiError(error);
   }
@@ -72,8 +88,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
-      if (input.region) {
-        await tx.account.update({ where: { id: account.id }, data: { region: input.region as Region } });
+      if (input.region || input.notificationPrefs) {
+        await tx.account.update({
+          where: { id: account.id },
+          data: {
+            ...(input.region ? { region: input.region as Region } : {}),
+            ...(input.notificationPrefs ? { notificationPrefs: input.notificationPrefs } : {}),
+          },
+        });
       }
       if (input.name) {
         await tx.user.update({ where: { id: account.userId }, data: { name: input.name } });

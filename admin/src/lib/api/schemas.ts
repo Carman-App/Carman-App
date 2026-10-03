@@ -237,6 +237,8 @@ export const updateAccountSchema = z
     region: z.enum(enumValues(Region)).optional(),
     name: z.string().trim().min(1).max(200).optional(),
     activeProfileType: z.enum(enumValues(ProfileType)).optional(),
+    // My profile → Notifications: which kinds are pushed to the phone.
+    notificationPrefs: z.partialRecord(z.enum(["service", "docs", "jobs", "money", "members", "idle"]), z.boolean()).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "No fields to update." });
 

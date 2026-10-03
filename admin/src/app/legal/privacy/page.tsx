@@ -21,6 +21,8 @@ export default function PrivacyPage() {
         <li><strong>Documents and photos you add:</strong> pictures or PDFs of documents such as insurance certificates, logbooks and receipts.</li>
         <li><strong>Workshop records</strong> if you use Carma as a mechanic: jobs, customers&rsquo; names and phone numbers you enter, estimates, invoices and payments recorded.</li>
         <li><strong>Questions you ask the assistant</strong> and its answers.</li>
+        <li><strong>Subscriptions:</strong> if you buy a plan in the app, which plan, its price and renewal dates as reported by the App Store or Google Play. We never see your card or payment details.</li>
+        <li><strong>Push notifications:</strong> if you allow notifications, a token that lets us send them to your phone. You can turn each kind off in My profile, or all of them in your phone&rsquo;s settings.</li>
         <li><strong>Technical data:</strong> when you last used the app, and, if the app crashes, a crash report with your device model, operating system and app version. Crash reports do not include your records.</li>
       </ul>
 
@@ -38,7 +40,9 @@ export default function PrivacyPage() {
       <ul>
         <li>Cloud hosting and database providers, where your account and records are stored.</li>
         <li>Cloud file storage, for documents and photos you upload.</li>
-        <li>Apple and Google, to sign you in.</li>
+        <li>Apple and Google, to sign you in, to take payment for subscriptions, and to deliver push notifications.</li>
+        <li>RevenueCat, which manages in-app subscriptions on our behalf and receives your account identifier and purchase records from the stores.</li>
+        <li>Expo, which passes push notifications to Apple and Google.</li>
         <li>Anthropic, to answer assistant questions. When you ask a question, the question and a summary of the relevant records (for example your vehicles and recent costs) are sent to answer it. Anthropic does not use this data to train its models.</li>
         <li>An error-monitoring service, which receives crash reports.</li>
       </ul>

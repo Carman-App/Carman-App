@@ -13,10 +13,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { T } from '@/components/ui/Typography';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAccount, useActiveGarage, useUiState } from '@/data/hooks';
-import { updateAccount } from '@/data/repo';
+import { setNotificationPrefs, updateAccount } from '@/data/repo';
 import { openLegal } from '@/features/auth/legal';
 import { deleteAccount, signOut } from '@/features/auth/signIn';
-import { setUiState } from '@/data/uiState';
 import { COUNTRIES } from '@/features/onboarding/countries';
 import { Colors, Spacing } from '@/theme/tokens';
 import { REGION_UNITS } from '@/types/domain';
@@ -35,7 +34,7 @@ export default function MyProfileScreen() {
   const account = useAccount().data;
   const garage = useActiveGarage().data;
   const mode = useUiState('mode');
-  const prefs = useUiState('notificationPrefs');
+  const prefs = account?.notificationPrefs ?? {};
   const [picking, setPicking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -85,7 +84,7 @@ export default function MyProfileScreen() {
               {n.sub}
             </T>
           </View>
-          <Toggle value={on(n.key)} onValueChange={(v) => void setUiState({ notificationPrefs: { ...prefs, [n.key]: v } })} />
+          <Toggle value={on(n.key)} onValueChange={(v) => void setNotificationPrefs({ ...prefs, [n.key]: v }).catch(() => {})} />
         </View>
       ))}
 

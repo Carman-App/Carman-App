@@ -63,6 +63,10 @@ changes a value you set.
 | `CORS_ALLOWED_ORIGINS` | yes | Browser origins allowed to call the API. Native apps don't need one |
 | `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT` | for files | Private bucket. `S3_ENDPOINT` for R2/MinIO |
 | `ANTHROPIC_API_KEY` | for the assistant | Server only |
+| `REVENUECAT_SECRET_API_KEY` | for subscriptions | RevenueCat secret key (`sk_…`): the server reads purchases with it |
+| `REVENUECAT_WEBHOOK_AUTH` | for subscriptions | Same value as the webhook's Authorization header in RevenueCat |
+| `EXPO_ACCESS_TOKEN` | no | Only if enhanced push security is on at expo.dev |
+| `PUSH_NOTIFICATIONS` | no | `off` stops push sending (staging copies of real data) |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ENVIRONMENT` | recommended | Error monitoring |
 | `RATE_LIMIT_API`, `RATE_LIMIT_WRITE`, `RATE_LIMIT_AUTH`, `RATE_LIMIT_ANON` | no | Per minute (auth: per 5 min). Defaults 600 / 120 / 30 / 120 |
 | `WORKER_CONCURRENCY` | no | Jobs processed at once per worker. Default 10 |
@@ -70,7 +74,9 @@ changes a value you set.
 
 Mobile (EAS environment): `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`,
 `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`,
-`EXPO_PUBLIC_IOS_BUNDLE_ID`, `EXPO_PUBLIC_ANDROID_PACKAGE`, `EXPO_PUBLIC_SENTRY_DSN`.
+`EXPO_PUBLIC_IOS_BUNDLE_ID`, `EXPO_PUBLIC_ANDROID_PACKAGE`, `EXPO_PUBLIC_SENTRY_DSN`,
+`EXPO_PUBLIC_REVENUECAT_IOS_KEY`, `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`, `EAS_PROJECT_ID`,
+and the file variable `GOOGLE_SERVICES_JSON` (Android push).
 Do **not** set `EXPO_PUBLIC_DEV_ACCOUNT_ID` for production builds.
 
 ## Using Supabase for Postgres
@@ -107,6 +113,52 @@ Supabase gives each project its own Postgres; you don't need
   declares the capability (`mobile/app.config.ts`). Put the bundle id in
   `APPLE_AUDIENCES`.
 - Both need a development or store build. Expo Go cannot do native sign-in.
+
+## Subscriptions setup (App Store / Google Play)
+
+Plans are sold through the stores' own billing, with RevenueCat in between
+(free up to a revenue threshold; it validates receipts and tells the server
+about renewals, cancellations and refunds).
+
+1. **Create the products** in App Store Connect (one subscription group,
+   "Carma") and in Play Console (Monetize → Subscriptions), with these ids:
+   `carma_personal_monthly`, `carma_personal_annual`, `carma_pro_monthly`,
+   `carma_pro_annual` (owner plans) and `carma_workshop_monthly`,
+   `carma_workshop_annual`, `carma_fleet_monthly`, `carma_fleet_annual`
+   (workshop plans). Prices are set there, per country. The ids are on each
+   plan (`Plan.storeProductIds`, set by the seed); change them there if you
+   use others.
+2. **RevenueCat:** create a project, add the iOS and Android apps (App Store
+   Connect API key / Play service account, as RevenueCat's setup asks), and
+   import the products.
+3. **Keys:** the public app keys go in the app (`EXPO_PUBLIC_REVENUECAT_IOS_KEY`,
+   `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`); the secret key goes on the server
+   (`REVENUECAT_SECRET_API_KEY`).
+4. **Webhook:** RevenueCat → Integrations → Webhooks: URL
+   `https://<your-api>/api/v1/billing/revenuecat`, Authorization header =
+   `REVENUECAT_WEBHOOK_AUTH`. Send a test event; it should return 200.
+5. Test with sandbox / license-tester accounts in a development build.
+
+How it works: the app buys as the Carma account id; the server never trusts
+the app, it reads the purchase from RevenueCat (`src/lib/billing/store.ts`)
+and updates the Subscription row, its history and the plan limits. Plans set
+from the console (no store) are never touched by store syncs.
+
+## Push notifications setup
+
+Sent through Expo's push service, which delivers to Apple and Google.
+
+1. `cd mobile && npx eas init` once; put the project id in `EAS_PROJECT_ID`.
+2. **iOS:** `eas credentials` → iOS → Push Notifications: let EAS create the
+   push key (or upload yours).
+3. **Android:** create a Firebase project with the Android package, download
+   `google-services.json`, upload it as the EAS file variable
+   `GOOGLE_SERVICES_JSON`, and upload the Firebase service-account key
+   (FCM V1) in `eas credentials` → Android → Push Notifications.
+4. Build a development or store build (Expo Go cannot receive push). The app
+   asks permission when set-up is done and registers the phone; settings in
+   My profile → Notifications decide which kinds are pushed. Every
+   notification also appears in the in-app list.
 
 ## Security checklist
 

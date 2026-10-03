@@ -29,6 +29,10 @@ export async function updatePlan(_prev: ActionState, formData: FormData): Promis
   const planId = String(formData.get("planId") || "");
   const name = String(formData.get("name") || "").trim();
   const featuresRaw = String(formData.get("features") || "").trim();
+  const storeProductIds = String(formData.get("storeProductIds") || "")
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean);
   const trialDaysRaw = String(formData.get("trialDays") || "").trim();
 
   const maxGarages = parseOptionalInt(formData.get("maxGarages"));
@@ -38,6 +42,9 @@ export async function updatePlan(_prev: ActionState, formData: FormData): Promis
   const maxStaff = parseOptionalInt(formData.get("maxStaff"));
 
   if (!name) return { error: "Plan name is required." };
+  if (storeProductIds.some((id) => !/^[A-Za-z0-9._:-]{1,120}$/.test(id))) {
+    return { error: "Store product ids may only contain letters, numbers, dots, dashes, underscores and colons." };
+  }
   for (const [label, v] of [
     ["Garage limit", maxGarages],
     ["Vehicle limit", maxVehicles],
@@ -65,7 +72,7 @@ export async function updatePlan(_prev: ActionState, formData: FormData): Promis
 
   const after = await prisma.plan.update({
     where: { id: planId },
-    data: { name, features, trialDays, maxGarages, maxVehicles, maxSeats, maxJobsPerMonth, maxStaff },
+    data: { name, features, storeProductIds, trialDays, maxGarages, maxVehicles, maxSeats, maxJobsPerMonth, maxStaff },
   });
 
   await writeAdminAuditLog(admin, {
@@ -75,6 +82,7 @@ export async function updatePlan(_prev: ActionState, formData: FormData): Promis
     beforeData: {
       name: before.name,
       features: before.features,
+      storeProductIds: before.storeProductIds,
       trialDays: before.trialDays,
       maxGarages: before.maxGarages,
       maxVehicles: before.maxVehicles,
@@ -85,6 +93,7 @@ export async function updatePlan(_prev: ActionState, formData: FormData): Promis
     afterData: {
       name: after.name,
       features: after.features,
+      storeProductIds: after.storeProductIds,
       trialDays: after.trialDays,
       maxGarages: after.maxGarages,
       maxVehicles: after.maxVehicles,

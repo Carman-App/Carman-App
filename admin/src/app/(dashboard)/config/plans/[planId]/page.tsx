@@ -46,6 +46,7 @@ export default async function PlanEditPage({ params }: { params: Promise<{ planI
             planId: plan.id,
             name: plan.name,
             features: plan.features,
+            storeProductIds: plan.storeProductIds,
             trialDays: plan.trialDays,
             maxGarages: plan.maxGarages,
             maxVehicles: plan.maxVehicles,

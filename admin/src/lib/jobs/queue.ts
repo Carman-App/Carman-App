@@ -20,6 +20,7 @@ export type JobPayloads = {
   "reminders.scan": Record<string, never>;
   "privacy.export": { requestId: string };
   "accounts.purge": Record<string, never>;
+  "billing.sync": { accountId: string };
 };
 export type JobName = keyof JobPayloads;
 

@@ -13,8 +13,9 @@ import { StatusBar } from 'react-native';
 
 import { setSignedOutHandler } from '@/data/api/client';
 import { loadSession, useSessionLoaded } from '@/data/auth/session';
-import { useHydrateOnMount } from '@/data/hooks';
+import { useHydrateOnMount, useUiState } from '@/data/hooks';
 import { queryClient } from '@/data/queryClient';
+import { installNotificationHandlers, registerForPush } from '@/features/notifications/push';
 import { launchTarget } from '@/features/onboarding/progress';
 import { withMonitoring } from '@/lib/monitoring';
 import { Colors } from '@/theme/tokens';
@@ -71,6 +72,7 @@ function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <PushSetup />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         {/* Add-record flow: entered as a modal sheet; sub-steps push within it. */}
         <Stack.Screen name="record/add" options={{ presentation: 'modal' }} />
@@ -88,6 +90,16 @@ function RootLayout() {
       </Stack>
     </QueryClientProvider>
   );
+}
+
+/** Push notifications: shown and routed from startup; this phone registered once set-up is done. */
+function PushSetup() {
+  const onboarded = useUiState('onboarded');
+  useEffect(() => installNotificationHandlers(), []);
+  useEffect(() => {
+    if (onboarded) void registerForPush();
+  }, [onboarded]);
+  return null;
 }
 
 export default withMonitoring(RootLayout);

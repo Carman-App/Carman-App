@@ -7,6 +7,8 @@ import { api, ApiError } from '@/data/api/client';
 import { clearSession, getSession, saveSession, type Session } from '@/data/auth/session';
 import { queryClient } from '@/data/queryClient';
 import { setUiState } from '@/data/uiState';
+import { signOutOfStore } from '@/features/billing/store';
+import { unregisterPush } from '@/features/notifications/push';
 import { clearProgress } from '@/features/onboarding/progress';
 
 /**
@@ -118,6 +120,9 @@ export async function signInWithApple(): Promise<SignInOutcome> {
 
 /** Ends the session on the server and on this device, and forgets everything cached. */
 export async function signOut(): Promise<void> {
+  // Before the session ends: both calls need it.
+  await unregisterPush();
+  await signOutOfStore();
   const session = getSession();
   if (session) await api.post('auth/logout', { refreshToken: session.refreshToken }).catch(() => {});
   const g = loadGoogle();

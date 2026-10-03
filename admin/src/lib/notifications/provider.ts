@@ -1,16 +1,14 @@
 /**
- * Notification delivery abstraction (email/SMS/push).
- *
- * No real provider is wired up yet — that needs credentials the user
- * hasn't provided. `notify()` below always persists a Notification row
- * (so the in-app notification feed works today) and calls whatever
- * `NotificationProvider` is configured; the default is a no-op, so
- * delivery is silently skipped until a real provider is dropped in.
+ * Notification delivery. `notify()` always saves a Notification row (the
+ * in-app feed) and then a background job delivers it to the account's
+ * phones as a push notification (src/lib/notifications/push.ts), honouring
+ * the person's notification settings. Email and SMS are not sent yet.
  */
 
 import { prisma } from "@/lib/prisma";
 import { enqueue } from "@/lib/jobs/queue";
 import type { NotificationType } from "@/generated/prisma/enums";
+import { ExpoPushProvider } from "./push";
 import type { Prisma } from "@/generated/prisma/client";
 
 export type OutboundNotification = {
@@ -22,19 +20,17 @@ export type OutboundNotification = {
 };
 
 export interface NotificationProvider {
-  send(notification: OutboundNotification): Promise<void>;
+  send(notification: OutboundNotification & { id?: string }): Promise<void>;
 }
 
+/** Turns push off (PUSH_NOTIFICATIONS="off"), e.g. on a staging copy of production data. */
 export class NoopNotificationProvider implements NotificationProvider {
-  async send(): Promise<void> {
-    // Intentionally does nothing — no email/SMS/push credentials configured.
-    // Swap this for a real provider (SES, Twilio, FCM, ...) later.
-  }
+  async send(): Promise<void> {}
 }
 
-export const notificationProvider: NotificationProvider = new NoopNotificationProvider();
+export const notificationProvider: NotificationProvider =
+  process.env.PUSH_NOTIFICATIONS === "off" ? new NoopNotificationProvider() : new ExpoPushProvider();
 
-/** Persist the notification and hand it to the configured provider. */
 /**
  * Saves the in-app notification now (the app reads it from the list) and
  * hands outside delivery (push/SMS/email) to a background job, so a slow or

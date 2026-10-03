@@ -213,6 +213,16 @@ export async function updateAccount(patch: Partial<Account>): Promise<Account | 
   return toAccount(updated);
 }
 
+/** Saves the notification settings on the server, which decides what is pushed. Shown at once. */
+export async function setNotificationPrefs(prefs: Record<string, boolean>): Promise<void> {
+  queryClient.setQueryData<Account>(qk.account(), (a) => (a ? { ...a, notificationPrefs: prefs } : a));
+  try {
+    await api.patch('account', { notificationPrefs: prefs });
+  } finally {
+    await queryClient.invalidateQueries({ queryKey: qk.account() });
+  }
+}
+
 export async function setActiveGarage(garageId: string): Promise<void> {
   await setUiState({ activeGarageId: garageId });
 }

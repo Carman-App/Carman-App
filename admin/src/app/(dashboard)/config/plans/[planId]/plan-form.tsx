@@ -7,6 +7,7 @@ export type PlanFormValues = {
   planId: string;
   name: string;
   features: string[];
+  storeProductIds: string[];
   trialDays: number | null;
   maxGarages: number | null;
   maxVehicles: number | null;
@@ -38,6 +39,17 @@ export function PlanForm({ initial }: { initial: PlanFormValues }) {
           rows={2}
           defaultValue={initial.features.join(", ")}
           className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs text-neutral-500">
+          App Store / Google Play product ids (comma-separated; empty = not sold in the app)
+        </label>
+        <input
+          name="storeProductIds"
+          defaultValue={initial.storeProductIds.join(", ")}
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 font-mono text-sm text-neutral-900"
         />
       </div>
 

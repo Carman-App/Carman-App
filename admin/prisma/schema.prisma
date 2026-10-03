@@ -688,7 +688,14 @@ model Account {
   chasedEngagementAt        DateTime?
   chasedEngagementByAdminId String?
 
+  // Which kinds of notification are pushed to this account's phones, by the
+  // category keys the app shows under My profile → Notifications
+  // ({ "docs": false, ... }). A missing key means on (except "idle").
+  // Every notification is still listed in the in-app feed.
+  notificationPrefs Json? @db.JsonB
+
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushTokens          PushToken[]
   profiles            AccountProfile[]
   garagesOwned        Garage[]            @relation("GarageOwner")
   garageMemberships   GarageMember[]
@@ -1496,6 +1503,23 @@ model ReportRecipient {
 // Notifications (abstraction only — see src/lib/notifications/provider.ts)
 // ============================================================================
 
+// A phone that receives push notifications for an account (Expo push token).
+// Registered by the app after the person allows notifications; removed at
+// sign-out and when Expo reports the token is no longer valid.
+model PushToken {
+  id         String   @id @default(cuid())
+  accountId  String
+  token      String   @unique
+  platform   String // ios | android
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("push_tokens")
+}
+
 model Notification {
   id        String           @id @default(cuid())
   accountId String
@@ -1571,6 +1595,10 @@ model Plan {
   // Assistant questions per calendar month (null = unlimited). Each answer is
   // a paid model call; repeats served from the answer cache do not count.
   assistantMonthlyQuota Int?
+  // App Store / Google Play product ids that buy this plan (as RevenueCat
+  // reports them, e.g. "carma_owner_pro_monthly"; Play's "id:base-plan"
+  // also matches on the part before the colon). Empty = not sold in the app.
+  storeProductIds String[]    @default([])
   createdAt       DateTime    @default(now())
 
   subscriptions Subscription[]
@@ -1615,6 +1643,13 @@ model Subscription {
   // something this pass silently changed.
   lockedPriceCents Int?
   lockedCurrency   String?
+
+  // Bought in the app through App Store / Google Play (via RevenueCat).
+  // Null for trials and plans set from the console. src/lib/billing/store.ts
+  // keeps these in step with the store; the store is the source of truth.
+  store          String? // APP_STORE | PLAY_STORE | ...
+  storeProductId String?
+  willRenew      Boolean?
 
   account        Account?            @relation(fields: [accountId], references: [id], onDelete: Cascade)
   workshop       Workshop?           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
