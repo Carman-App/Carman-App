@@ -81,7 +81,8 @@ export default function MakeModelScreen() {
           setOpen('model');
         }}
         onClose={() => setOpen(null)}
-        searchPlaceholder="Make"
+        searchPlaceholder="Search or type a make"
+        allowCustom
       />
       <PickerSheet
         visible={open === 'model'}
@@ -93,7 +94,8 @@ export default function MakeModelScreen() {
           setOpen(null);
         }}
         onClose={() => setOpen(null)}
-        searchPlaceholder="Model"
+        searchPlaceholder="Search or type a model"
+        allowCustom
       />
       <PickerSheet
         visible={open === 'year'}

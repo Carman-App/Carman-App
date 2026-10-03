@@ -10,7 +10,7 @@ import { TextField } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
 import { useActiveGarageId } from '@/data/hooks';
 import { addVehicle } from '@/data/repo';
-import { makeTableFor, resolveMake, resolveModel, YEARS } from '@/data/vehicleCatalog';
+import { makeTableFor, YEARS } from '@/data/vehicleCatalog';
 import { todayIso } from '@/lib/format';
 import { USAGE_LABEL, type VehicleType, type VehicleUsage } from '@/types/domain';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
@@ -36,9 +36,10 @@ export default function AddVehicleScreen() {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null);
 
   const table = makeTableFor(type);
-  const make = resolveMake(table, rawMake);
-  const models = table[make];
-  const model = resolveModel(models, rawModel);
+  // Nothing is picked for the person: empty until they choose or type one.
+  const make = rawMake;
+  const models = table[make] ?? [];
+  const model = rawModel;
 
   const canSave = garageId && make.trim() && model.trim();
 
@@ -128,15 +129,19 @@ export default function AddVehicleScreen() {
         selected={make}
         onSelect={handlePickMake}
         onClose={() => setOpenPicker(null)}
+        searchPlaceholder="Search or type a make"
+        allowCustom
       />
       <PickerSheet
         visible={openPicker === 'model'}
         title="Select model"
-        hint={`${make.toUpperCase()} MODELS`}
+        hint={make ? `${make.toUpperCase()} MODELS` : 'PICK A MAKE FIRST'}
         items={models}
         selected={model}
         onSelect={handlePickModel}
         onClose={() => setOpenPicker(null)}
+        searchPlaceholder="Search or type a model"
+        allowCustom
       />
       <PickerSheet
         visible={openPicker === 'year'}

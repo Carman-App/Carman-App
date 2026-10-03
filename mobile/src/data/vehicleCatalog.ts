@@ -6,7 +6,8 @@
  * prototype's own onboarding MAKE/MODEL screen uses exactly this table to
  * drive its make/model/year pickers.
  *
- * Keep in sync with the prototype if it ever adds more makes/models.
+ * Extended beyond the prototype with more makes and models. Anything not
+ * listed can still be typed in the picker ("Use …").
  */
 
 export const CAR_MAKES: Record<string, string[]> = {
@@ -89,6 +90,66 @@ export const CAR_MAKES: Record<string, string[]> = {
   Scania: ['R450', 'G460', 'P360', 'S500'],
   DAF: ['XF', 'CF', 'LF', 'XG'],
   Hino: ['300 Series', '500 Series', '700 Series', 'Dutro', 'Ranger'],
+  // More makes: Japanese, Korean and Chinese imports common in East Africa, then the rest of the world.
+  Infiniti: ['Q50', 'Q60', 'QX50', 'QX55', 'QX60', 'QX80', 'FX35', 'G37'],
+  Acura: ['MDX', 'RDX', 'TLX', 'Integra', 'ILX', 'NSX'],
+  Genesis: ['G70', 'G80', 'G90', 'GV60', 'GV70', 'GV80'],
+  SsangYong: ['Rexton', 'Korando', 'Tivoli', 'Musso', 'Actyon', 'Kyron', 'Torres'],
+  Proton: ['Saga', 'Persona', 'Iriz', 'X50', 'X70', 'Exora'],
+  Perodua: ['Myvi', 'Axia', 'Bezza', 'Alza', 'Aruz', 'Ativa'],
+  Geely: ['Coolray', 'Emgrand', 'Okavango', 'Azkarra', 'Tugella', 'Monjaro', 'Geometry C'],
+  Changan: ['CS35 Plus', 'CS55 Plus', 'CS75 Plus', 'CS85', 'CS95', 'Alsvin', 'Uni-K', 'Uni-T', 'Hunter'],
+  JAC: ['S2', 'S3', 'S4', 'J7', 'T6', 'T8', 'N-Series', 'Sunray'],
+  Foton: ['Tunland', 'View', 'Aumark', 'Auman', 'Gratour', 'Toano'],
+  Dongfeng: ['Rich', 'Glory 580', 'Aeolus', 'Captain', 'KR', 'KX'],
+  GAC: ['GS3', 'GS4', 'GS8', 'GN6', 'GA4', 'Emkoo'],
+  Haval: ['H6', 'Jolion', 'H2', 'H9', 'Dargo', 'M6'],
+  BAIC: ['X25', 'X35', 'X55', 'BJ40', 'BJ60', 'D20'],
+  Jetour: ['X70', 'X90', 'Dashing', 'T2'],
+  Omoda: ['C5', 'C9', 'E5'],
+  Jaecoo: ['J7', 'J8'],
+  Zotye: ['T600', 'Z100', 'Z300'],
+  Leapmotor: ['C10', 'T03', 'C11'],
+  NIO: ['ES6', 'ES8', 'ET5', 'ET7', 'EC6'],
+  XPeng: ['G6', 'G9', 'P7', 'X9'],
+  'Li Auto': ['L6', 'L7', 'L8', 'L9', 'Mega'],
+  Zeekr: ['001', '007', 'X', '009'],
+  Polestar: ['Polestar 2', 'Polestar 3', 'Polestar 4'],
+  'Alfa Romeo': ['Giulia', 'Stelvio', 'Tonale', 'Giulietta', 'MiTo'],
+  Seat: ['Ibiza', 'Leon', 'Arona', 'Ateca', 'Tarraco'],
+  Cupra: ['Formentor', 'Born', 'Leon', 'Ateca'],
+  Dacia: ['Duster', 'Sandero', 'Logan', 'Jogger', 'Spring'],
+  Lada: ['Niva', 'Vesta', 'Granta', 'Largus'],
+  Mini: ['Cooper', 'Countryman', 'Clubman', 'Paceman', 'Cooper SE'],
+  'Rolls-Royce': ['Ghost', 'Phantom', 'Cullinan', 'Wraith', 'Dawn', 'Spectre'],
+  Bentley: ['Bentayga', 'Continental GT', 'Flying Spur', 'Mulsanne'],
+  Maserati: ['Ghibli', 'Levante', 'Quattroporte', 'Grecale', 'MC20'],
+  Ferrari: ['Roma', 'Portofino', '296 GTB', 'SF90', 'F8 Tributo', 'Purosangue'],
+  Lamborghini: ['Urus', 'Huracan', 'Aventador', 'Revuelto'],
+  'Aston Martin': ['DB11', 'DB12', 'Vantage', 'DBX', 'DBS'],
+  McLaren: ['720S', 'Artura', 'GT', '750S'],
+  Cadillac: ['Escalade', 'XT4', 'XT5', 'XT6', 'CT4', 'CT5', 'Lyriq'],
+  GMC: ['Sierra', 'Yukon', 'Acadia', 'Terrain', 'Canyon', 'Savana'],
+  Dodge: ['Durango', 'Charger', 'Challenger', 'Journey', 'Caliber'],
+  Ram: ['1500', '2500', '3500', 'ProMaster'],
+  Chrysler: ['300', 'Pacifica', 'Voyager', 'Town & Country'],
+  Lincoln: ['Navigator', 'Aviator', 'Nautilus', 'Corsair'],
+  Buick: ['Enclave', 'Encore', 'Envision', 'LaCrosse'],
+  Hummer: ['H2', 'H3', 'EV'],
+  Smart: ['ForTwo', 'ForFour', '#1', '#3'],
+  Rivian: ['R1T', 'R1S', 'R2'],
+  Lucid: ['Air', 'Gravity'],
+  Iveco: ['Daily', 'Eurocargo', 'Stralis', 'S-Way', 'Trakker'],
+  MAN: ['TGS', 'TGX', 'TGM', 'TGL', 'TGE'],
+  'UD Trucks': ['Quester', 'Croner', 'Quon', 'Condor'],
+  'FAW': ['J6', 'J7', 'Tiger V', 'Bestune T77'],
+  Sinotruk: ['HOWO', 'Sitrak', 'Hohan'],
+  Shacman: ['X3000', 'F3000', 'H3000', 'L3000'],
+  'Ashok Leyland': ['Dost', 'Boss', 'Ecomet', 'Falcon'],
+  'Eicher': ['Pro 2049', 'Pro 3015', 'Skyline'],
+  Yutong: ['ZK6122', 'ZK6938', 'E12'],
+  'King Long': ['XMQ6127', 'XMQ6900', 'Kingo'],
+  Higer: ['KLQ6125', 'KLQ6928', 'Azure'],
 };
 
 export const MOTO_MAKES: Record<string, string[]> = {
@@ -150,22 +211,45 @@ export const MOTO_MAKES: Record<string, string[]> = {
   Benelli: ['TRK 502', 'Leoncino 500', '502C', 'TNT 15'],
   Hero: ['Hunk 150', "Splendor+", 'XPulse 200', 'Glamour', 'Passion Pro'],
   Lifan: ['KP150', 'LF150', 'KPT200'],
+  // More makes: commuter and boda boda brands common in East Africa, then the rest of the world.
+  Indian: ['Scout', 'Chief', 'Chieftain', 'Challenger', 'FTR', 'Springfield'],
+  'MV Agusta': ['Brutale', 'Dragster', 'F3', 'Turismo Veloce', 'Superveloce'],
+  Zontes: ['ZT310-X', 'ZT350-T', 'ZT125-U', 'ZT703F'],
+  Voge: ['300Rally', '525DSX', '650DS', '300AC'],
+  Kymco: ['Like 150', 'Agility 125', 'AK 550', 'Xciting 400', 'People S'],
+  SYM: ['Jet 14', 'Symphony', 'Cruisym', 'Maxsym', 'NH T 200'],
+  Keeway: ['RKF 125', 'Superlight 200', 'K-Light 202', 'Vieste 300'],
+  Senke: ['SK150', 'SK125', 'SK200'],
+  Dayun: ['DY150', 'DY125', 'DY200'],
+  Skygo: ['SG150', 'SG125', 'Wolf 150'],
+  Captain: ['TVS Star HLX', '150', '125'],
+  Mahindra: ['Mojo', 'Centuro', 'Pantero'],
+  Jawa: ['Jawa 42', 'Perak', 'Yezdi Roadster', 'Yezdi Adventure'],
+  Zongshen: ['ZS150', 'RX3', 'ZS200GY', 'Cyclone RX3S'],
+  Loncin: ['LX150', 'LX200GY', 'Voge 300R'],
+  Sanya: ['SY150', 'SY125'],
+  'Ather': ['450X', '450S', 'Rizta'],
+  'Ola Electric': ['S1 Pro', 'S1 Air', 'S1 X'],
+  Roam: ['Roam Air', 'Roam Move'],
+  Spiro: ['Ekon 450', 'Ekon 900', 'Veloce'],
+  Ampersand: ['Ampersand 1'],
+  'Zero Motorcycles': ['SR/F', 'SR/S', 'FX', 'DSR/X'],
+  'Super Soco': ['TC Max', 'CPx', 'TS Street Hunter'],
+  Niu: ['NQi', 'MQi', 'UQi', 'RQi'],
+  Gilera: ['Runner', 'Nexus', 'SMT 125'],
+  Beta: ['RR 300', 'Alp 4.0', 'Xtrainer 300'],
+  GasGas: ['EC 300', 'MC 250F', 'ES 700'],
+  Sherco: ['SE 300', 'SEF 450'],
+  Norton: ['Commando 961', 'V4SV', 'Atlas'],
+  'BSA': ['Gold Star', 'Scrambler 650'],
+  Buell: ['Hammerhead 1190', 'Super Cruiser'],
 };
 
-/** Matches the prototype's `YEARS = Array.from({ length: 32 }, (_, i) => String(2026 - i))`. */
-export const YEARS: string[] = Array.from({ length: 32 }, (_, i) => String(2026 - i));
+/** Model years from next year (new models go on sale early) back to 1950, for classics. */
+const NEXT_YEAR = new Date().getFullYear() + 1;
+export const YEARS: string[] = Array.from({ length: NEXT_YEAR - 1950 + 1 }, (_, i) => String(NEXT_YEAR - i));
 
 /** Picks the right make→model table for a vehicle type, mirroring the prototype's `table` selection. */
 export function makeTableFor(vehicleType: 'car' | 'motorcycle'): Record<string, string[]> {
   return vehicleType === 'motorcycle' ? MOTO_MAKES : CAR_MAKES;
-}
-
-/** Resolves a make to one this table actually has, falling back to the table's first make (mirrors the prototype). */
-export function resolveMake(table: Record<string, string[]>, make: string): string {
-  return table[make] ? make : Object.keys(table)[0];
-}
-
-/** Resolves a model to one the make actually has, falling back to the make's first model (mirrors the prototype). */
-export function resolveModel(models: string[], model: string): string {
-  return models.includes(model) ? model : models[0];
 }

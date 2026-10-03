@@ -36,6 +36,8 @@ type PickerSheetProps = {
   onSelect: (value: string) => void;
   onClose: () => void;
   searchPlaceholder?: string;
+  /** Offer "Use “typed text”" when what was typed is not in the list (makes and models). */
+  allowCustom?: boolean;
 };
 
 export function PickerSheet({
@@ -47,6 +49,7 @@ export function PickerSheet({
   onSelect,
   onClose,
   searchPlaceholder = 'Type to filter',
+  allowCustom = false,
 }: PickerSheetProps) {
   const [query, setQuery] = useState('');
 
@@ -54,6 +57,9 @@ export function PickerSheet({
     const q = query.trim().toLowerCase();
     return q ? items.filter((item) => item.toLowerCase().includes(q)) : items;
   }, [items, query]);
+
+  const typed = query.trim().replace(/\s+/g, ' ');
+  const showCustom = allowCustom && typed.length > 0 && !items.some((i) => i.toLowerCase() === typed.toLowerCase());
 
   const handleClose = () => {
     setQuery('');
@@ -92,13 +98,21 @@ export function PickerSheet({
               placeholderTextColor={Colors.textFaint}
               style={styles.searchInput}
               autoCorrect={false}
-              autoCapitalize="none"
+              autoCapitalize={allowCustom ? 'words' : 'none'}
             />
           </View>
 
           <T variant="eyebrow" color={Colors.textFaint} style={styles.count}>
             {filtered.length} OF {items.length}
           </T>
+
+          {showCustom ? (
+            <Pressable style={styles.row} onPress={() => handlePick(typed)}>
+              <T variant="bodyStrong" color={Colors.accent} style={styles.rowLabel}>
+                Use “{typed}”
+              </T>
+            </Pressable>
+          ) : null}
 
           <FlatList
             data={filtered}
@@ -117,9 +131,11 @@ export function PickerSheet({
               );
             }}
             ListEmptyComponent={
-              <T variant="body" color={Colors.textMuted} style={styles.empty}>
-                No matches.
-              </T>
+              showCustom ? null : (
+                <T variant="body" color={Colors.textMuted} style={styles.empty}>
+                  {allowCustom && items.length === 0 ? 'Type the name above.' : 'No matches.'}
+                </T>
+              )
             }
           />
         </Pressable>
