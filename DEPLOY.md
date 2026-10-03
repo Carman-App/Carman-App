@@ -41,7 +41,7 @@ and offers managed Postgres and Redis works.
 
 ## Environment (API and worker)
 
-Locally, `node scripts/setup-db.mjs` creates the `carma` database user and
+Locally, `npm run setup:db` (in `admin/`) creates the `carma` database user and
 database on your Postgres, writes `DATABASE_URL`, runs the migrations and
 loads the demo data (it asks once for the Postgres admin password).
 Locally, `node scripts/setup-env.mjs` (from the repo root) creates or updates
@@ -79,7 +79,7 @@ Carma talks to Postgres directly (Prisma), so it needs Supabase's **database
 connection strings**, not the project URL or publishable/anon key (those are
 for Supabase's client libraries, which Carma doesn't use).
 
-**Quickest:** from the repo root run `node scripts/setup-supabase.mjs`. It asks
+**Quickest:** in `admin/` run `npm run setup:supabase`. It asks
 for the project URL and the database password, finds the region, writes both
 URLs into `admin/.env`, runs the migrations and the seed, and (if you give it
 S3 keys from Storage → S3 Connection) sets up document storage on Supabase
@@ -96,7 +96,7 @@ By hand:
 3. From `admin/`: `npx prisma migrate deploy`, then `npx tsx prisma/seed.ts`.
 
 Supabase gives each project its own Postgres; you don't need
-`scripts/setup-db.mjs` (that is for a Postgres on your own computer).
+`npm run setup:db` (that is for a Postgres on your own computer).
 
 ## Sign-in setup
 

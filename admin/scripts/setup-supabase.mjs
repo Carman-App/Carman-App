@@ -2,7 +2,7 @@
 /**
  * Connects Carma to a Supabase project's Postgres.
  *
- *   node scripts/setup-supabase.mjs        # from the repo root
+ *   npm run setup:supabase        # from admin/
  *
  * Asks for the project (URL or ref) and the database password (not saved
  * anywhere but admin/.env), then:
@@ -22,8 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ask, rl } from "./lib/ask.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const admin = join(root, "admin");
+const admin = join(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = join(admin, ".env");
 const require = createRequire(join(admin, "package.json"));
 
@@ -150,7 +149,7 @@ async function main() {
     console.log("Wrote the S3_* settings to admin/.env.");
   }
 
-  console.log("\nDone. Start the server with: cd admin && npm run dev");
+  console.log("\nDone. Start the server with: npm run dev");
 }
 
 main().catch((e) => {

@@ -2,7 +2,7 @@
 /**
  * Sets up the local Postgres database for Carma and fills in DATABASE_URL.
  *
- *   node scripts/setup-db.mjs        # from the repo root, with Postgres running
+ *   npm run setup:db        # from admin/, with Postgres running
  *
  * Asks for your Postgres admin login once (the "postgres" user and the
  * password you chose when installing PostgreSQL; it is not saved), then:
@@ -21,8 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ask, rl } from "./lib/ask.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const admin = join(root, "admin");
+const admin = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(admin, "package.json"));
 
 let pg;
@@ -101,7 +100,7 @@ async function main() {
   console.log("Loading the demo account and plans…");
   if (run(["tsx", "prisma/seed.ts"]).status !== 0) process.exit(1);
 
-  console.log("\nDone. Start the server with: cd admin && npm run dev");
+  console.log("\nDone. Start the server with: npm run dev");
 }
 
 main().catch((e) => {
