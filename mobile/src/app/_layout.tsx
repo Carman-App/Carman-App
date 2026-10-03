@@ -32,6 +32,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // True once this JS runtime has started. A real launch (or a full reload)
 // starts a new runtime; Fast Refresh does not, so saving a file keeps your place.
 let launched = false;
+const startedAt = Date.now();
+const ORPHAN_WINDOW_MS = 20_000;
+/** Screens a launch may legitimately open on. */
+const STARTING_SCREENS = ['/onboarding', '/home', '/mechanic/dashboard'];
 
 function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -71,6 +75,20 @@ function RootLayout() {
   useEffect(() => {
     if (ready && routed) SplashScreen.hideAsync().catch(() => {});
   }, [ready, routed]);
+
+  // Safety net for the same problem: Expo Go can hand the app the last
+  // screen's address after the redirect above has run, opening e.g. "Add a
+  // record" with nothing behind it. Shortly after launch, a screen that is
+  // alone in the history and is not a starting screen goes back to the launch
+  // target. Screens opened from inside the app always have history.
+  useEffect(() => {
+    if (!ready || Date.now() - startedAt > ORPHAN_WINDOW_MS) return;
+    const startingScreen = pathname === '/' || STARTING_SCREENS.some((p) => pathname.startsWith(p));
+    if (startingScreen || router.canGoBack()) return;
+    void launchTarget().then((target) => {
+      if (target !== pathname) router.replace(target);
+    });
+  }, [ready, pathname]);
 
   if (!ready) return null;
 
