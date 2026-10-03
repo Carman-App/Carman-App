@@ -1,0 +1,2 @@
+# A package-lock.json at the repo root is accidental (there is no root package.json).
+/package-lock.json

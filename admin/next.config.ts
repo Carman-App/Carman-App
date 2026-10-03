@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 // Sent on every response. The console renders its own pages only, so it can
@@ -12,6 +13,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // admin/ is the app root, even if a stray package-lock.json sits in the repo root.
+  turbopack: { root: path.join(__dirname) },
   poweredByHeader: false,
   // Standalone output: a self-contained server for the Docker image (see Dockerfile).
   output: "standalone",

@@ -41,6 +41,9 @@ and offers managed Postgres and Redis works.
 
 ## Environment (API and worker)
 
+Locally, `node scripts/setup-db.mjs` creates the `carma` database user and
+database on your Postgres, writes `DATABASE_URL`, runs the migrations and
+loads the demo data (it asks once for the Postgres admin password).
 Locally, `node scripts/setup-env.mjs` (from the repo root) creates or updates
 `admin/.env` and `mobile/.env.local` from the `.env.example` files: it adds
 missing settings, generates the secrets, clears example placeholders and never
