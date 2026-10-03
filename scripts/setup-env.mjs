@@ -118,6 +118,15 @@ for (const t of TARGETS) {
   if (t.dir === "admin" && /user:password@/.test(final.get("DATABASE_URL") ?? "")) {
     todo.push(`${rel}: DATABASE_URL still has the example login (user:password). Put your Postgres username and password in it.`);
   }
+  if (t.dir === "admin") {
+    const db = final.get("DATABASE_URL") ?? "";
+    if (/\[YOUR-PASSWORD\]/.test(db + (final.get("DIRECT_DATABASE_URL") ?? ""))) {
+      todo.push(`${rel}: replace [YOUR-PASSWORD] in the database URLs with your Supabase database password.`);
+    }
+    if (/:6543\//.test(db) && !final.get("DIRECT_DATABASE_URL")) {
+      todo.push(`${rel}: DATABASE_URL is a pooled URL (port 6543); set DIRECT_DATABASE_URL to the Session pooler URL (port 5432) so migrations work.`);
+    }
+  }
 }
 
 if (todo.length) {

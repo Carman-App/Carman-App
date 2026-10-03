@@ -20,6 +20,7 @@ import "../load-env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { withLibpqSsl } from "../src/lib/db-url";
 
 type SeedItem = { code: string; label: string; sortOrder: number; metadata?: Record<string, unknown> };
 type SeedList = { key: string; label: string; items: SeedItem[] };
@@ -115,7 +116,7 @@ const LISTS: SeedList[] = [
 ];
 
 async function main() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" });
+  const adapter = new PrismaPg({ connectionString: withLibpqSsl(process.env.DATABASE_URL ?? "") });
   const prisma = new PrismaClient({ adapter });
 
   try {

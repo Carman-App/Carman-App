@@ -17,13 +17,14 @@
 import "../load-env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { withLibpqSsl } from "../src/lib/db-url";
 
 const DEV_ACCOUNT_ID = process.env.DEV_ACCOUNT_ID ?? "00000000-0000-4000-8000-000000000001";
 const DEV_USER_ID = "00000000-0000-4000-8000-000000000002";
 const DEV_GARAGE_ID = "00000000-0000-4000-8000-000000000003";
 
 async function main() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" });
+  const adapter = new PrismaPg({ connectionString: withLibpqSsl(process.env.DATABASE_URL ?? "") });
   const prisma = new PrismaClient({ adapter });
 
   try {

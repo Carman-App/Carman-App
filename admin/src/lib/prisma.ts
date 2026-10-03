@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { withLibpqSsl } from "./db-url";
 
 // Prisma 7 requires a driver adapter for SQL datasources — see
 // prisma/schema.prisma and prisma.config.ts. DATABASE_URL is read lazily
@@ -11,6 +12,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 // - DATABASE_URL should point at a connection pooler (PgBouncer in
 //   transaction mode, or the provider's pooled URL). DATABASE_POOL_MAX caps
 //   the connections each server instance holds open to it (default 10).
+//   On Supabase that is the "Transaction pooler" URL (port 6543);
+//   migrations use DIRECT_DATABASE_URL (prisma.config.ts).
 // - DATABASE_READ_URL, when set, points at a read replica. `prismaRead` is
 //   used by reporting screens that only read (Pulse, Growth, data quality,
 //   revenue, work overview), so heavy counting never competes with app
@@ -23,7 +26,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(connectionString: string) {
   const adapter = new PrismaPg({
-    connectionString,
+    connectionString: withLibpqSsl(connectionString),
     max: Number(process.env.DATABASE_POOL_MAX) || 10,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,

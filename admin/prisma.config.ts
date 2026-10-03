@@ -7,6 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // Migrations need a direct (unpooled) connection: DIRECT_DATABASE_URL when
+    // DATABASE_URL goes through a pooler (Supabase port 6543, PgBouncer).
+    url: process.env.DIRECT_DATABASE_URL || env("DATABASE_URL"),
   },
 });

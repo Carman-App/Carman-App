@@ -8,6 +8,7 @@
 import "../load-env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { withLibpqSsl } from "../src/lib/db-url";
 import { hashPassword } from "../src/lib/auth/password";
 import { AdminRole } from "../src/generated/prisma/enums";
 
@@ -40,7 +41,7 @@ async function main() {
   // Admins & roles screen (AUD-04) once signed in, not this script.
   const role = (roleInput as AdminRole | undefined) ?? AdminRole.OWNER;
 
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" });
+  const adapter = new PrismaPg({ connectionString: withLibpqSsl(process.env.DATABASE_URL ?? "") });
   const prisma = new PrismaClient({ adapter });
 
   try {

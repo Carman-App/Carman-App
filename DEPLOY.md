@@ -51,7 +51,8 @@ changes a value you set.
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | yes | **Pooled** URL (PgBouncer, transaction mode) |
+| `DATABASE_URL` | yes | **Pooled** URL (PgBouncer, transaction mode). Supabase: *Transaction pooler*, port 6543, `?sslmode=require` |
+| `DIRECT_DATABASE_URL` | with a pooler | Direct URL that `prisma migrate deploy` uses. Supabase: *Session pooler*, port 5432 |
 | `DATABASE_POOL_MAX` | no | Connections per instance to the pooler. Default 10 |
 | `DATABASE_READ_URL` | no | Read replica for reporting screens |
 | `REDIS_URL` | yes | Without it, limits and caches are per instance and jobs run inside the API |
@@ -71,6 +72,23 @@ Mobile (EAS environment): `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_
 `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`,
 `EXPO_PUBLIC_IOS_BUNDLE_ID`, `EXPO_PUBLIC_ANDROID_PACKAGE`, `EXPO_PUBLIC_SENTRY_DSN`.
 Do **not** set `EXPO_PUBLIC_DEV_ACCOUNT_ID` for production builds.
+
+## Using Supabase for Postgres
+
+Carma talks to Postgres directly (Prisma), so it needs Supabase's **database
+connection strings**, not the project URL or publishable/anon key (those are
+for Supabase's client libraries, which Carma doesn't use).
+
+1. Supabase dashboard → your project → **Connect** (top bar).
+2. Copy the **Transaction pooler** string (port 6543) into `DATABASE_URL` and
+   the **Session pooler** string (port 5432) into `DIRECT_DATABASE_URL`, in
+   `admin/.env`. Replace `[YOUR-PASSWORD]` with the database password
+   (Project Settings → Database → Reset database password if you don't have
+   it; URL-encode characters like `@ # / ?`). Add `?sslmode=require` to both.
+3. From `admin/`: `npx prisma migrate deploy`, then `npx tsx prisma/seed.ts`.
+
+Supabase gives each project its own Postgres; you don't need
+`scripts/setup-db.mjs` (that is for a Postgres on your own computer).
 
 ## Sign-in setup
 
