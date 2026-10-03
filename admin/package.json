@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "create-admin": "tsx scripts/create-admin.ts",
+    "admin:from-env": "tsx scripts/create-admin.ts --from-env",
     "setup:supabase": "node scripts/setup-supabase.mjs",
     "setup:db": "node scripts/setup-db.mjs",
     "seed": "tsx prisma/seed.ts",

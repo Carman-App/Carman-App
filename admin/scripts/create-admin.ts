@@ -8,8 +8,10 @@
  * Asks for the email, name and password (typed hidden, twice). Changing an
  * existing admin's password signs them out everywhere.
  *
- * Unattended (Docker, CI): set ADMIN_EMAIL and ADMIN_PASSWORD (and optionally
- * ADMIN_NAME, ADMIN_ROLE) in the environment and pass --from-env.
+ * From admin/.env: set ADMIN_EMAIL and ADMIN_PASSWORD (and optionally
+ * ADMIN_NAME, ADMIN_ROLE, ADMIN_RESET_2FA="true") and run
+ *   npm run admin:from-env
+ * It creates that admin, or updates the password and name if it exists.
  */
 import "../load-env";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -86,7 +88,7 @@ function fromEnv() {
     email,
     name: process.env.ADMIN_NAME?.trim() || "Admin",
     password,
-    resetTwoFactor: false,
+    resetTwoFactor: process.env.ADMIN_RESET_2FA === "true",
     role: (roleInput as AdminRole | undefined) ?? AdminRole.OWNER,
   };
 }
