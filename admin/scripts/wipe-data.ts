@@ -62,10 +62,10 @@ async function main() {
     console.log(`Database: ${dbName} on ${target.hostname}`);
     console.log(`This deletes ${counts[0].n} account(s) and everything recorded in ${wipe.length} tables.`);
     console.log("Admin logins, plans and console settings are kept. This cannot be undone.\n");
-    const answer = await question(`Type the database name (${dbName}) to delete everything: `);
+    const answer = await question(`To delete everything, type the word ${dbName} exactly: `);
     rl.close();
     if (answer !== dbName) {
-      console.log("Nothing deleted.");
+      console.log(`Nothing deleted: you typed "${answer}", not "${dbName}".`);
       return;
     }
 
