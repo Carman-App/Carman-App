@@ -14,6 +14,8 @@ const KIND_STYLE: Record<Reminder['kind'], { glyph: string; hue: string; tint: s
   'document-expiry': { glyph: 'insurance', hue: Colors.signal, tint: Colors.signalSoft, source: 'From the expiry date on the document.' },
   'estimate-pending': { glyph: 'estimate', hue: Colors.orange, tint: Colors.warningSoft, source: 'A mechanic is waiting on your answer.' },
   'project-stalled': { glyph: 'build', hue: Colors.positive, tint: Colors.positiveSoft, source: 'No entry on this project for 14 days.' },
+  'payment-due': { glyph: 'loan', hue: Colors.orange, tint: Colors.warningSoft, source: 'You asked to be reminded when you saved the record.' },
+  'warranty-end': { glyph: 'repair', hue: Colors.accent, tint: Colors.accentSoft, source: 'From the warranty on the repair you saved.' },
 };
 
 /** How far away a reminder is, in the unit it is measured in. */

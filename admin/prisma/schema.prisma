@@ -110,6 +110,10 @@ enum ReminderKind {
   DOCUMENT_EXPIRY
   ESTIMATE_PENDING
   PROJECT_STALLED
+  // Set from a record form's reminder toggle (loan instalment, subscription,
+  // tracker fee, fine) and from repair warranties.
+  PAYMENT_DUE
+  WARRANTY_END
 }
 
 enum BuildStageStatus {
@@ -1099,10 +1103,18 @@ model Reminder {
   // Set by the background reminder scan (e.g. "doc-expiry:<documentId>:<expiry>")
   // so running it again never creates the same reminder twice.
   sourceKey   String?      @unique
+  // Reminders asked for on a record form: when to tell the owner (a set number
+  // of days before dueDate), when that was done, and for recurring charges how
+  // many months to roll forward after each notice.
+  remindAt     DateTime?
+  notifiedAt   DateTime?
+  repeatMonths Int?
+  createdById  String?
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([remindAt])
   @@map("reminders")
 }
 

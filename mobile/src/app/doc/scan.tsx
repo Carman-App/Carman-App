@@ -198,7 +198,7 @@ export default function ScanDocumentScreen() {
         }}
         onClose={() => setSheet(null)}
       />
-      <DateSheet visible={sheet === 'expiry'} value={expiry} title="Expires on" allowFuture onSelect={setExpiry} onClose={() => setSheet(null)} />
+      <DateSheet visible={sheet === 'expiry'} value={expiry} title="Expires on" allowFuture onSelect={setExpiry} onClear={() => setExpiry('')} onClose={() => setSheet(null)} />
     </Screen>
   );
 }

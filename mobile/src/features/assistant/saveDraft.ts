@@ -1,4 +1,4 @@
-import { addRecord } from '@/data/repo';
+import { addRecord, addReminder } from '@/data/repo';
 import type { PendingDraft } from '@/features/assistant/draftStore';
 import type { Vehicle, VehicleRecord } from '@/types/domain';
 
@@ -20,7 +20,13 @@ export function draftToRecord(d: PendingDraft, vehicle: Vehicle, enteredBy: stri
 }
 
 export async function saveDraft(d: PendingDraft, vehicle: Vehicle, enteredBy: string) {
-  return addRecord(vehicle.id, draftToRecord(d, vehicle, enteredBy));
+  const record = await addRecord(vehicle.id, draftToRecord(d, vehicle, enteredBy));
+  if (d.reminder) {
+    const { hint: _hint, ...reminder } = d.reminder;
+    // The record is saved either way; a reminder that fails is not worth losing the record over.
+    await addReminder(vehicle.id, reminder).catch(() => undefined);
+  }
+  return record;
 }
 
 /** What is still missing before a draft can be saved. */

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Footnote, KeyValueRow, Toggle } from '@/components/ui/Blocks';
@@ -39,6 +39,13 @@ export default function MyProfileScreen() {
   const prefs = account?.notificationPrefs ?? {};
   const [picking, setPicking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Design: sign out needs a second tap; the first turns the row red.
+  const [armOut, setArmOut] = useState(false);
+  useEffect(() => {
+    if (!armOut) return;
+    const t = setTimeout(() => setArmOut(false), 4000);
+    return () => clearTimeout(t);
+  }, [armOut]);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const units = account ? REGION_UNITS[account.region] : undefined;
@@ -111,13 +118,15 @@ export default function MyProfileScreen() {
       {signedIn || __DEV__ ? (
         <Pressable
           onPress={async () => {
+            if (!armOut) return setArmOut(true);
+            setArmOut(false);
             await signOut();
             router.replace('/onboarding/welcome');
           }}
           style={styles.row}>
-          <IconGlyph glyph={signedIn ? 'logout' : 'swap'} size={22} bg="transparent" fg={Colors.signal} scale={0.85} />
-          <T variant="bodyStrong" color={Colors.signal} style={styles.flex}>
-            {signedIn ? 'Sign out of this phone' : 'Start again on this phone'}
+          <IconGlyph glyph={signedIn ? 'logout' : 'swap'} size={22} bg="transparent" fg={armOut ? Colors.signal : Colors.body} scale={0.85} />
+          <T variant="bodyStrong" color={armOut ? Colors.signal : Colors.body} style={styles.flex}>
+            {armOut ? (signedIn ? 'TAP AGAIN TO SIGN OUT' : 'TAP AGAIN TO START OVER') : signedIn ? 'Sign out' : 'Start again on this phone'}
           </T>
         </Pressable>
       ) : null}

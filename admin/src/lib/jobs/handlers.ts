@@ -74,7 +74,69 @@ async function scanReminders() {
     }
     if (docs.length < SCAN_BATCH) break;
   }
-  console.log(`[jobs] reminders.scan created ${created}`);
+  const sent = await sendDueReminders(now);
+  console.log(`[jobs] reminders.scan created ${created}, sent ${sent}`);
+}
+
+const addMonths = (d: Date, n: number) => {
+  const out = new Date(d);
+  out.setUTCMonth(out.getUTCMonth() + n);
+  return out;
+};
+
+/** Which notification setting a reminder kind belongs to (My profile → Notifications). */
+const REMINDER_CATEGORY: Partial<Record<ReminderKind, string>> = {
+  [ReminderKind.SERVICE_DUE]: "service",
+  [ReminderKind.WARRANTY_END]: "service",
+  [ReminderKind.DOCUMENT_EXPIRY]: "docs",
+  [ReminderKind.PAYMENT_DUE]: "money",
+};
+
+/**
+ * Reminders switched on in a record form: tell the garage owner once
+ * remindAt has passed. A recurring one (instalment, subscription) rolls
+ * forward by repeatMonths instead of being marked sent. Each reminder is
+ * claimed with a conditional update first, so a retried run never sends twice.
+ */
+async function sendDueReminders(now: Date): Promise<number> {
+  let sent = 0;
+  for (;;) {
+    const due = await prisma.reminder.findMany({
+      where: { resolved: false, notifiedAt: null, remindAt: { lte: now } },
+      select: {
+        id: true, kind: true, description: true, dueDate: true, remindAt: true, repeatMonths: true, vehicleId: true,
+        vehicle: { select: { model: true, garage: { select: { ownerId: true } } } },
+      },
+      orderBy: { remindAt: "asc" },
+      take: SCAN_BATCH,
+    });
+    if (due.length === 0) break;
+
+    for (const r of due) {
+      // Roll a recurring one past today, so a long-missed run sends one notice, not one per month.
+      let steps = 0;
+      if (r.repeatMonths) do steps += r.repeatMonths; while (addMonths(r.remindAt!, steps) <= now);
+      const next = r.repeatMonths
+        ? { remindAt: addMonths(r.remindAt!, steps), dueDate: r.dueDate ? addMonths(r.dueDate, steps) : null }
+        : { notifiedAt: now };
+      const claimed = await prisma.reminder.updateMany({ where: { id: r.id, notifiedAt: null, remindAt: r.remindAt }, data: next });
+      if (claimed.count === 0) continue; // another run took it
+
+      const when = r.dueDate
+        ? ` on ${r.dueDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}`
+        : "";
+      await notify({
+        accountId: r.vehicle.garage.ownerId,
+        type: r.kind === ReminderKind.DOCUMENT_EXPIRY ? NotificationType.DOCUMENT_EXPIRING : NotificationType.GENERIC,
+        title: r.description,
+        body: `For the ${r.vehicle.model}${when}.`,
+        metadata: { reminderId: r.id, vehicleId: r.vehicleId, category: REMINDER_CATEGORY[r.kind] ?? "service" },
+      });
+      sent += 1;
+    }
+    if (due.length < SCAN_BATCH) break;
+  }
+  return sent;
 }
 
 async function generateExport({ requestId }: JobPayloads["privacy.export"]) {

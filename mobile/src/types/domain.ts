@@ -224,7 +224,7 @@ export type VehicleDocument = {
   addedAt: string;
 };
 
-export type ReminderKind = 'service-due' | 'document-expiry' | 'estimate-pending' | 'project-stalled';
+export type ReminderKind = 'service-due' | 'document-expiry' | 'estimate-pending' | 'project-stalled' | 'payment-due' | 'warranty-end';
 
 export type Reminder = {
   id: string;

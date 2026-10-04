@@ -371,6 +371,8 @@ const REMINDER_KIND: Record<string, ReminderKind> = {
   DOCUMENT_EXPIRY: 'document-expiry',
   ESTIMATE_PENDING: 'estimate-pending',
   PROJECT_STALLED: 'project-stalled',
+  PAYMENT_DUE: 'payment-due',
+  WARRANTY_END: 'warranty-end',
 };
 
 export type RawReminder = {

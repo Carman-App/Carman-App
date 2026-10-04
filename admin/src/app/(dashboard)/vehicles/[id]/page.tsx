@@ -179,7 +179,10 @@ export default async function VehicleDetailPage({
           columns={[
             { header: "Kind", cell: (r) => <Badge value={r.kind} /> },
             { header: "Description", cell: (r) => r.description },
-            { header: "Due", cell: (r) => (r.dueDate ? formatDate(r.dueDate) : r.dueKm ? `${r.dueKm.toLocaleString()} km` : "—") },
+            { header: "Due", cell: (r) => [r.dueDate ? formatDate(r.dueDate) : null, r.dueKm ? `${r.dueKm.toLocaleString()} km` : null].filter(Boolean).join(" or ") || "—" },
+            // Reminders the owner switched on in a record form: when the notice goes, and whether it repeats.
+            { header: "Notice", cell: (r) => (r.notifiedAt ? `Sent ${formatDate(r.notifiedAt)}` : r.remindAt ? formatDate(r.remindAt) : "—") },
+            { header: "Repeats", cell: (r) => (r.repeatMonths ? (r.repeatMonths === 12 ? "Yearly" : r.repeatMonths === 1 ? "Monthly" : `Every ${r.repeatMonths} months`) : "—") },
           ]}
         />
       </Section>

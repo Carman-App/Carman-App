@@ -66,6 +66,7 @@ changes a value you set.
 | `CORS_ALLOWED_ORIGINS` | yes | Browser origins allowed to call the API. Native apps don't need one |
 | `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT` | for files | Private bucket. `S3_ENDPOINT` for R2/MinIO |
 | `ANTHROPIC_API_KEY` | for the assistant | Server only |
+| `GOOGLE_PLACES_API_KEY` | optional | Google Places API (New). Turns on nearby places and search in the record forms' place sheet. Server only. Without it the sheet uses the phone's address lookup, recent places and typed entry |
 | `REVENUECAT_SECRET_API_KEY` | for subscriptions | RevenueCat secret key (`sk_…`): the server reads purchases with it |
 | `REVENUECAT_WEBHOOK_AUTH` | for subscriptions | Same value as the webhook's Authorization header in RevenueCat |
 | `EXPO_ACCESS_TOKEN` | no | Only if enhanced push security is on at expo.dev |
@@ -162,6 +163,10 @@ Sent through Expo's push service, which delivers to Apple and Google.
    asks permission when set-up is done and registers the phone; settings in
    My profile → Notifications decide which kinds are pushed. Every
    notification also appears in the in-app list.
+
+## Reminders from record forms
+
+Insurance, licence, loan, fines, subscriptions, security, service, repair and parts forms have a reminder switch (as in the design). Switching it on saves a reminder with the record. The worker's daily `reminders.scan` job sends each one as a push notification when it falls due. A monthly or yearly charge then moves on to its next date. The scan needs the worker running, as it does for document expiry.
 
 ## Test accounts (development)
 

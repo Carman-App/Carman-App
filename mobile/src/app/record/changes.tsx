@@ -64,6 +64,9 @@ export default function ChangesScreen() {
       ],
     });
   }
+  if (draft.reminder) {
+    items.push({ glyph: 'reminder', title: 'Reminder set', body: draft.reminder.hint });
+  }
   if (odoMoves) {
     items.push({ glyph: 'send', title: 'Odometer moves', body: `${formatNumber(vehicle.odometerKm)} → ${formatNumber(record.odometerAtEntry)} km` });
     items.push({ glyph: 'reminder', title: 'Distance reminders move', body: 'Anything due by kilometre is measured from the new reading.' });

@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/ui/Button';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
-import { formatDateLong, todayIso } from '@/lib/format';
-import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
+import { todayIso } from '@/lib/format';
+import { Colors, FontFamily } from '@/theme/tokens';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-function iso(y: number, m: number, d: number) {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+function iso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 type DateSheetProps = {
@@ -18,23 +19,41 @@ type DateSheetProps = {
   value: string;
   onSelect: (iso: string) => void;
   onClose: () => void;
+  /** Kept for callers that name the date; the design's sheet shows the month instead. */
   title?: string;
-  /** Allow dates after today (document expiry). Records default to the past only. */
+  /** Allow dates after today (expiry, due and next-charge dates). Records default to the past only. */
   allowFuture?: boolean;
+  /** Shows the clear (×) button. Leave out where a date is required. */
+  onClear?: () => void;
 };
 
-/** Month calendar in a bottom sheet. "Date the reading when you saw it, not when you typed it." */
-export function DateSheet({ visible, value, onSelect, onClose, title = 'Pick a date', allowFuture }: DateSheetProps) {
-  const start = new Date((value || todayIso()) + 'T00:00:00');
-  const [cursor, setCursor] = useState({ y: start.getFullYear(), m: start.getMonth() });
-  const [chosen, setChosen] = useState(value || todayIso());
+/**
+ * Design "date" sheet: month header with arrows, a Monday-first month grid
+ * (today ringed in blue, the chosen day solid blue), then Today, Yesterday
+ * and clear. Tapping a day picks it and closes the sheet.
+ */
+export function DateSheet({ visible, value, onSelect, onClose, allowFuture, onClear }: DateSheetProps) {
+  const insets = useSafeAreaInsets();
   const today = todayIso();
+  const startOf = (v: string) => {
+    const d = new Date((v || today) + 'T00:00:00');
+    return { y: d.getFullYear(), m: d.getMonth() };
+  };
+  const [cursor, setCursor] = useState(() => startOf(value));
+  // Open on the month of the current value each time (adjusted during render, not in an effect).
+  const [openedFor, setOpenedFor] = useState(visible ? value : null);
+  if (visible && openedFor !== value) {
+    setOpenedFor(value);
+    setCursor(startOf(value));
+  } else if (!visible && openedFor !== null) {
+    setOpenedFor(null);
+  }
 
   const cells = useMemo(() => {
-    const first = new Date(cursor.y, cursor.m, 1).getDay();
+    const lead = (new Date(cursor.y, cursor.m, 1).getDay() + 6) % 7;
     const days = new Date(cursor.y, cursor.m + 1, 0).getDate();
-    const out: (number | null)[] = Array(first).fill(null);
-    for (let d = 1; d <= days; d += 1) out.push(d);
+    const out: (string | null)[] = Array(lead).fill(null);
+    for (let d = 1; d <= days; d += 1) out.push(iso(new Date(cursor.y, cursor.m, d)));
     while (out.length % 7) out.push(null);
     return out;
   }, [cursor]);
@@ -43,58 +62,74 @@ export function DateSheet({ visible, value, onSelect, onClose, title = 'Pick a d
     const d = new Date(cursor.y, cursor.m + delta, 1);
     setCursor({ y: d.getFullYear(), m: d.getMonth() });
   };
+  const pick = (key: string) => {
+    onSelect(key);
+    onClose();
+  };
+  const yesterday = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return iso(d);
+  })();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.head}>
-            <T variant="display" style={styles.flex}>
-              {title}
-            </T>
-            <Pressable onPress={onClose} hitSlop={10}>
-              <IconGlyph glyph="close" size={36} bg={Colors.chip} fg={Colors.body} />
-            </Pressable>
-          </View>
+        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.monthRow}>
-            <Pressable onPress={() => shift(-1)} hitSlop={10}>
-              <IconGlyph glyph="back" size={36} />
+            <Pressable onPress={() => shift(-1)} hitSlop={8} style={styles.round} accessibilityLabel="Previous month">
+              <IconGlyph glyph="back" size={40} bg="transparent" fg={Colors.ink} scale={0.43} />
             </Pressable>
             <T style={styles.month}>
               {MONTHS[cursor.m]} {cursor.y}
             </T>
-            <Pressable onPress={() => shift(1)} hitSlop={10}>
-              <IconGlyph glyph="chevron-right" size={36} />
+            <Pressable onPress={() => shift(1)} hitSlop={8} style={styles.round} accessibilityLabel="Next month">
+              <IconGlyph glyph="arrow-right" size={40} bg="transparent" fg={Colors.ink} scale={0.43} />
             </Pressable>
           </View>
-          <View style={styles.grid}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <T key={i} variant="eyebrow" center style={styles.cell}>
-                {d}
-              </T>
+          <View style={[styles.grid, styles.weekdays]}>
+            {WEEKDAYS.map((d, i) => (
+              <View key={i} style={styles.weekday}>
+                <T style={styles.weekdayText}>{d}</T>
+              </View>
             ))}
-            {cells.map((d, i) => {
-              if (!d) return <View key={i} style={styles.cell} />;
-              const key = iso(cursor.y, cursor.m, d);
+          </View>
+          <View style={styles.grid}>
+            {cells.map((key, i) => {
+              if (!key) return <View key={i} style={styles.cell} />;
               const disabled = !allowFuture && key > today;
-              const on = key === chosen;
+              const on = key === value;
+              const isToday = key === today;
               return (
-                <Pressable key={i} disabled={disabled} onPress={() => setChosen(key)} style={styles.cell}>
-                  <View style={[styles.day, on && styles.dayOn, key === today && !on && styles.dayToday]}>
-                    <T style={[styles.dayText, on && { color: Colors.white }, disabled && { color: Colors.textFaint }]}>{d}</T>
-                  </View>
-                </Pressable>
+                <View key={i} style={styles.cell}>
+                  <Pressable
+                    disabled={disabled}
+                    onPress={() => pick(key)}
+                    style={[styles.day, isToday && !on && styles.dayToday, on && styles.dayOn]}>
+                    <T style={[styles.dayText, on && { color: Colors.white }, disabled && { color: '#B4AFA8' }]}>{Number(key.slice(8))}</T>
+                  </Pressable>
+                </View>
               );
             })}
           </View>
           <View style={styles.foot}>
-            <Button
-              onPress={() => {
-                onSelect(chosen);
-                onClose();
-              }}>
-              {formatDateLong(chosen)}
-            </Button>
+            <Pressable onPress={() => pick(today)} style={[styles.pill, styles.pillYellow]}>
+              <T style={styles.pillText}>Today</T>
+            </Pressable>
+            <Pressable onPress={() => pick(yesterday)} style={[styles.pill, styles.pillLine]}>
+              <T style={styles.pillText}>Yesterday</T>
+            </Pressable>
+            {onClear ? (
+              <Pressable
+                onPress={() => {
+                  onClear();
+                  onClose();
+                }}
+                style={styles.clear}
+                accessibilityLabel="Clear the date">
+                <IconGlyph glyph="close" size={48} bg="transparent" fg="#5F5A55" scale={0.33} />
+              </Pressable>
+            ) : null}
           </View>
         </Pressable>
       </Pressable>
@@ -106,67 +141,108 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: Colors.scrim,
+    backgroundColor: 'rgba(20,22,26,0.24)',
   },
   sheet: {
     backgroundColor: Colors.white,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    paddingBottom: Spacing.xl,
-  },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
-  },
-  flex: {
-    flex: 1,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 20,
+    paddingHorizontal: 16,
   },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 4,
+  },
+  round: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F2F0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   month: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 15,
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
     color: Colors.ink,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: Spacing.md,
+  },
+  weekdays: {
+    marginTop: 16,
+  },
+  weekday: {
+    width: `${100 / 7}%`,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: '#8A847D',
   },
   cell: {
     width: `${100 / 7}%`,
-    alignItems: 'center',
-    paddingVertical: 4,
+    padding: 1,
   },
   day: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dayToday: {
+    backgroundColor: Colors.accentSoft,
+    borderColor: Colors.accent,
   },
   dayOn: {
     backgroundColor: Colors.accent,
   },
-  dayToday: {
-    borderWidth: 1,
-    borderColor: Colors.lineStrong,
-  },
   dayText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.regular,
     fontSize: 14,
     color: Colors.ink,
   },
   foot: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  pill: {
+    flex: 1,
+    height: 48,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillYellow: {
+    backgroundColor: '#F8C01D',
+  },
+  pillLine: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: 'rgba(20,22,26,0.14)',
+  },
+  pillText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+    color: '#333333',
+  },
+  clear: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F2F0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

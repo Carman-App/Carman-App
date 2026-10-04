@@ -495,20 +495,40 @@ export async function getReminders(vehicleId: string): Promise<Reminder[]> {
   return items.map(toReminder);
 }
 
+export type PlaceHit = { id: string; name: string; address: string; distanceM?: number };
+
+/** Nearby places or a typed search for the place sheet. `configured` is false when the server has no Places key. */
+export async function searchPlaces(input: { query?: string; lat?: number; lng?: number; kind?: string }): Promise<{ configured: boolean; places: PlaceHit[] }> {
+  const query: Record<string, string> = {};
+  if (input.query) query.q = input.query;
+  if (input.lat !== undefined && input.lng !== undefined) {
+    query.lat = String(input.lat);
+    query.lng = String(input.lng);
+  }
+  if (input.kind) query.kind = input.kind;
+  return api.get<{ configured: boolean; places: PlaceHit[] }>('places', query);
+}
+
 export async function resolveReminder(reminderId: string): Promise<void> {
   await api.post(`reminders/${reminderId}/resolve`);
   await Promise.all([invalidatePrefix('reminders'), invalidatePrefix('garageReminders')]);
 }
 
-/**
- * There is no `POST /vehicles/:id/reminders` — reminders are only ever
- * created server-side (there's no route for it in admin's /api/v1 surface
- * at all; presumably a future background job). No screen currently calls
- * this (verified: `addReminder(` has zero call sites), so it's left
- * unimplemented with a clear error rather than silently no-oping.
- */
-export async function addReminder(_vehicleId: string, _input: Omit<Reminder, 'id' | 'vehicleId'>): Promise<Reminder> {
-  throw new Error('Creating reminders directly is not supported by the API yet (no POST /vehicles/:id/reminders route).');
+export type NewReminder = {
+  kind: 'SERVICE_DUE' | 'DOCUMENT_EXPIRY' | 'PAYMENT_DUE' | 'WARRANTY_END';
+  description: string;
+  dueDate?: string;
+  dueKm?: number;
+  /** When to tell the owner (YYYY-MM-DD). Defaults to dueDate on the server. */
+  remindAt?: string;
+  repeatMonths?: number;
+};
+
+/** A reminder switched on in a record form ("Remind me before it expires"). */
+export async function addReminder(vehicleId: string, input: NewReminder): Promise<Reminder> {
+  const raw = await api.post<RawReminder>(`vehicles/${vehicleId}/reminders`, input);
+  await Promise.all([invalidatePrefix('reminders'), invalidatePrefix('garageReminders')]);
+  return toReminder(raw);
 }
 
 // ---------- Project build ----------

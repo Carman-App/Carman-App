@@ -33,6 +33,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     // Push notifications (src/features/notifications/push.ts). Android
     // delivery also needs the Firebase file (GOOGLE_SERVICES_JSON below).
     ['expo-notifications', { color: '#134B9C' }],
+    // Place sheet: "Use my current location". Only while the app is open.
+    ['expo-location', { locationWhenInUsePermission: 'Carma uses your location to find the station, workshop or shop you are at.', isAndroidBackgroundLocationEnabled: false }],
   ];
   // Native crash reporting and readable stack traces: only built in when Sentry is configured.
   if (process.env.EXPO_PUBLIC_SENTRY_DSN) {

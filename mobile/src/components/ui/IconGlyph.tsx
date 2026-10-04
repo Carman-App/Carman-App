@@ -84,6 +84,24 @@ import TowTruckIcon from '@hugeicons/core-free-icons/TowTruckIcon';
 import UserGroupIcon from '@hugeicons/core-free-icons/UserGroupIcon';
 import Wrench01Icon from '@hugeicons/core-free-icons/Wrench01Icon';
 
+import Building01Icon from '@hugeicons/core-free-icons/Building01Icon';
+import Calendar03Icon from '@hugeicons/core-free-icons/Calendar03Icon';
+import CarSignalIcon from '@hugeicons/core-free-icons/CarSignalIcon';
+import Cash01Icon from '@hugeicons/core-free-icons/Cash01Icon';
+import Coins01Icon from '@hugeicons/core-free-icons/Coins01Icon';
+import HashtagIcon from '@hugeicons/core-free-icons/HashtagIcon';
+import Location04Icon from '@hugeicons/core-free-icons/Location04Icon';
+import MoreHorizontalIcon from '@hugeicons/core-free-icons/MoreHorizontalIcon';
+import NoteIcon from '@hugeicons/core-free-icons/NoteIcon';
+import PackageIcon from '@hugeicons/core-free-icons/PackageIcon';
+import PaintBrush01Icon from '@hugeicons/core-free-icons/PaintBrush01Icon';
+import PercentIcon from '@hugeicons/core-free-icons/PercentIcon';
+import SecurityLockIcon from '@hugeicons/core-free-icons/SecurityLockIcon';
+import SparklesIcon from '@hugeicons/core-free-icons/SparklesIcon';
+import Store01Icon from '@hugeicons/core-free-icons/Store01Icon';
+import Tag01Icon from '@hugeicons/core-free-icons/Tag01Icon';
+import TextAlignLeftIcon from '@hugeicons/core-free-icons/TextAlignLeftIcon';
+import Time04Icon from '@hugeicons/core-free-icons/Time04Icon';
 import { Colors } from '@/theme/tokens';
 
 // Real Hugeicons (free, stroke-rounded set) replacing the earlier emoji
@@ -180,6 +198,46 @@ const ICONS: Record<string, IconSvgElement> = {
   'arrow-right': ArrowRight01Icon,
   'switch-profile': UserSwitchIcon,
   offline: WifiOff01Icon,
+
+  // Record form fields (design FIELD_IC / OPT_IC).
+  'f-coins': Coins01Icon,
+  'f-store': Store01Icon,
+  'f-package': PackageIcon,
+  'f-building': Building01Icon,
+  'f-percent': PercentIcon,
+  'f-time': Time04Icon,
+  'f-note': NoteIcon,
+  'f-note1': Note01Icon,
+  'f-paint': PaintBrush01Icon,
+  'f-sparkles': SparklesIcon,
+  'f-car-signal': CarSignalIcon,
+  'f-lock': SecurityLockIcon,
+  'f-more': MoreHorizontalIcon,
+  'f-location': Location04Icon,
+  'f-location1': Location01Icon,
+  'f-calendar': Calendar03Icon,
+  'f-calendar1': Calendar01Icon,
+  'f-hashtag': HashtagIcon,
+  'f-text': TextAlignLeftIcon,
+  'f-tag': Tag01Icon,
+  'f-cash': Cash01Icon,
+  'f-fuel': FuelStationIcon,
+  'f-badge': CheckmarkBadge01Icon,
+  'f-clock': Clock01Icon,
+  'f-alert': Alert02Icon,
+  'f-speed': DashboardSpeed01Icon,
+  'f-garage': GarageIcon,
+  'f-wrench': Wrench01Icon,
+  'f-shield': Shield01Icon,
+  'f-license': LicenseIcon,
+  'f-bank': BankIcon,
+  'f-repeat': RepeatIcon,
+  'f-bag': ShoppingBag01Icon,
+  'f-parking': CarParking01Icon,
+  'f-tow': TowTruckIcon,
+  'f-file': File01Icon,
+  'f-invoice': Invoice01Icon,
+  'f-close': Cancel01Icon,
 };
 
 type IconGlyphProps = {

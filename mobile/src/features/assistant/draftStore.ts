@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from 'react';
 
+import type { NewReminder } from '@/data/repo';
 import type { Draft } from '@/features/assistant/engine';
 
 export type PendingDraft = Draft & {
@@ -16,6 +17,8 @@ export type PendingDraft = Draft & {
   categoryKey?: string;
   /** Category-specific detail fields from the form (Insurer, Policy number...). Saved into the record's notes. */
   details?: { label: string; value: string }[];
+  /** A reminder switched on in the form, created with the record; `hint` is what the form showed. */
+  reminder?: NewReminder & { hint: string };
   /** Where the draft started, for Review's header. */
   origin?: 'assistant' | 'form' | 'scan';
 };
