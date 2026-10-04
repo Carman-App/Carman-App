@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
 import { todayIso } from '@/lib/format';
-import { Colors, FontFamily } from '@/theme/tokens';
+import { Colors, FontFamily, Layout } from '@/theme/tokens';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -144,6 +144,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,22,26,0.24)',
   },
   sheet: {
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
     backgroundColor: Colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

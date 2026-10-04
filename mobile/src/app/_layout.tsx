@@ -18,7 +18,7 @@ import { queryClient } from '@/data/queryClient';
 import { installNotificationHandlers, registerForPush } from '@/features/notifications/push';
 import { launchTarget } from '@/features/onboarding/progress';
 import { withMonitoring } from '@/lib/monitoring';
-import { Colors } from '@/theme/tokens';
+import { Colors, Layout } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -96,6 +96,9 @@ function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <PushSetup />
+      {/* Tablets: a centred phone-width column, white either side. */}
+      <View style={styles.page}>
+        <View style={styles.column}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         {/* Add-record flow: entered as a modal sheet; sub-steps push within it. */}
         <Stack.Screen name="record/add" options={{ presentation: 'modal' }} />
@@ -110,6 +113,8 @@ function RootLayout() {
         <Stack.Screen name="garages/[id]/invite" options={{ presentation: 'modal' }} />
         <Stack.Screen name="vehicle/add" options={{ presentation: 'modal' }} />
       </Stack>
+        </View>
+      </View>
       {!routed ? <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} /> : null}
     </QueryClientProvider>
   );
@@ -126,3 +131,16 @@ function PushSetup() {
 }
 
 export default withMonitoring(RootLayout);
+
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  column: {
+    flex: 1,
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
+  },
+});

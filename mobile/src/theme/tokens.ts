@@ -149,3 +149,11 @@ export const Shadow = {
 
 export const REFERENCE_WIDTH = 390;
 export const REFERENCE_HEIGHT = 844;
+
+/**
+ * Tablets and large phones: the design is a phone layout, so on wide screens
+ * the app sits in a centred column of at most this width (sheets too).
+ */
+export const Layout = {
+  maxWidth: 640,
+} as const;

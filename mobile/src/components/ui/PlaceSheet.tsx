@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
 import { searchPlaces, type PlaceHit } from '@/data/repo';
-import { Colors, FontFamily } from '@/theme/tokens';
+import { Colors, FontFamily, Layout } from '@/theme/tokens';
 
 type Coords = { lat: number; lng: number };
 
@@ -224,6 +224,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,22,26,0.24)',
   },
   sheet: {
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
     backgroundColor: Colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { T } from '@/components/ui/Typography';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing, Layout } from '@/theme/tokens';
 
 export type SheetOption = {
   key: string;
@@ -91,6 +91,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.scrim,
   },
   sheet: {
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
     maxHeight: '86%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,

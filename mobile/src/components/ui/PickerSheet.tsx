@@ -7,7 +7,7 @@ import Search01Icon from '@hugeicons/core-free-icons/Search01Icon';
 
 import { FieldRow } from '@/components/ui/TextField';
 import { T } from '@/components/ui/Typography';
-import { Colors, FontFamily, Radius, Spacing } from '@/theme/tokens';
+import { Colors, FontFamily, Radius, Spacing, Layout } from '@/theme/tokens';
 
 /**
  * Bottom-sheet picker matching the prototype's MAKE/MODEL/YEAR picker sheet:
@@ -168,6 +168,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.scrim,
   },
   sheet: {
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
     maxHeight: '84%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,
