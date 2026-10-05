@@ -74,7 +74,7 @@ export default function TimelineScreen() {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
         {FILTERS.map((f) => (
-          <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.filter, filter === f.key && styles.filterOn]}>
+          <Pressable accessibilityRole="button" key={f.key} onPress={() => setFilter(f.key)} style={[styles.filter, filter === f.key && styles.filterOn]}>
             <T style={[styles.filterText, filter === f.key && { color: Colors.accent, fontFamily: FontFamily.bold }]}>{f.label.toUpperCase()}</T>
           </Pressable>
         ))}
@@ -104,7 +104,7 @@ export default function TimelineScreen() {
                   const d = new Date(r.date + 'T00:00:00');
                   const c = tint(r);
                   return (
-                    <Pressable key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
+                    <Pressable accessibilityRole="button" key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
                       <View style={styles.date}>
                         <T variant="small" color={Colors.ink}>
                           {d.getDate()}

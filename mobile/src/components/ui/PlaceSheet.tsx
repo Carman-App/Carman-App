@@ -140,15 +140,15 @@ export function PlaceSheet({ visible, title, kind, recent = [], onSelect, onClos
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
+        <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={onClose}>
+          <Pressable accessible={false} style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.grabber} />
             <View style={styles.head}>
               <View style={styles.headLeft}>
                 <IconGlyph glyph="f-location" size={22} bg="transparent" scale={0.86} />
                 <T style={styles.title}>{title}</T>
               </View>
-              <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
+              <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
                 <IconGlyph glyph="close" size={32} bg="transparent" fg="#5F5A55" scale={0.44} />
               </Pressable>
             </View>
@@ -159,7 +159,7 @@ export function PlaceSheet({ visible, title, kind, recent = [], onSelect, onClos
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Search a place or business"
-                placeholderTextColor="#8A847D"
+                placeholderTextColor={Colors.textFaint}
                 style={styles.input}
                 returnKeyType="done"
                 onSubmitEditing={() => choose(query)}
@@ -167,7 +167,7 @@ export function PlaceSheet({ visible, title, kind, recent = [], onSelect, onClos
               {busy ? <ActivityIndicator size="small" color={Colors.accent} /> : null}
             </View>
 
-            <Pressable onPress={useCurrent} disabled={locating} style={({ pressed }) => [styles.current, pressed && { backgroundColor: '#EDB81A' }]}>
+            <Pressable accessibilityRole="button" onPress={useCurrent} disabled={locating} style={({ pressed }) => [styles.current, pressed && { backgroundColor: '#EDB81A' }]}>
               {locating ? <ActivityIndicator size="small" color="#333333" /> : <IconGlyph glyph="f-location1" size={20} bg="transparent" fg="#333333" scale={0.9} />}
               <T style={styles.currentText}>{locating ? 'Finding where you are' : 'Use my current location'}</T>
             </Pressable>
@@ -179,7 +179,7 @@ export function PlaceSheet({ visible, title, kind, recent = [], onSelect, onClos
 
             <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
               {rows.map((p) => (
-                <Pressable key={p.key} onPress={() => choose(p.name)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F9FC' }]}>
+                <Pressable accessibilityRole="button" key={p.key} onPress={() => choose(p.name)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F9FC' }]}>
                   <View style={styles.pin}>
                     <IconGlyph glyph="f-location" size={36} bg="transparent" fg="#5F5A55" scale={0.47} />
                   </View>
@@ -199,7 +199,7 @@ export function PlaceSheet({ visible, title, kind, recent = [], onSelect, onClos
             </ScrollView>
 
             {query.trim() ? (
-              <Pressable onPress={() => choose(query)} style={({ pressed }) => [styles.typed, pressed && { backgroundColor: '#F7F9FC' }]}>
+              <Pressable accessibilityRole="button" onPress={() => choose(query)} style={({ pressed }) => [styles.typed, pressed && { backgroundColor: '#F7F9FC' }]}>
                 <IconGlyph glyph="add" size={18} bg="transparent" fg="#333333" scale={0.9} />
                 <T style={styles.currentText} numberOfLines={1}>
                   Use “{query.trim()}”
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 10,
     letterSpacing: 0.8,
-    color: '#8A847D',
+    color: Colors.textFaint,
   },
   typed: {
     flexDirection: 'row',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: '#B4AFA8',
+    color: Colors.textFaint,
     textAlign: 'center',
     paddingTop: 14,
   },

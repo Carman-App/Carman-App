@@ -198,11 +198,11 @@ export default function MechanicAskScreen() {
                     </View>
                   ) : null}
                   {t.link ? (
-                    <Pressable onPress={() => router.push(t.link!.href as never)}>
+                    <Pressable accessibilityRole="button" onPress={() => router.push(t.link!.href as never)}>
                       <T variant="section">{t.link.label} →</T>
                     </Pressable>
                   ) : t.a.jobIds?.length === 1 ? (
-                    <Pressable onPress={() => router.push({ pathname: '/mechanic/job-detail', params: { id: t.a!.jobIds![0] } })}>
+                    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/mechanic/job-detail', params: { id: t.a!.jobIds![0] } })}>
                       <T variant="section">Open the job →</T>
                     </Pressable>
                   ) : null}

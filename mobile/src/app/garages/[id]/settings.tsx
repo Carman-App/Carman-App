@@ -25,7 +25,9 @@ export default function GarageSettingsScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const changed = !!garage && name.trim().length > 0 && name.trim() !== garage.name;
-  const seats = Math.max(0, 5 - members.length);
+  // Seats come from the plan (Personal 3, Pro 10…); pending invites hold a seat. null = no limit.
+  const seatLimit = account?.planState?.limits.seats ?? null;
+  const seats = seatLimit === null ? null : Math.max(0, seatLimit - members.length);
 
   const save = async () => {
     setSaving(true);
@@ -71,7 +73,8 @@ export default function GarageSettingsScreen() {
       <View style={styles.membersHead}>
         <T variant="section">Members</T>
         <T variant="meta">
-          {members.length} {members.length === 1 ? 'person' : 'people'} · {seats} seat{seats === 1 ? '' : 's'} left
+          {members.length} {members.length === 1 ? 'person' : 'people'}
+          {seats === null ? '' : ` · ${seats} seat${seats === 1 ? '' : 's'} left`}
         </T>
       </View>
       {members.map((m) => (
@@ -82,11 +85,11 @@ export default function GarageSettingsScreen() {
           Invite someone
         </Button>
       </View>
-      <Pressable onPress={() => router.push(`/garages/${id}/members`)} style={styles.link}>
+      <Pressable accessibilityRole="button" onPress={() => router.push(`/garages/${id}/members`)} style={styles.link}>
         <IconGlyph glyph="members" size={32} shape="tile" bg={Colors.tealSoft} fg={Colors.teal} />
         <View style={styles.flex}>
           <T variant="bodyStrong">What the roles can do</T>
-          <T variant="meta">View only and Contribute, explained</T>
+          <T variant="meta">Owner, Member and Pending, explained</T>
         </View>
         <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
       </Pressable>

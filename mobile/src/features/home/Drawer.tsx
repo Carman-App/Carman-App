@@ -47,14 +47,14 @@ export function Drawer({ visible, onClose, name, items, recents, onRecent, onNew
         <View style={[styles.panel, { paddingTop: insets.top + Spacing.sm, paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
           <View style={styles.head}>
             <T style={styles.brand}>Carma</T>
-            <Pressable onPress={() => go('/settings')} accessibilityLabel="My profile">
+            <Pressable accessibilityRole="button" onPress={() => go('/settings')} accessibilityLabel="My profile">
               <Avatar name={name} size={40} />
             </Pressable>
           </View>
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
             <View style={styles.nav}>
               {items.map((n) => (
-                <Pressable key={n.label} onPress={() => go(n.href)} style={({ pressed }) => [styles.navRow, pressed && styles.navPressed]}>
+                <Pressable accessibilityRole="button" key={n.label} onPress={() => go(n.href)} style={({ pressed }) => [styles.navRow, pressed && styles.navPressed]}>
                   <IconGlyph glyph={n.glyph} size={32} shape="tile" bg={n.tint} fg={n.hue} />
                   <T style={styles.navLabel} numberOfLines={1}>
                     {n.label}
@@ -77,7 +77,7 @@ export function Drawer({ visible, onClose, name, items, recents, onRecent, onNew
               </T>
             ) : (
               recents.map((r, i) => (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   key={r}
                   onPress={() => {
                     onClose();
@@ -92,10 +92,10 @@ export function Drawer({ visible, onClose, name, items, recents, onRecent, onNew
             )}
           </ScrollView>
           <View style={styles.foot}>
-            <Pressable onPress={onSwitch} accessibilityLabel={switchLabel} style={styles.switch}>
+            <Pressable accessibilityRole="button" onPress={onSwitch} accessibilityLabel={switchLabel} style={styles.switch}>
               <IconGlyph glyph="swap" size={44} bg={Colors.ink} fg={Colors.white} />
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button"
               onPress={() => {
                 onClose();
                 onNewChat();

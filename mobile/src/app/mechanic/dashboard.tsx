@@ -44,6 +44,7 @@ export default function MechanicHomeScreen() {
   const items: DrawerItem[] = [
     { label: 'Job board', glyph: 'service', hue: Colors.positive, tint: Colors.positiveSoft, href: '/mechanic/job-board' },
     { label: 'Customers', glyph: 'members', hue: Colors.teal, tint: Colors.tealSoft, href: '/mechanic/customers' },
+    { label: 'Team', glyph: 'member', hue: Colors.violet, tint: Colors.violetSoft, href: '/mechanic/invite-teammate' },
     { label: 'Workshop insights', glyph: 'insights', hue: Colors.accent, tint: Colors.accentSoft, href: '/mechanic/insights' },
     { label: 'Reminders and notifications', glyph: 'reminder', hue: Colors.orange, tint: Colors.warningSoft, href: '/notifications' },
   ];
@@ -67,7 +68,7 @@ export default function MechanicHomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
-          <Pressable onPress={() => setDrawer(true)} accessibilityLabel="Open menu">
+          <Pressable accessibilityRole="button" onPress={() => setDrawer(true)} accessibilityLabel="Open menu">
             <Avatar name={workshop?.name ?? 'Workshop'} size={44} bg={Colors.ink} color={Colors.white} />
           </Pressable>
           <View style={styles.scope}>
@@ -82,7 +83,7 @@ export default function MechanicHomeScreen() {
           </View>
           <IconButton glyph="pie" fg={Colors.accent} onPress={() => router.push('/mechanic/insights')} accessibilityLabel="Workshop insights" />
         </View>
-        <Pressable onPress={() => router.push('/mechanic/job-board')} style={styles.status}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/mechanic/job-board')} style={styles.status}>
           <T style={styles.statusText}>
             {counts.inShop} in the workshop · {counts.collect} to collect
           </T>
@@ -90,7 +91,7 @@ export default function MechanicHomeScreen() {
         <View style={styles.flex} />
         <View style={styles.suggestions}>
           {MECH_SUGGESTIONS.map((s) => (
-            <Pressable key={s} onPress={() => ask(s)} style={styles.suggestion}>
+            <Pressable accessibilityRole="button" key={s} onPress={() => ask(s)} style={styles.suggestion}>
               <IconGlyph glyph="search" size={22} bg="transparent" fg={Colors.textMuted} scale={0.86} />
               <T numberOfLines={1} style={styles.suggestionText}>
                 {s}

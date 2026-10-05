@@ -43,6 +43,7 @@ import {
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
 import { setUiState } from '@/data/uiState';
+import { recordConsent, stampSignupSource } from '@/features/auth/consent';
 import type {
   Account,
   AccessRequestStatus,
@@ -110,6 +111,8 @@ export type OnboardingPayload = {
  *   own set-up (completeWorkshopOnboarding).
  */
 export async function completeOnboarding(payload: OnboardingPayload): Promise<Vehicle> {
+  // Consent from the Country step (retried here if it did not reach the server) and signup source.
+  await Promise.all([recordConsent(), stampSignupSource()]);
   const garages = await api.get<RawGarage[]>('garages');
   const name = payload.garageName.trim();
   const location = payload.garageLocation.trim();
@@ -177,6 +180,7 @@ export async function completeWorkshopOnboarding(input: {
   /** Set when this set-up already created the workshop (the person went Back): update it instead. */
   workshopId?: string;
 }): Promise<{ id: string; name: string }> {
+  await Promise.all([recordConsent(), stampSignupSource()]);
   await api.patch<RawAccount>('account', { region: input.region, name: input.name.trim() || undefined });
   const body = { name: input.businessName.trim(), town: input.town?.trim() || undefined, teamSize: input.teamSize?.toUpperCase() };
   const workshop = input.workshopId

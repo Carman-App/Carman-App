@@ -122,7 +122,7 @@ export default function OdometerScreen() {
               {has ? `READING TODAY · ${UNIT}` : 'DRAG THE SCALE OR TAP A STEP TO ADD IT'}
             </T>
           </View>
-          <Pressable onPress={() => update({ unit: unit === 'mi' ? 'km' : 'mi' })} hitSlop={8} style={styles.unit} accessibilityLabel="Switch kilometres and miles">
+          <Pressable accessibilityRole="button" onPress={() => update({ unit: unit === 'mi' ? 'km' : 'mi' })} hitSlop={8} style={styles.unit} accessibilityLabel="Switch kilometres and miles">
             <View style={styles.switchRow}>
               <IconGlyph glyph="swap" size={16} bg="transparent" fg={Colors.slate} scale={0.9} />
               <T variant="eyebrow" color={Colors.slate}>
@@ -141,13 +141,13 @@ export default function OdometerScreen() {
 
       <View style={styles.scaleWrap} onLayout={(e) => setScaleWidth(e.nativeEvent.layout.width)}>
         <View style={styles.padHead}>
-          <Pressable onPress={() => setReading(0)} style={styles.circle} accessibilityLabel="Clear the reading">
+          <Pressable accessibilityRole="button" onPress={() => setReading(0)} style={styles.circle} accessibilityLabel="Clear the reading">
             <IconGlyph glyph="swap" size={44} bg="transparent" fg={has ? Colors.signal : Colors.textFaint} scale={0.45} />
           </Pressable>
           <T variant="eyebrow" color={Colors.slate}>
             {UNIT}
           </T>
-          <Pressable onPress={finish} style={styles.circle} accessibilityLabel="Save the reading">
+          <Pressable accessibilityRole="button" onPress={finish} style={styles.circle} accessibilityLabel="Save the reading">
             <IconGlyph glyph="check" size={44} bg="transparent" fg={has ? Colors.accent : Colors.textFaint} scale={0.45} />
           </Pressable>
         </View>
@@ -188,7 +188,7 @@ export default function OdometerScreen() {
 
       <View style={[styles.pad, styles.steps]}>
         {STEPS.map((s) => (
-          <Pressable key={s} onPress={() => setReading(reading + s)} style={({ pressed }) => [styles.step, pressed && { backgroundColor: Colors.accentSoft }]}>
+          <Pressable accessibilityRole="button" key={s} onPress={() => setReading(reading + s)} style={({ pressed }) => [styles.step, pressed && { backgroundColor: Colors.accentSoft }]}>
             <T variant="small" color={Colors.ink}>
               +{formatNumber(s)}
             </T>

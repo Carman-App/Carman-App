@@ -107,7 +107,7 @@ export default function DocumentsScreen() {
                 const days = d.expiryDate ? daysUntil(d.expiryDate) : null;
                 const urgent = days !== null && days <= 30;
                 return (
-                  <Pressable key={d.id} onPress={() => router.push(`/doc/${d.id}`)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
+                  <Pressable accessibilityRole="button" key={d.id} onPress={() => router.push(`/doc/${d.id}`)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
                     <View style={styles.thumb}>
                       <IconGlyph glyph="document" size={30} bg="transparent" fg={Colors.textFaint} />
                     </View>

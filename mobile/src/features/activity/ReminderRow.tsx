@@ -58,7 +58,7 @@ export function ReminderRow({ reminder, vehicle }: { reminder: Reminder; vehicle
         <T variant="body" style={styles.source}>
           {s.source}
         </T>
-        <Pressable
+        <Pressable accessibilityRole="button"
           hitSlop={8}
           disabled={busy}
           onPress={async () => {

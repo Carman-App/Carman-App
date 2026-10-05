@@ -46,7 +46,7 @@ const parseNum = (s: string | undefined) => {
 
 const ORDER: FormGroup[] = ['Cost', 'Details', 'Where', 'Odometer', 'When'];
 const FIELD_LINE = 'rgba(20,22,26,0.14)';
-const MUTED = '#8A847D';
+const MUTED = Colors.textFaint;
 
 /**
  * One form for every cost in the record selector (design screens r_fuel ...
@@ -149,7 +149,7 @@ export default function RecordFormScreen() {
       );
     }
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.box, pressed && { backgroundColor: '#F7F9FC' }]}>
+      <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.box, pressed && { backgroundColor: '#F7F9FC' }]}>
         {icon}
         {inner}
         {tail}
@@ -192,12 +192,12 @@ export default function RecordFormScreen() {
                 autoFocus={!line && i === extra.length - 1}
                 style={styles.input}
               />
-              <Pressable onPress={() => setExtra((prev) => prev.filter((_, j) => j !== i))} hitSlop={6} style={styles.remove} accessibilityLabel="Remove this item">
+              <Pressable accessibilityRole="button" onPress={() => setExtra((prev) => prev.filter((_, j) => j !== i))} hitSlop={6} style={styles.remove} accessibilityLabel="Remove this item">
                 <IconGlyph glyph="close" size={40} bg="transparent" fg={MUTED} scale={0.42} />
               </Pressable>
             </View>
           ))}
-          <Pressable onPress={() => setExtra((prev) => [...prev, ''])} style={({ pressed }) => [styles.addLine, pressed && { backgroundColor: '#E1EBF7' }]}>
+          <Pressable accessibilityRole="button" onPress={() => setExtra((prev) => [...prev, ''])} style={({ pressed }) => [styles.addLine, pressed && { backgroundColor: '#E1EBF7' }]}>
             <IconGlyph glyph="add" size={18} bg="transparent" scale={0.95} />
             <T style={styles.addLineText}>Add another item</T>
           </Pressable>
@@ -238,10 +238,17 @@ export default function RecordFormScreen() {
         'chevron-down'
       );
     }
+    // GAR-04: a reading below the vehicle's last one is either a typo or an older record; say so before saving.
+    const odoBelow = f.k === 'odo' && odometer !== undefined && odometer > 0 && odometer < vehicle.odometerKm;
     return (
       <View key={f.k}>
         <T style={styles.label}>{f.label}</T>
         {body}
+        {odoBelow ? (
+          <T variant="small" color={Colors.signal} style={styles.warn}>
+            Lower than the last reading of {formatNumber(vehicle.odometerKm)} km. If this happened earlier, set the date to when it did.
+          </T>
+        ) : null}
       </View>
     );
   };
@@ -295,7 +302,7 @@ export default function RecordFormScreen() {
       ))}
 
       {spec.remind ? (
-        <Pressable onPress={() => remindReady && setRemind((r) => !r)} style={styles.remind}>
+        <Pressable accessibilityRole="button" onPress={() => remindReady && setRemind((r) => !r)} style={styles.remind}>
           <View style={styles.flex}>
             <T style={styles.remindLabel}>{spec.remind.label}</T>
             <T style={styles.remindHint}>
@@ -499,6 +506,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
+  },
+  warn: {
+    marginTop: 8,
   },
   foot: {
     fontFamily: FontFamily.regular,

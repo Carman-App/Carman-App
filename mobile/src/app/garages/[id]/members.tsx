@@ -10,7 +10,7 @@ import { useAccount, useGarage, useGarageMembers } from '@/data/hooks';
 import { MemberRow, ROLE_EXPLAINED } from '@/features/garage/MemberRow';
 import { Colors, Spacing } from '@/theme/tokens';
 
-/** Members: two roles only, View only and Contribute. The owner keeps deletion. */
+/** Members: Owner, Member, and Pending invites (which hold a seat). The owner keeps deletion. */
 export default function MembersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const garage = useGarage(id).data;
@@ -34,7 +34,7 @@ export default function MembersScreen() {
               <MemberRow key={m.id} member={m} isYou={m.name === account?.name} />
             ))}
             <View style={styles.roles}>
-              <T variant="section">What the two roles mean</T>
+              <T variant="section">What the roles mean</T>
               {ROLE_EXPLAINED.map((r) => (
                 <View key={r.role} style={styles.role}>
                   <T variant="bodyStrong" style={styles.roleName}>
@@ -45,9 +45,6 @@ export default function MembersScreen() {
                   </T>
                 </View>
               ))}
-              <T variant="meta" color={Colors.textFaint}>
-                Members join as Contribute. View-only access is coming.
-              </T>
             </View>
           </>
         )}

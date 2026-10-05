@@ -1,26 +1,36 @@
 /** Formatting helpers shared across screens. Kept dependency-free (no Intl assumptions beyond what RN/Hermes ships). */
 
-export function formatMoney(amount: number, currency = 'KES'): string {
-  const rounded = Math.round(amount);
-  const parts = Math.abs(rounded).toString().split('').reverse();
-  const grouped: string[] = [];
-  for (let i = 0; i < parts.length; i += 1) {
-    if (i > 0 && i % 3 === 0) grouped.push(',');
-    grouped.push(parts[i]);
+/**
+ * Thousands separator for the account's country (spec: "format per account
+ * region"). Set once the account loads (data/hooks useAccount); comma until then.
+ */
+const DOT = new Set(['DE', 'IT', 'ES', 'NL', 'PT', 'TR', 'AO', 'MZ', 'ID', 'BR', 'AR', 'CL', 'CO', 'DK', 'AT', 'BE', 'GR', 'RO', 'VN']);
+const SPACE = new Set(['FR', 'PL', 'SE', 'NO', 'FI', 'ZA', 'CI', 'SN', 'CM', 'CD', 'BI', 'RW', 'MA', 'TN', 'CZ', 'SK', 'HU', 'UA', 'RU']);
+let groupSep = ',';
+export function setNumberRegion(region: string | undefined | null) {
+  const r = (region ?? '').toUpperCase();
+  groupSep = DOT.has(r) ? '.' : SPACE.has(r) ? '\u202F' : r === 'CH' ? '\u2019' : ',';
+}
+
+function group(n: number): string {
+  const rounded = Math.round(n);
+  const digits = Math.abs(rounded).toString();
+  let out = '';
+  for (let i = 0; i < digits.length; i += 1) {
+    if (i > 0 && (digits.length - i) % 3 === 0) out += groupSep;
+    out += digits[i];
   }
-  const digits = grouped.reverse().join('');
-  return `${rounded < 0 ? '-' : ''}${currency ? currency + ' ' : ''}${digits}`;
+  return `${rounded < 0 ? '-' : ''}${out}`;
+}
+
+export function formatMoney(amount: number, currency = 'KES'): string {
+  const g = group(amount);
+  const neg = g.startsWith('-');
+  return `${neg ? '-' : ''}${currency ? currency + ' ' : ''}${neg ? g.slice(1) : g}`;
 }
 
 export function formatNumber(value: number): string {
-  const rounded = Math.round(value);
-  const parts = Math.abs(rounded).toString().split('').reverse();
-  const grouped: string[] = [];
-  for (let i = 0; i < parts.length; i += 1) {
-    if (i > 0 && i % 3 === 0) grouped.push(',');
-    grouped.push(parts[i]);
-  }
-  return `${rounded < 0 ? '-' : ''}${grouped.reverse().join('')}`;
+  return group(value);
 }
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];

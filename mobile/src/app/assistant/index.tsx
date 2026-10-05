@@ -154,7 +154,7 @@ export default function AssistantScreen() {
                     </T>
                   ) : null}
                   {t.a.link ? (
-                    <Pressable onPress={() => router.push(t.a!.link!.href as never)} style={styles.link}>
+                    <Pressable accessibilityRole="button" onPress={() => router.push(t.a!.link!.href as never)} style={styles.link}>
                       <T variant="section">{t.a.link.label} →</T>
                     </Pressable>
                   ) : null}

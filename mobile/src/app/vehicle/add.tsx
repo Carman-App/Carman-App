@@ -91,7 +91,7 @@ export default function AddVehicleScreen() {
       <ModalHeader eyebrow="GARAGE" title="Add a vehicle" />
       <View style={styles.row}>
         {(['car', 'motorcycle'] as VehicleType[]).map((t) => (
-          <Pressable key={t} onPress={() => handlePickType(t)} style={[styles.choice, type === t && styles.choiceActive]}>
+          <Pressable accessibilityRole="button" key={t} onPress={() => handlePickType(t)} style={[styles.choice, type === t && styles.choiceActive]}>
             <T variant="bodyStrong" color={type === t ? Colors.accent : Colors.text}>
               {t === 'car' ? 'Car' : 'Motorcycle'}
             </T>
@@ -100,7 +100,7 @@ export default function AddVehicleScreen() {
       </View>
       <View style={styles.row}>
         {(['daily', 'project', 'weekend', 'commercial'] as VehicleUsage[]).map((u) => (
-          <Pressable key={u} onPress={() => setUsage(u)} style={[styles.choiceSmall, usage === u && styles.choiceActive]}>
+          <Pressable accessibilityRole="button" key={u} onPress={() => setUsage(u)} style={[styles.choiceSmall, usage === u && styles.choiceActive]}>
             <T variant="meta" color={usage === u ? Colors.accent : Colors.textMuted}>
               {USAGE_LABEL[u]}
             </T>

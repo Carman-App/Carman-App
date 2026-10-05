@@ -59,7 +59,7 @@ export default function GarageReadyScreen() {
             START THE HISTORY
           </T>
           {next.map((n) => (
-            <Pressable key={n.label} onPress={n.go} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.accentSoft }]}>
+            <Pressable accessibilityRole="button" key={n.label} onPress={n.go} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.accentSoft }]}>
               <IconGlyph glyph={n.glyph} size={32} shape="tile" />
               <T variant="bodyStrong" style={styles.flex}>
                 {n.label}
@@ -73,7 +73,7 @@ export default function GarageReadyScreen() {
         </View>
       </ScrollView>
       <View style={styles.foot}>
-        <Pressable onPress={() => router.push('/insights')} style={({ pressed }) => [styles.trial, pressed && { backgroundColor: Colors.ctaPressed }]}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/insights')} style={({ pressed }) => [styles.trial, pressed && { backgroundColor: Colors.ctaPressed }]}>
           <IconGlyph glyph="soon" size={20} bg="transparent" fg={Colors.ink} scale={0.85} />
           <T variant="eyebrow" color={Colors.ink} style={styles.flex} numberOfLines={1}>
             {trialLabel} · {(draft.garageName.trim() || 'MY GARAGE').toUpperCase()} · {currency}

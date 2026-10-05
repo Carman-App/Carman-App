@@ -100,14 +100,14 @@ export default function VehicleScreen() {
               </View>
 
               {pending ? (
-                <Pressable onPress={() => router.push(`/estimates/${pending.id}`)} style={styles.estimate}>
+                <Pressable accessibilityRole="button" onPress={() => router.push(`/estimates/${pending.id}`)} style={styles.estimate}>
                   <T variant="bodyStrong">Estimate awaiting your approval</T>
                   <T variant="eyebrow" color={Colors.signal}>
                     {pending.workshopName} · {currency} {formatNumber(pending.total)}
                   </T>
                 </Pressable>
               ) : unpaid ? (
-                <Pressable onPress={() => router.push(`/invoices/${unpaid.id}`)} style={styles.estimate}>
+                <Pressable accessibilityRole="button" onPress={() => router.push(`/invoices/${unpaid.id}`)} style={styles.estimate}>
                   <T variant="bodyStrong">Invoice outstanding</T>
                   <T variant="eyebrow" color={Colors.signal}>
                     {unpaid.workshopName} · {currency} {formatNumber(unpaid.total)}
@@ -125,7 +125,7 @@ export default function VehicleScreen() {
                       ESTIMATED FROM YOUR OWN AVERAGE OF {formatNumber(daily ?? 0)} KM A DAY
                     </T>
                   </View>
-                  <Pressable onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })} hitSlop={8}>
+                  <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })} hitSlop={8}>
                     <T variant="eyebrowStrong" color={Colors.accent}>
                       CONFIRM
                     </T>
@@ -134,7 +134,7 @@ export default function VehicleScreen() {
               ) : null}
               <Rule bleed={false} />
 
-              <Pressable style={styles.block} onPress={() => router.push('/insights')}>
+              <Pressable accessibilityRole="button" style={styles.block} onPress={() => router.push('/insights')}>
                 <View style={styles.between}>
                   <View style={styles.row8}>
                     <T variant="eyebrow" color={Colors.slate}>
@@ -161,7 +161,7 @@ export default function VehicleScreen() {
               <Rule bleed={false} />
 
               <View style={[styles.block, styles.odo]}>
-                <Pressable style={styles.flex} onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })}>
+                <Pressable accessibilityRole="button" style={styles.flex} onPress={() => router.push({ pathname: '/record/odometer-roll', params: { vehicleId: id } })}>
                   <T variant="eyebrow" color={Colors.slate}>
                     ODOMETER
                   </T>
@@ -200,7 +200,7 @@ export default function VehicleScreen() {
 
               <View style={styles.links}>
                 {links.map((l) => (
-                  <Pressable key={l.label} onPress={() => router.push(l.href as never)} style={({ pressed }) => [styles.link, pressed && { backgroundColor: Colors.accentSoft }]}>
+                  <Pressable accessibilityRole="button" key={l.label} onPress={() => router.push(l.href as never)} style={({ pressed }) => [styles.link, pressed && { backgroundColor: Colors.accentSoft }]}>
                     <IconGlyph glyph={l.glyph} size={22} bg="transparent" scale={0.85} />
                     <T variant="bodyStrong" style={{ fontSize: 13 }}>
                       {l.label}
@@ -213,7 +213,7 @@ export default function VehicleScreen() {
               <View style={styles.block}>
                 <View style={styles.between}>
                   <T variant="tag">TIMELINE</T>
-                  <Pressable onPress={() => router.push(`/vehicle/${id}/timeline`)} hitSlop={8}>
+                  <Pressable accessibilityRole="button" onPress={() => router.push(`/vehicle/${id}/timeline`)} hitSlop={8}>
                     <T variant="eyebrow" color={Colors.accent}>
                       ALL {records.length} →
                     </T>
@@ -221,7 +221,7 @@ export default function VehicleScreen() {
                 </View>
                 {records.length === 0 ? <T variant="meta">No records yet. Use the buttons below to log the first one.</T> : null}
                 {records.slice(0, 4).map((r) => (
-                  <Pressable key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={styles.tl}>
+                  <Pressable accessibilityRole="button" key={r.id} onPress={() => router.push(`/record/${r.id}/edit`)} style={styles.tl}>
                     <T variant="eyebrow" style={styles.tlDate}>
                       {formatDateShort(r.date)}
                     </T>

@@ -64,7 +64,7 @@ export default function MyProfileScreen() {
         </View>
         <Avatar name={account?.name ?? ''} size={52} />
       </View>
-      <Pressable onPress={() => router.push('/profile-switch')} style={styles.switch}>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/profile-switch')} style={styles.switch}>
         <View style={styles.flex}>
           <T variant="bodyStrong">Switch profile</T>
           <T variant="eyebrow" color={Colors.slate}>
@@ -105,7 +105,7 @@ export default function MyProfileScreen() {
         // Development builds only, and only when not signed in: act as a test account.
         ...(__DEV__ && !signedIn ? [{ label: 'Test accounts', go: () => router.push('/settings/test-accounts') }] : []),
       ].map((r) => (
-        <Pressable key={r.label} onPress={r.go} style={styles.row}>
+        <Pressable accessibilityRole="button" key={r.label} onPress={r.go} style={styles.row}>
           <T variant="bodyStrong" style={styles.flex}>
             {r.label}
           </T>
@@ -116,7 +116,7 @@ export default function MyProfileScreen() {
           it (development), the same action just starts this phone over at Welcome;
           the account's data on the server is kept. */}
       {signedIn || __DEV__ ? (
-        <Pressable
+        <Pressable accessibilityRole="button"
           onPress={async () => {
             if (!armOut) return setArmOut(true);
             setArmOut(false);
@@ -136,14 +136,14 @@ export default function MyProfileScreen() {
         { label: 'Privacy policy', go: () => openLegal('privacy') },
         { label: 'Terms of use', go: () => openLegal('terms') },
       ].map((r) => (
-        <Pressable key={r.label} onPress={r.go} style={styles.row}>
+        <Pressable accessibilityRole="button" key={r.label} onPress={r.go} style={styles.row}>
           <T variant="bodyStrong" style={styles.flex}>
             {r.label}
           </T>
           <IconGlyph glyph="chevron-right" size={20} bg="transparent" fg={Colors.textFaint} />
         </Pressable>
       ))}
-      <Pressable onPress={() => setConfirmDelete(true)} style={styles.row}>
+      <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={styles.row}>
         <T variant="bodyStrong" color={Colors.signal} style={styles.flex}>
           Delete my account
         </T>

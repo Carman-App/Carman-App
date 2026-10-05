@@ -27,7 +27,7 @@ export default function AddRecordScreen() {
           {RECORD_CATEGORIES.map((c) => {
             const tint = CATEGORY_TINT[c.key];
             return (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={c.key}
                 onPress={() => router.push(categoryHref(c, vehicle.id) as never)}
                 style={({ pressed }) => [styles.tile, pressed && { backgroundColor: Colors.accentSoft }]}>

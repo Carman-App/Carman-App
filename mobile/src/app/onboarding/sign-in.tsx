@@ -94,7 +94,7 @@ export default function SignInScreen() {
             <T variant="small" color={Colors.body} center>
               By continuing you agree to the{' '}
             </T>
-            <Pressable onPress={() => openLegal('terms')}>
+            <Pressable accessibilityRole="button" onPress={() => openLegal('terms')}>
               <T variant="small" color={Colors.accent}>
                 Terms of use
               </T>
@@ -102,7 +102,7 @@ export default function SignInScreen() {
             <T variant="small" color={Colors.body}>
               {' '}and{' '}
             </T>
-            <Pressable onPress={() => openLegal('privacy')}>
+            <Pressable accessibilityRole="button" onPress={() => openLegal('privacy')}>
               <T variant="small" color={Colors.accent}>
                 Privacy policy
               </T>

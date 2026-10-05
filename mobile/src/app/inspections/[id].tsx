@@ -103,14 +103,14 @@ export default function InspectionReportScreen() {
                   ) : null}
                   {item.status !== 'good' ? (
                     <View style={styles.itemActions}>
-                      <Pressable
+                      <Pressable accessibilityRole="button"
                         style={[styles.actionChip, decision === 'do' && styles.actionChipSelected]}
                         onPress={() => setDecisions((d) => ({ ...d, [item.id]: 'do' }))}>
                         <T variant="meta" color={decision === 'do' ? Colors.white : Colors.textMuted} style={{ fontFamily: undefined }}>
                           DO IT
                         </T>
                       </Pressable>
-                      <Pressable
+                      <Pressable accessibilityRole="button"
                         style={[styles.actionChip, decision === 'not-now' && styles.actionChipSelected]}
                         onPress={() => setDecisions((d) => ({ ...d, [item.id]: 'not-now' }))}>
                         <T

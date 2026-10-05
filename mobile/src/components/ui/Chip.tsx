@@ -87,7 +87,7 @@ export function ToggleTrack<K extends string>({ options, value, onChange }: Togg
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable key={o.key} onPress={() => onChange(o.key)} style={[styles.thumb, on && styles.thumbOn]}>
+          <Pressable accessibilityRole="button" key={o.key} onPress={() => onChange(o.key)} style={[styles.thumb, on && styles.thumbOn]}>
             {o.glyph ? <IconGlyph glyph={o.glyph} size={18} bg="transparent" fg={on ? Colors.accent : Colors.textMuted} scale={0.9} /> : null}
             <T numberOfLines={1} style={[styles.thumbLabel, { color: on ? Colors.accent : Colors.textMuted }, on && styles.thumbLabelOn]}>
               {o.label}

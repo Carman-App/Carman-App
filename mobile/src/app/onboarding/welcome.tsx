@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +9,7 @@ import { T } from '@/components/ui/Typography';
 import { useUiState } from '@/data/hooks';
 import { api } from '@/data/api/client';
 import { getUiState, setUiState } from '@/data/uiState';
+import { fetchAuthConfig } from '@/features/auth/signIn';
 import { Colors, Spacing, Tracking } from '@/theme/tokens';
 
 /**
@@ -22,6 +23,13 @@ export default function WelcomeScreen() {
   const mode = useUiState('mode');
   const home = mode === 'mechanic' ? '/mechanic/dashboard' : '/home';
   const [checking, setChecking] = useState(false);
+  // Trial length is set in the console (Plans / Subscription rules); 7 is the design's until it loads.
+  const [trialDays, setTrialDays] = useState(7);
+  useEffect(() => {
+    void fetchAuthConfig().then((c) => {
+      if (c.trialDays) setTrialDays(c.trialDays);
+    });
+  }, []);
 
   // Set up on this phone before: go home, but only if the account still has a
   // garage (its data may have been deleted since); otherwise set up again.
@@ -63,7 +71,7 @@ export default function WelcomeScreen() {
       <View style={styles.foot}>
         <Button onPress={getStarted} loading={checking}>Get started</Button>
         <T variant="eyebrow" color={Colors.body} center style={styles.trial}>
-          7 DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
+          {trialDays} DAYS FREE · NO CARD TO START{'\n'}SUBSCRIBE AFTER THAT TO KEEP ADDING RECORDS
         </T>
       </View>
 

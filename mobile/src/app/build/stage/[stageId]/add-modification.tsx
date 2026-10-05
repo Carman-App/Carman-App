@@ -57,7 +57,7 @@ export default function AddModificationScreen() {
       </T>
       <View style={styles.chipRow}>
         {AREAS.map((a) => (
-          <Pressable key={a} style={[styles.chip, area === a && styles.chipSelected]} onPress={() => setArea(a)}>
+          <Pressable accessibilityRole="button" key={a} style={[styles.chip, area === a && styles.chipSelected]} onPress={() => setArea(a)}>
             <T variant="meta" color={area === a ? Colors.white : Colors.textMuted} style={{ fontFamily: undefined }}>
               {a.toUpperCase()}
             </T>

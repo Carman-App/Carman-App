@@ -111,7 +111,7 @@ export default function VehicleProjectScreen() {
         {({ vehicle, project }) => (
           <>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.push(`/build/${project.id}/brief`)}>
+        <Pressable accessibilityRole="button" onPress={() => router.push(`/build/${project.id}/brief`)}>
           <T variant="eyebrowStrong" color={Colors.textMuted}>
             EDIT BRIEF
           </T>
@@ -257,7 +257,7 @@ export default function VehicleProjectScreen() {
 
       {targetStage ? (
         <View style={styles.bottomRow}>
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={styles.bottomBtn}
             onPress={() =>
               router.push(
@@ -270,7 +270,7 @@ export default function VehicleProjectScreen() {
               MODIFICATION
             </T>
           </Pressable>
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={styles.bottomBtn}
             onPress={() =>
               router.push(targetStage.status === 'in-progress' ? `/build/stage/${targetStage.id}/add-part` : `/build/stage/${targetStage.id}`)

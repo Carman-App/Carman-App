@@ -23,7 +23,7 @@ export function Card({ children, style, onPress, padded = true, tone = 'plain' }
   );
   if (!onPress) return content;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
       {content}
     </Pressable>
   );

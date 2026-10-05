@@ -132,7 +132,7 @@ export async function POST(
     }
 
     const input = parsed.data;
-    const record = await createRecord(vehicleId, input);
+    const record = await createRecord(vehicleId, input, account.id);
 
     await writeAuditLog({
       actorId: account.id,
@@ -149,7 +149,8 @@ export async function POST(
 
 type CreateRecordInput = ReturnType<typeof createRecordSchema.parse>;
 
-async function createRecord(vehicleId: string, input: CreateRecordInput) {
+// enteredByAccountId: the signed-in account, never taken from the body (GAR-03, TRUST-02).
+async function createRecord(vehicleId: string, input: CreateRecordInput, enteredByAccountId: string) {
   switch (input.type) {
     case "fuel":
       return prisma.fuelRecord.create({
@@ -161,6 +162,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           odometerAtEntry: input.odometerAtEntry,
           place: input.place,
           enteredByName: input.enteredByName,
+          enteredByAccountId,
           notes: input.notes,
         },
       });
@@ -174,6 +176,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           description: input.description,
           place: input.place,
           enteredByName: input.enteredByName,
+          enteredByAccountId,
           notes: input.notes,
         },
       });
@@ -187,6 +190,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           description: input.description,
           place: input.place,
           enteredByName: input.enteredByName,
+          enteredByAccountId,
           notes: input.notes,
         },
       });
@@ -200,6 +204,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           category: input.category as ExpenseCategory,
           place: input.place,
           enteredByName: input.enteredByName,
+          enteredByAccountId,
           notes: input.notes,
         },
       });
@@ -210,6 +215,7 @@ async function createRecord(vehicleId: string, input: CreateRecordInput) {
           date: new Date(input.date),
           odometerKm: input.odometerKm,
           enteredByName: input.enteredByName,
+          enteredByAccountId,
           notes: input.notes,
         },
       });

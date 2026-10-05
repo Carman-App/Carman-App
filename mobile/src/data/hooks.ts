@@ -45,6 +45,7 @@ import {
 } from '@/data/api/mappers';
 import { queryClient } from '@/data/queryClient';
 import { qk } from '@/data/queryKeys';
+import { setNumberRegion } from '@/lib/format';
 import { setUiState, useActiveGarageId, useHydrateOnMount, useOnboarded, useUiState } from '@/data/uiState';
 import { REGION_UNITS, type Modification, type PartLine, type PlanOption, type VehicleDocument, type VehicleRecord } from '@/types/domain';
 
@@ -57,7 +58,14 @@ const FULL_PAGE = { pageSize: 100 };
 export function useAccount() {
   return useQuery({
     queryKey: qk.account(),
-    queryFn: () => api.get<RawAccount>('account').then(toAccount),
+    queryFn: () =>
+      api
+        .get<RawAccount>('account')
+        .then(toAccount)
+        .then((a) => {
+          setNumberRegion(a.region);
+          return a;
+        }),
   });
 }
 

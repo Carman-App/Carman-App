@@ -20,15 +20,15 @@ export function SelectSheet({ visible, title, glyph = 'f-tag', options, value, o
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
+      <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={onClose}>
+        <Pressable accessible={false} style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
           <View style={styles.head}>
             <View style={styles.headLeft}>
               <IconGlyph glyph={glyph} size={22} bg="transparent" scale={0.86} />
               <T style={styles.title}>{title}</T>
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
               <IconGlyph glyph="close" size={32} bg="transparent" fg="#5F5A55" scale={0.44} />
             </Pressable>
           </View>
@@ -37,7 +37,7 @@ export function SelectSheet({ visible, title, glyph = 'f-tag', options, value, o
               const on = o.label === value;
               const ink = on ? Colors.accent : '#333333';
               return (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   key={o.label}
                   onPress={() => {
                     onSelect(o.label);

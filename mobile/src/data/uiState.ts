@@ -28,11 +28,14 @@ type UiState = {
   mechanicRecents: string[];
   /** Notification preferences from My profile, keyed by topic. */
   notificationPrefs: Record<string, boolean>;
+  /** The Terms version this account's consent was recorded for (features/auth/consent.ts). */
+  consentVersion: string | null;
 };
 
 const STORAGE_KEY = 'carma:ui-state:v1';
 
 let state: UiState = {
+  consentVersion: null,
   onboarded: false,
   activeGarageId: null,
   mode: 'owner',

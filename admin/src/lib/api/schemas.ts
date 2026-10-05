@@ -242,6 +242,8 @@ export const updateAccountSchema = z
     activeProfileType: z.enum(enumValues(ProfileType)).optional(),
     // My profile → Notifications: which kinds are pushed to the phone.
     notificationPrefs: z.partialRecord(z.enum(["service", "docs", "jobs", "money", "members", "idle"]), z.boolean()).optional(),
+    // GROW-02: how this person arrived. Only ever fills an UNKNOWN source.
+    signupSource: z.enum(["INVITE", "MECHANIC_LINK", "CAMPAIGN", "STORE"]).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "No fields to update." });
 
@@ -332,4 +334,11 @@ export const createUploadSchema = z.object({
   vehicleId: z.string().min(1),
   contentType: z.enum(Object.keys(UPLOAD_CONTENT_TYPES) as [keyof typeof UPLOAD_CONTENT_TYPES, ...(keyof typeof UPLOAD_CONTENT_TYPES)[]]),
   sizeBytes: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+});
+
+// POST /api/v1/account/consents — what the person agreed to, and when (PRIV-01).
+export const consentSchema = z.object({
+  termsVersion: z.string().trim().min(1).max(40),
+  source: z.string().trim().min(1).max(60),
+  purposes: z.partialRecord(z.enum(["essential", "analytics", "marketing", "third_party_sharing"]), z.boolean()),
 });

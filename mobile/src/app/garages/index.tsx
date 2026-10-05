@@ -44,7 +44,7 @@ export default function GaragesListScreen() {
               {garages.map((garage, i) => (
                 <GarageRow key={garage.id} garage={garage} bordered={i < garages.length - 1} onPress={() => openGarage(garage)} />
               ))}
-              <Pressable style={styles.addRow} onPress={() => router.push('/garages/add')}>
+              <Pressable accessibilityRole="button" style={styles.addRow} onPress={() => router.push('/garages/add')}>
                 <IconGlyph glyph="garage" size={40} />
                 <T variant="bodyStrong" color={Colors.accent} style={styles.addLabel}>
                   Add a garage

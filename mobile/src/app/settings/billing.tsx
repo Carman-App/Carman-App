@@ -156,7 +156,7 @@ export default function BillingScreen() {
 
       {canBuy ? (
         <>
-          <Pressable onPress={() => void onRestore()} disabled={busy !== null} style={styles.restore}>
+          <Pressable accessibilityRole="button" onPress={() => void onRestore()} disabled={busy !== null} style={styles.restore}>
             <T variant="bodyStrong" color={Colors.accent}>
               {busy === 'restore' ? 'Restoring…' : 'Restore purchases'}
             </T>
@@ -165,12 +165,12 @@ export default function BillingScreen() {
             {`PAYMENT IS CHARGED TO YOUR ${Platform.OS === 'ios' ? 'APPLE ID' : 'GOOGLE PLAY'} ACCOUNT. SUBSCRIPTIONS RENEW AUTOMATICALLY UNLESS CANCELLED AT LEAST 24 HOURS BEFORE THE PERIOD ENDS. MANAGE OR CANCEL IN YOUR ${storeName.toUpperCase()} SETTINGS.`}
           </Footnote>
           <View style={styles.legal}>
-            <Pressable onPress={() => openLegal('terms')}>
+            <Pressable accessibilityRole="button" onPress={() => openLegal('terms')}>
               <T variant="small" color={Colors.accent}>
                 Terms of use
               </T>
             </Pressable>
-            <Pressable onPress={() => openLegal('privacy')}>
+            <Pressable accessibilityRole="button" onPress={() => openLegal('privacy')}>
               <T variant="small" color={Colors.accent}>
                 Privacy policy
               </T>

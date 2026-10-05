@@ -75,7 +75,7 @@ export function TopBar({ backLabel, title, right, onRight, step, onBack, backGly
         </T>
       ) : null}
       {onRight ? (
-        <Pressable onPress={onRight} hitSlop={8} style={[styles.right, title ? styles.side : null]}>
+        <Pressable accessibilityRole="button" onPress={onRight} hitSlop={8} style={[styles.right, title ? styles.side : null]}>
           {rightNode}
         </Pressable>
       ) : (

@@ -14,7 +14,7 @@ export function JobRow({ job, all }: { job: Job; all: Job[] }) {
   const s = STATUS_META[job.status];
   const total = jobTotal(job);
   return (
-    <Pressable onPress={() => router.push({ pathname: '/mechanic/job-detail', params: { id: job.id } })} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
+    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/mechanic/job-detail', params: { id: job.id } })} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
       <IconGlyph glyph="vehicle" size={32} shape="tile" bg={s.tint} fg={s.color === Colors.cta ? Colors.warning : s.color} />
       <View style={styles.flex}>
         <View style={styles.between}>

@@ -79,8 +79,8 @@ export function PickerSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable style={styles.backdrop} onPress={handleClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={handleClose}>
+        <Pressable accessible={false} style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               <T variant="display">{title}</T>
@@ -90,7 +90,7 @@ export function PickerSheet({
                 </T>
               ) : null}
             </View>
-            <Pressable onPress={handleClose} hitSlop={10} style={styles.closeBtn} accessibilityLabel="Close">
+            <Pressable accessibilityRole="button" onPress={handleClose} hitSlop={10} style={styles.closeBtn} accessibilityLabel="Close">
               <HugeiconsIcon icon={Cancel01Icon} size={22} color={Colors.slate} />
             </Pressable>
           </View>
@@ -113,7 +113,7 @@ export function PickerSheet({
           </T>
 
           {showCustom ? (
-            <Pressable style={styles.row} onPress={() => handlePick(typed)}>
+            <Pressable accessibilityRole="button" style={styles.row} onPress={() => handlePick(typed)}>
               <T variant="bodyStrong" color={Colors.accent} style={styles.rowLabel}>
                 Use “{typed}”
               </T>
@@ -128,7 +128,7 @@ export function PickerSheet({
             renderItem={({ item }) => {
               const active = item === selected;
               return (
-                <Pressable style={styles.row} onPress={() => handlePick(item)}>
+                <Pressable accessibilityRole="button" style={styles.row} onPress={() => handlePick(item)}>
                   <View style={styles.rowLabel}>
                     <T variant="bodyStrong" color={active ? Colors.accent : Colors.body}>
                       {item}

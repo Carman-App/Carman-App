@@ -51,7 +51,7 @@ export default function VehicleQrScreen() {
                 ) : null}
               </View>
               {pending.map((r) => (
-                <Pressable key={r.id} onPress={() => router.push(`/access-requests/${r.id}`)} style={[styles.access, styles.accessPending]}>
+                <Pressable accessibilityRole="button" key={r.id} onPress={() => router.push(`/access-requests/${r.id}`)} style={[styles.access, styles.accessPending]}>
                   <View style={styles.flex}>
                     <T variant="bodyStrong">{r.workshopName}</T>
                     <T variant="eyebrow" color={Colors.signal}>
@@ -82,13 +82,13 @@ export default function VehicleQrScreen() {
                 </T>
               </View>
               <View style={styles.actions}>
-                <Pressable style={styles.action} onPress={() => Share.share({ message: `Scan or open to request access to my ${v.make} ${v.model} on Carma: ${code}` })}>
+                <Pressable accessibilityRole="button" style={styles.action} onPress={() => Share.share({ message: `Scan or open to request access to my ${v.make} ${v.model} on Carma: ${code}` })}>
                   <T variant="eyebrowStrong" color={Colors.accent}>
                     SHARE CODE
                   </T>
                 </Pressable>
                 <View style={styles.divider} />
-                <Pressable style={styles.action} onPress={() => Share.share({ message: label })}>
+                <Pressable accessibilityRole="button" style={styles.action} onPress={() => Share.share({ message: label })}>
                   <T variant="eyebrowStrong" color={Colors.accent}>
                     PRINT FOR GLOVEBOX
                   </T>

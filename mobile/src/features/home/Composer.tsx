@@ -41,12 +41,12 @@ export function Composer({ value, onChangeText, onSubmit, placeholder = 'Type, o
       />
       <View style={styles.row}>
         {onAdd ? (
-          <Pressable onPress={onAdd} style={({ pressed }) => [styles.add, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Add a record">
+          <Pressable accessibilityRole="button" onPress={onAdd} style={({ pressed }) => [styles.add, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Add a record">
             <IconGlyph glyph="add" size={40} bg="transparent" fg={Colors.ink} />
           </Pressable>
         ) : null}
         {scopeLabel ? (
-          <Pressable onPress={onScope} style={styles.scope} accessibilityLabel="Change scope">
+          <Pressable accessibilityRole="button" onPress={onScope} style={styles.scope} accessibilityLabel="Change scope">
             <View style={styles.scopeDot} />
             <T style={styles.scopeLabel} numberOfLines={1}>
               {scopeLabel}
@@ -55,11 +55,11 @@ export function Composer({ value, onChangeText, onSubmit, placeholder = 'Type, o
         ) : null}
         <View style={styles.flex} />
         {onMic ? (
-          <Pressable onPress={onMic} hitSlop={8} accessibilityLabel="Dictate">
+          <Pressable accessibilityRole="button" onPress={onMic} hitSlop={8} accessibilityLabel="Dictate">
             <IconGlyph glyph="mic" size={36} bg="transparent" fg={Colors.textMuted} scale={0.6} />
           </Pressable>
         ) : null}
-        <Pressable
+        <Pressable accessibilityRole="button"
           onPress={onSubmit}
           disabled={!canSend}
           style={[styles.send, { backgroundColor: canSend ? Colors.accent : Colors.chip }]}

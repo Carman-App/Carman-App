@@ -109,7 +109,7 @@ export default function ActivityScreen() {
         ) : (
           <>
             {items.map((i) => (
-              <Pressable key={i.id} onPress={i.onPress} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
+              <Pressable accessibilityRole="button" key={i.id} onPress={i.onPress} style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F7F5F2' }]}>
                 <IconGlyph glyph={i.glyph} size={32} shape="tile" bg={i.tint} fg={i.hue} />
                 <View style={styles.flex}>
                   <View style={styles.between}>

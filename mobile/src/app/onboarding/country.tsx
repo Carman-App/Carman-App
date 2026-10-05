@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { IconGlyph } from '@/components/ui/IconGlyph';
 import { PickerSheet } from '@/components/ui/PickerSheet';
 import { T } from '@/components/ui/Typography';
+import { openLegal } from '@/features/auth/legal';
+import { recordConsent } from '@/features/auth/consent';
 import { useOnboardingDraft } from '@/features/onboarding/context';
 import { COUNTRIES } from '@/features/onboarding/countries';
 import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
@@ -33,11 +35,30 @@ export default function CountryScreen() {
       title="Where are you based?"
       lede="Sets your currency and units."
       footer={
-        <Button disabled={!picked} onPress={() => router.push('/onboarding/profile')}>
-          Continue
-        </Button>
+        <View style={styles.footer}>
+          {/* PRIV-01: continuing is the consent; it is recorded with the Terms version. */}
+          <T variant="small" color={Colors.textFaint} style={styles.consent}>
+            By continuing you agree to Carma’s{' '}
+            <T variant="small" color={Colors.accent} onPress={() => openLegal('terms')} accessibilityRole="link">
+              Terms
+            </T>{' '}
+            and{' '}
+            <T variant="small" color={Colors.accent} onPress={() => openLegal('privacy')} accessibilityRole="link">
+              Privacy Policy
+            </T>
+            .
+          </T>
+          <Button
+            disabled={!picked}
+            onPress={() => {
+              void recordConsent();
+              router.push('/onboarding/profile');
+            }}>
+            Continue
+          </Button>
+        </View>
       }>
-      <Pressable onPress={() => setOpen(true)} style={({ pressed }) => [styles.pill, pressed && { borderColor: Colors.lineStrong }]}>
+      <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={({ pressed }) => [styles.pill, pressed && { borderColor: Colors.lineStrong }]}>
         <T numberOfLines={1} style={[styles.name, { color: picked ? Colors.body : Colors.textMuted }]}>
           {picked && country ? label(country) : 'Choose a country'}
         </T>
@@ -70,6 +91,12 @@ export default function CountryScreen() {
 }
 
 const styles = StyleSheet.create({
+  footer: {
+    gap: Spacing.md,
+  },
+  consent: {
+    textAlign: 'center',
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

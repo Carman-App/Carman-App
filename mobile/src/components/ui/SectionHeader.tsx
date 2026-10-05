@@ -27,7 +27,7 @@ export function SectionHeader({ title, action, onAction, right, tone = 'caps', r
     <View style={[styles.row, rule && styles.rule, inset && styles.inset, style]}>
       <T variant={tone === 'caps' ? 'eyebrowStrong' : tone}>{title}</T>
       {action ? (
-        <Pressable onPress={onAction} hitSlop={8}>
+        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={8}>
           <T variant="eyebrow" color={Colors.accent}>
             {action}
           </T>

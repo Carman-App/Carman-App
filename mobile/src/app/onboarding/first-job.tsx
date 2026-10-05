@@ -32,7 +32,7 @@ export default function FirstJobScreen() {
       footer={
         <>
           <Button onPress={() => router.replace('/mechanic/dashboard')}>Open the workshop</Button>
-          <Pressable
+          <Pressable accessibilityRole="button"
             hitSlop={8}
             onPress={async () => {
               await setUiState({ mode: 'owner' });
@@ -46,7 +46,7 @@ export default function FirstJobScreen() {
         </>
       }>
       {STEPS.map((s, i) => (
-        <Pressable key={s.title} onPress={() => router.push(s.href)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.accentSoft }]}>
+        <Pressable accessibilityRole="button" key={s.title} onPress={() => router.push(s.href)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.accentSoft }]}>
           <View style={[styles.num, i === 0 && styles.numOn]}>
             <T style={[styles.numText, i === 0 && { color: Colors.white }]}>{i + 1}</T>
           </View>

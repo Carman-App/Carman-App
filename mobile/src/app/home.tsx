@@ -82,7 +82,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
-          <Pressable onPress={() => setDrawer(true)} accessibilityLabel="Open menu">
+          <Pressable accessibilityRole="button" onPress={() => setDrawer(true)} accessibilityLabel="Open menu">
             <Avatar name={account?.name ?? ''} size={44} />
             {hasAlerts ? (
               <View style={styles.alertDot}>
@@ -109,7 +109,7 @@ export default function HomeScreen() {
         </View>
 
         {approval ? (
-          <Pressable onPress={() => router.push(`/estimates/${approval.id}`)} style={({ pressed }) => [styles.approval, pressed && { opacity: 0.85 }]}>
+          <Pressable accessibilityRole="button" onPress={() => router.push(`/estimates/${approval.id}`)} style={({ pressed }) => [styles.approval, pressed && { opacity: 0.85 }]}>
             <Dot />
             <T numberOfLines={1} style={styles.approvalText}>
               {approval.workshopName} wants to add {approval.lines[0]?.description.toLowerCase() ?? 'work'} to the {approvalVehicle?.model ?? 'car'} · {formatMoney(approval.total, '')}
@@ -117,7 +117,7 @@ export default function HomeScreen() {
             <IconGlyph glyph="open" size={24} bg="transparent" fg={Colors.accent} scale={0.9} />
           </Pressable>
         ) : accessRequests[0] ? (
-          <Pressable onPress={() => router.push(`/access-requests/${accessRequests[0].id}`)} style={styles.approval}>
+          <Pressable accessibilityRole="button" onPress={() => router.push(`/access-requests/${accessRequests[0].id}`)} style={styles.approval}>
             <Dot />
             <T numberOfLines={1} style={styles.approvalText}>
               {accessRequests[0].workshopName} asked to see a vehicle
@@ -140,7 +140,7 @@ export default function HomeScreen() {
 
         <View style={styles.suggestions}>
           {ownerSuggestions(vehicle ?? vehicles[0]).map((s) => (
-            <Pressable key={s} onPress={() => ask(s)} style={({ pressed }) => [styles.suggestion, pressed && { opacity: 0.6 }]}>
+            <Pressable accessibilityRole="button" key={s} onPress={() => ask(s)} style={({ pressed }) => [styles.suggestion, pressed && { opacity: 0.6 }]}>
               <IconGlyph glyph="search" size={22} bg="transparent" fg={Colors.textMuted} scale={0.86} />
               <T numberOfLines={1} style={styles.suggestionText}>
                 {s}

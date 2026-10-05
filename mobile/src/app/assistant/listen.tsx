@@ -72,7 +72,7 @@ export default function ListenScreen() {
           </T>
         </View>
       ) : null}
-      <Pressable style={styles.body} onPress={() => input.current?.focus()}>
+      <Pressable accessibilityRole="button" style={styles.body} onPress={() => input.current?.focus()}>
         <TextInput
           ref={input}
           value={text}
@@ -100,7 +100,7 @@ export default function ListenScreen() {
         ))}
       </View>
       <View style={styles.foot}>
-        <Pressable onPress={stop} style={({ pressed }) => [styles.stop, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Stop">
+        <Pressable accessibilityRole="button" onPress={stop} style={({ pressed }) => [styles.stop, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Stop">
           <IconGlyph glyph="stop" size={64} bg="transparent" fg={Colors.ink} scale={0.36} />
         </Pressable>
       </View>

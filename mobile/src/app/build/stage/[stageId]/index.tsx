@@ -155,12 +155,12 @@ export default function BuildStageScreen() {
           </T>
 
           <View style={styles.bottomRow}>
-            <Pressable style={styles.bottomBtn} onPress={() => router.push(`/build/stage/${stageId}/add-modification`)}>
+            <Pressable accessibilityRole="button" style={styles.bottomBtn} onPress={() => router.push(`/build/stage/${stageId}/add-modification`)}>
               <T variant="bodyStrong" color={Colors.white}>
                 WORK
               </T>
             </Pressable>
-            <Pressable style={styles.bottomBtn} onPress={() => router.push(`/build/stage/${stageId}/add-part`)}>
+            <Pressable accessibilityRole="button" style={styles.bottomBtn} onPress={() => router.push(`/build/stage/${stageId}/add-part`)}>
               <T variant="bodyStrong" color={Colors.white}>
                 PART
               </T>

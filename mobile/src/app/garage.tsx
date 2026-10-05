@@ -67,7 +67,7 @@ export default function GarageScreen() {
           right={
             <View style={styles.headActions}>
               <IconButton glyph="settings" onPress={() => garage && router.push(`/garages/${garage.id}/settings`)} accessibilityLabel="Garage settings" />
-              <Pressable onPress={() => router.push('/notifications')} style={styles.unread}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.unread}>
                 <T variant="eyebrow" color={Colors.body}>
                   {unread} UNREAD
                 </T>
@@ -80,7 +80,7 @@ export default function GarageScreen() {
       <QueryBoundary query={primary} isEmpty={() => false}>
         {({ garage, vehicles }) => (
           <>
-            <Pressable onPress={() => router.push('/garages')} style={styles.title}>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/garages')} style={styles.title}>
               <T variant="eyebrow" color={Colors.slate}>
                 MY GARAGE
               </T>
@@ -103,7 +103,7 @@ export default function GarageScreen() {
               </EmptyState>
             ) : (
               <>
-                <Pressable onPress={() => router.push('/insights')} style={styles.spend}>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/insights')} style={styles.spend}>
                   <View style={styles.spendHead}>
                     <Segmented
                       value={period}
@@ -155,7 +155,7 @@ function VehicleRow({ vehicle, records, reminders }: { vehicle: Vehicle; records
   else right = { text: 'NO SERVICE SET', color: Colors.textFaint };
 
   return (
-    <Pressable onPress={() => router.push(`/vehicle/${vehicle.id}`)} style={({ pressed }) => [styles.vehicle, pressed && { backgroundColor: '#F7F5F2' }]}>
+    <Pressable accessibilityRole="button" onPress={() => router.push(`/vehicle/${vehicle.id}`)} style={({ pressed }) => [styles.vehicle, pressed && { backgroundColor: '#F7F5F2' }]}>
       <View style={styles.vehicleHead}>
         <View style={styles.vehicleText}>
           <T style={styles.vehicleName}>{vehicle.model}</T>

@@ -1,9 +1,3 @@
-// One import per weight: the package's main entry requires all eight files
-// (italics included, ~2 MB each), which Expo Go then downloads on every load.
-import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
-import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
-import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
-import { GoogleSans_700Bold } from '@expo-google-fonts/google-sans/700Bold';
 import { useFonts } from 'expo-font';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { router, Stack, usePathname } from 'expo-router';
@@ -38,11 +32,14 @@ const ORPHAN_WINDOW_MS = 20_000;
 const STARTING_SCREENS = ['/onboarding', '/home', '/mechanic/dashboard'];
 
 function RootLayout() {
+  // Google Sans subset to Latin (assets/fonts, ~115 KB each instead of ~2 MB):
+  // the full files carry Cyrillic, Devanagari, Ethiopic and more that Carma never shows.
+  // Regenerate with fontTools if a new language needs other scripts.
   const [fontsLoaded] = useFonts({
-    GoogleSans_400Regular,
-    GoogleSans_500Medium,
-    GoogleSans_600SemiBold,
-    GoogleSans_700Bold,
+    GoogleSans_400Regular: require('@/../assets/fonts/GoogleSans_400Regular.ttf'),
+    GoogleSans_500Medium: require('@/../assets/fonts/GoogleSans_500Medium.ttf'),
+    GoogleSans_600SemiBold: require('@/../assets/fonts/GoogleSans_600SemiBold.ttf'),
+    GoogleSans_700Bold: require('@/../assets/fonts/GoogleSans_700Bold.ttf'),
   });
   const hydrated = useHydrateOnMount();
   const sessionLoaded = useSessionLoaded();

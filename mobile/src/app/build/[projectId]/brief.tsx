@@ -96,7 +96,7 @@ export default function BuildBriefScreen() {
 
             <View style={styles.list}>
               {BRIEF_OPTIONS.map((o) => (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   key={o.key}
                   style={[styles.option, briefType === o.key && styles.optionSelected]}
                   onPress={() => setBriefType(o.key)}>

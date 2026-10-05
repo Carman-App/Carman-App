@@ -46,7 +46,7 @@ export default function SwitchProfileScreen() {
       <TopBar backGlyph="close" backLabel="USING CARMA AS" />
       <ScrollView style={styles.list}>
         {options.map((o) => (
-          <Pressable key={o.key} onPress={() => setChoice(o.key)} style={[styles.option, choice === o.key && styles.optionOn]}>
+          <Pressable accessibilityRole="button" key={o.key} onPress={() => setChoice(o.key)} style={[styles.option, choice === o.key && styles.optionOn]}>
             {choice === o.key ? <View style={styles.bar} /> : null}
             <View style={[styles.flex, styles.indent]}>
               <T variant="heading" style={styles.name}>
@@ -60,7 +60,7 @@ export default function SwitchProfileScreen() {
           </Pressable>
         ))}
         {workshops.length === 0 ? (
-          <Pressable onPress={() => router.push('/onboarding/workshop')} style={styles.option}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/onboarding/workshop')} style={styles.option}>
             <View style={styles.flex}>
               <T variant="heading" style={[styles.name, { color: Colors.accent }]}>
                 Add a workshop
@@ -79,7 +79,7 @@ export default function SwitchProfileScreen() {
           { label: 'Country & units', meta: account ? account.region : '', go: () => router.push('/settings') },
           { label: 'Subscription', meta: planMeta(account?.planState), go: () => router.push('/settings/billing') },
         ].map((r) => (
-          <Pressable key={r.label} onPress={r.go} style={styles.row}>
+          <Pressable accessibilityRole="button" key={r.label} onPress={r.go} style={styles.row}>
             <T variant="body" color={Colors.ink} style={styles.flex}>
               {r.label}
             </T>

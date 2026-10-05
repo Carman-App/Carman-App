@@ -31,7 +31,8 @@ export const Colors = {
   slate: '#4A5F86',
   textMuted: '#5F5A55',
   textSubtle: '#6E6862',
-  textFaint: '#A39E9D',
+  // Was #A39E9D in the design (2.4:1 on sand); darkened to pass 4.5:1 for text (audit, accessibility).
+  textFaint: '#736D68',
 
   // Brand
   accent: '#134B9C',

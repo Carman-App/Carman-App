@@ -129,7 +129,7 @@ export default function DocumentDetailScreen() {
         {days !== null && days >= 0 ? <ProgressBar progress={Math.max(0.04, Math.min(1, days / 365))} color={urgent ? Colors.signal : Colors.accent} /> : null}
       </View>
 
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={styles.file}
         onPress={() => (doc.fileRef ? void openFile() : router.push({ pathname: '/doc/scan', params: { documentId: id } }))}>
         <IconGlyph glyph={doc.fileRef ? 'document' : 'camera'} size={44} />
@@ -141,7 +141,7 @@ export default function DocumentDetailScreen() {
       </Pressable>
 
       {doc.fileRef ? (
-        <Pressable hitSlop={8} style={styles.replace} onPress={() => router.push({ pathname: '/doc/scan', params: { documentId: id } })}>
+        <Pressable accessibilityRole="button" hitSlop={8} style={styles.replace} onPress={() => router.push({ pathname: '/doc/scan', params: { documentId: id } })}>
           <T variant="meta" color={Colors.accent}>
             Replace the file
           </T>

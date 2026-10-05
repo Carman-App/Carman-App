@@ -74,16 +74,16 @@ export function DateSheet({ visible, value, onSelect, onClose, allowFuture, onCl
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
+      <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={onClose}>
+        <Pressable accessible={false} style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.monthRow}>
-            <Pressable onPress={() => shift(-1)} hitSlop={8} style={styles.round} accessibilityLabel="Previous month">
+            <Pressable accessibilityRole="button" onPress={() => shift(-1)} hitSlop={8} style={styles.round} accessibilityLabel="Previous month">
               <IconGlyph glyph="back" size={40} bg="transparent" fg={Colors.ink} scale={0.43} />
             </Pressable>
             <T style={styles.month}>
               {MONTHS[cursor.m]} {cursor.y}
             </T>
-            <Pressable onPress={() => shift(1)} hitSlop={8} style={styles.round} accessibilityLabel="Next month">
+            <Pressable accessibilityRole="button" onPress={() => shift(1)} hitSlop={8} style={styles.round} accessibilityLabel="Next month">
               <IconGlyph glyph="arrow-right" size={40} bg="transparent" fg={Colors.ink} scale={0.43} />
             </Pressable>
           </View>
@@ -102,7 +102,7 @@ export function DateSheet({ visible, value, onSelect, onClose, allowFuture, onCl
               const isToday = key === today;
               return (
                 <View key={i} style={styles.cell}>
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     disabled={disabled}
                     onPress={() => pick(key)}
                     style={[styles.day, isToday && !on && styles.dayToday, on && styles.dayOn]}>
@@ -113,14 +113,14 @@ export function DateSheet({ visible, value, onSelect, onClose, allowFuture, onCl
             })}
           </View>
           <View style={styles.foot}>
-            <Pressable onPress={() => pick(today)} style={[styles.pill, styles.pillYellow]}>
+            <Pressable accessibilityRole="button" onPress={() => pick(today)} style={[styles.pill, styles.pillYellow]}>
               <T style={styles.pillText}>Today</T>
             </Pressable>
-            <Pressable onPress={() => pick(yesterday)} style={[styles.pill, styles.pillLine]}>
+            <Pressable accessibilityRole="button" onPress={() => pick(yesterday)} style={[styles.pill, styles.pillLine]}>
               <T style={styles.pillText}>Yesterday</T>
             </Pressable>
             {onClear ? (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 onPress={() => {
                   onClear();
                   onClose();
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 10,
     letterSpacing: 1,
-    color: '#8A847D',
+    color: Colors.textFaint,
   },
   cell: {
     width: `${100 / 7}%`,

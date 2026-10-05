@@ -88,6 +88,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
+      if (input.signupSource) {
+        await tx.account.updateMany({ where: { id: account.id, signupSource: "UNKNOWN" }, data: { signupSource: input.signupSource } });
+      }
       if (input.region || input.notificationPrefs) {
         await tx.account.update({
           where: { id: account.id },

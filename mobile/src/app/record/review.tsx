@@ -105,7 +105,7 @@ export default function ReviewScreen() {
             {gaps.length > 0 ? `Add the ${gaps[0]} first` : draft.kind === 'odometer' ? 'Save reading' : 'Save expense'}
           </Button>
           <View style={styles.footRow}>
-            <Pressable
+            <Pressable accessibilityRole="button"
               hitSlop={8}
               onPress={() => {
                 setDraft(null);
@@ -115,7 +115,7 @@ export default function ReviewScreen() {
                 Discard
               </T>
             </Pressable>
-            <Pressable hitSlop={8} onPress={() => router.push('/record/changes')} disabled={gaps.length > 0}>
+            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.push('/record/changes')} disabled={gaps.length > 0}>
               <T variant="meta" color={gaps.length > 0 ? Colors.textFaint : Colors.body}>
                 See what will change
               </T>
@@ -128,7 +128,7 @@ export default function ReviewScreen() {
         {draft.kind === 'odometer' ? (
           <MoneyFigure currency="KM" amount={draft.odometer ? formatNumber(draft.odometer) : '—'} />
         ) : (
-          <Pressable onPress={() => startEdit('amount', draft.amount)}>
+          <Pressable accessibilityRole="button" onPress={() => startEdit('amount', draft.amount)}>
             {editing === 'amount' ? (
               <TextInput value={buffer} onChangeText={setBuffer} onBlur={commit} onSubmitEditing={commit} autoFocus keyboardType="decimal-pad" style={styles.amountInput} />
             ) : (
@@ -143,7 +143,7 @@ export default function ReviewScreen() {
         const blank = !r.value;
         const isEditing = editing === r.key;
         return (
-          <Pressable
+          <Pressable accessibilityRole="button"
             key={r.key}
             onPress={() => {
               if (r.key === 'vehicle') setPickVehicle(true);

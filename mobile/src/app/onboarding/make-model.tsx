@@ -61,7 +61,7 @@ export default function MakeModelScreen() {
       bleed
       footer={
         <View style={styles.foot}>
-          <Pressable onPress={() => router.push('/onboarding/vin')} style={({ pressed }) => [styles.vin, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Add the VIN">
+          <Pressable accessibilityRole="button" onPress={() => router.push('/onboarding/vin')} style={({ pressed }) => [styles.vin, pressed && { backgroundColor: Colors.ctaPressed }]} accessibilityLabel="Add the VIN">
             <IconGlyph glyph="qr" size={64} bg="transparent" fg={Colors.body} scale={0.36} />
           </Pressable>
           <Button style={styles.flex} disabled={!ok} onPress={() => router.push('/onboarding/odometer')}>

@@ -65,7 +65,7 @@ export default function NewGarageScreen() {
               <Button loading={saving} disabled={list.length === 0} onPress={() => create(true)}>
                 Create garage
               </Button>
-              <Pressable disabled={saving} onPress={() => create(false)} hitSlop={8}>
+              <Pressable accessibilityRole="button" disabled={saving} onPress={() => create(false)} hitSlop={8}>
                 <T variant="meta" color={Colors.accent} center>
                   Create without members
                 </T>

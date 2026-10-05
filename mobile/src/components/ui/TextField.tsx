@@ -132,7 +132,7 @@ export function FieldInput({
 export function FieldRow({ label, value, placeholder = 'Select', onPress, caret = true, disabled, valueColor, caretColor }: FieldRowProps) {
   const has = !!value;
   return (
-    <Pressable
+    <Pressable accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || !onPress}
       style={({ pressed }) => [styles.row, pressed && { borderColor: Colors.lineStrong }, disabled && { opacity: 0.5 }]}>

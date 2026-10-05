@@ -33,14 +33,14 @@ export function OptionSheet({ visible, title, lede, options, selected, onSelect,
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm }]} onPress={(e) => e.stopPropagation()}>
+      <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={onClose}>
+        <Pressable accessible={false} style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.header}>
             <View style={styles.headerText}>
               <T variant="display">{title}</T>
               {lede ? <T variant="lede">{lede}</T> : null}
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel="Close">
               <IconGlyph glyph="close" size={36} bg={Colors.chip} fg={Colors.body} />
             </Pressable>
           </View>
@@ -49,7 +49,7 @@ export function OptionSheet({ visible, title, lede, options, selected, onSelect,
               const on = o.key === selected;
               if (grid) {
                 return (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     key={o.key}
                     onPress={() => onSelect(o.key)}
                     style={({ pressed }) => [styles.tile, pressed && { backgroundColor: Colors.accentSoft }]}>
@@ -61,7 +61,7 @@ export function OptionSheet({ visible, title, lede, options, selected, onSelect,
                 );
               }
               return (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   key={o.key}
                   onPress={() => onSelect(o.key)}
                   style={({ pressed }) => [styles.row, on && styles.rowOn, pressed && { opacity: 0.7 }]}>

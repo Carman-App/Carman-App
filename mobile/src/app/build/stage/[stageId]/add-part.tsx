@@ -71,7 +71,7 @@ export default function AddPartScreen() {
         QUANTITY
       </T>
       <View style={styles.stepper}>
-        <Pressable style={styles.stepBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
+        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
           <T variant="heading" color={Colors.accent}>
             −
           </T>
@@ -79,7 +79,7 @@ export default function AddPartScreen() {
         <T variant="bodyStrong" style={styles.stepValue}>
           {quantity}
         </T>
-        <Pressable style={styles.stepBtn} onPress={() => setQuantity((q) => q + 1)}>
+        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => setQuantity((q) => q + 1)}>
           <T variant="heading" color={Colors.accent}>
             +
           </T>
@@ -91,7 +91,7 @@ export default function AddPartScreen() {
       </T>
       <View style={styles.chipRow}>
         {STATUSES.map((s) => (
-          <Pressable key={s.key} style={[styles.chip, status === s.key && styles.chipSelected]} onPress={() => setStatus(s.key)}>
+          <Pressable accessibilityRole="button" key={s.key} style={[styles.chip, status === s.key && styles.chipSelected]} onPress={() => setStatus(s.key)}>
             <T variant="meta" color={status === s.key ? Colors.white : Colors.textMuted} style={{ fontFamily: undefined }}>
               {s.label.toUpperCase()}
             </T>
