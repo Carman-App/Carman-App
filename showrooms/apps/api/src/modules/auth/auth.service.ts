@@ -10,6 +10,7 @@ import { passwordResetEmail } from "../../services/email/templates";
 import { AppError } from "../../utils/app-error";
 import { generateOpaqueToken, hashToken } from "../../utils/tokens";
 import { audit, type RequestMeta } from "../audit/audit.service";
+import { createBrokerProfile, createDealerProfile } from "../sellers/seller-context";
 import { User, type UserDocument } from "../users/user.model";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 import { PasswordResetToken } from "./password-reset-token.model";
@@ -70,6 +71,10 @@ export async function register(input: z.output<typeof registerSchema>, ctx: Sess
     role: input.role,
     passwordHash: await hashPassword(input.password),
   });
+
+  // Sellers get a public showroom straight away; they can fill it in during onboarding.
+  if (user.role === "BROKER") await createBrokerProfile(user._id, user.name, user.phone);
+  if (user.role === "DEALER") await createDealerProfile(user._id, user.name, user.phone);
 
   await audit({ action: "auth.register", actorId: String(user._id), actorRole: user.role, entityType: "User", entityId: String(user._id) }, ctx);
   return issueSession(user, ctx);
