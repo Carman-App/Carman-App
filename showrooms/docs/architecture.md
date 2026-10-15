@@ -1,100 +1,119 @@
 # Architecture
 
 ```
- Expo mobile (Android/iOS)        Next.js web (public, dashboards, /admin)
-            \                                   /
-             +--------- Express API /api/v1 ---+
-                              |
-           MongoDB    Cloudinary    M-Pesa Daraja    Resend    Expo Push
+ Expo app (Android/iOS)              Next.js 16 (web)
+  SecureStore refresh token           server-rendered public pages (anonymous, cached)
+  X-Client-Type: mobile               client dashboards + /admin (TanStack Query)
+            \                         /api/posters/:id (1080×1920 Status posters)
+             \                       /
+              +-- Express API /api/v1 --+
+                         |
+      MongoDB (replica set) · Cloudinary · Daraja · Resend · Expo Push
 ```
 
-All business rules and authorization live in the API. The web and mobile apps
-are clients of the same API; they share request schemas and types through
-`packages/shared` but never import server code.
+All business rules and authorization live in the API. Web and mobile share
+request schemas, enums, labels, KES formatting and the WhatsApp message
+builder through `@showrooms/shared` (isomorphic TypeScript, no Node APIs), so
+validation errors, filters and share text are identical on both clients.
 
-## Packages
+## API modules (`apps/api/src/modules`)
 
-| Package           | Notes |
-| ----------------- | ----- |
-| `@showrooms/shared` | Isomorphic only (no Node APIs). Ships TypeScript source: the API bundles it with tsup, Next.js uses `transpilePackages`, Metro compiles it directly. |
-| `@showrooms/api`  | Express 5, Mongoose 9, Zod 4, Pino. ESM. Dev via `tsx`, production bundle via `tsup`. |
+| Module | Responsibility |
+| ------ | -------------- |
+| auth | register/login/refresh/logout/reset; refresh-token families; password hashing |
+| users | profile |
+| sellers | **seller context**: broker vs dealer (owner/manager/sales), inventory scoping, public showroom routes, follows |
+| vehicles | listing lifecycle, search, similar, view/contact tracking, poster links |
+| uploads | signed Cloudinary uploads scoped to the owning entity's folder; server-side confirmation |
+| inquiries | viewing requests and questions, lead status |
+| favorites | saved vehicles + follows models |
+| reviews | reviews gated on a real inquiry |
+| reports | listing reports and auto-flagging |
+| brokers / dealers | profile models, verification (encrypted ID numbers), dealer staff |
+| subscriptions | DB-configured plans, entitlements, subscribe |
+| payments | M-Pesa STK push, callback verification, at-most-once activation, reconciliation |
+| boosts | boost/featured purchases and promotion windows |
+| notifications | in-app + Expo push + email |
+| analytics | seller and admin aggregation pipelines |
+| admin | moderation, verification review, reports, payments, plans, categories, settings, audit |
+| categories / settings | admin-managed makes/models/body types; platform rules |
 
-## API layout
+Each module keeps `model → service → routes/controller`; services take plain
+inputs and a `SellerContext`/`AuthContext`, never Express objects.
+`handler({ body, query, params }, fn)` Zod-parses every request part.
+OpenAPI is generated from the same Zod schemas (`/api/docs`).
+
+External services sit behind interfaces in `src/services` (`EmailService`,
+`MediaService`, `MpesaService`, `PushService`) with real, disabled and test
+implementations, swapped via `setServices()` in tests.
+
+## Listing lifecycle
 
 ```
-src/
-  config/       env (validated with Zod), logger, database
-  middleware/   auth (authenticate/authorize), rate limits, error handling
-  modules/<name>/
-    *.model.ts       Mongoose schema + indexes
-    *.service.ts     business logic, no Express types
-    *.controller.ts  HTTP in/out (thin)
-    *.routes.ts      router + OpenAPI description
-  services/     external integrations behind interfaces (email; later media, payments, push)
-  docs/         OpenAPI generated from the same Zod schemas that validate requests
-  utils/        AppError, handler(), token helpers
+DRAFT ──submit──► PENDING_REVIEW ──approve──► ACTIVE ──mark sold──► SOLD
+  │                   │   ▲                      │  ▲
+  │                   │   └──── resubmit ────────┤  └── reinstate ── SUSPENDED
+  │                   └─reject / changes─► REJECTED                    ▲
+  └── delete (drafts only)            any submitted ──archive──► ARCHIVED   └ suspend
 ```
 
-`handler({ body, query, params }, fn)` parses each part with Zod before the
-controller runs; failures become a 422 with field-level details.
+- Submit checks completeness (`publishableVehicleSchema`), ≥1 photo, the plan's
+  active-listing limit, and duplicate fingerprints (make/model/year/mileage
+  bucket/colour) — duplicates are flagged for admins.
+- `requireListingApproval` and `autoApproveVerifiedSellers` are admin settings.
+- Changing make/model/year on a live listing sends it back to review.
+- Every decision is stored in `moderationHistory` and the audit log.
 
-### Responses
+## Search and ranking
 
-- Success: `{ "data": ..., "meta": { page, limit, total, totalPages }? }`
-- Error: `{ "error": { "code", "message", "details"?, "requestId" } }`
+Filters map to index-backed fields (`status` first in every compound index,
+lowercase `makeKey`/`modelKey`). `recommended` sorts by `promotionRank`
+(2 featured, 1 boosted, 0 normal) then `publishedAt`; the job runner resets
+expired promotions so the sort stays index-friendly. Text search uses a
+weighted text index with a prefix fallback. Popularity = views + 5×contacts +
+3×saves + 8×inquiries, updated incrementally.
 
-Every response carries `X-Request-Id`, which also appears in logs.
+## Analytics
 
-## Authentication
+Views and contact taps are separate collections, de-duplicated per viewer per
+Nairobi day (`viewerKey` = user id or a hash of IP + user agent; the raw IP is
+not stored). Contact taps are labelled as intent everywhere, never as
+conversations or sales. Aggregation pipelines bucket by `Africa/Nairobi`.
+Free plans get totals and per-listing numbers; daily series need
+`advancedAnalytics`.
 
-- **Access token**: HS256 JWT, 15 minutes, `{ sub, role }`, issuer/audience checked.
-  Every authenticated request reloads the user's role and status from MongoDB,
-  so a suspension, role change or password reset takes effect immediately; the
-  role in the token is never trusted on its own.
-- **Refresh token**: 48 random bytes, stored only as a SHA-256 hash, 30 days.
-  Rotated on every use. Each login starts a token *family*; presenting a token
-  that was already rotated revokes the whole family (theft detection) and is
-  audited. Rotation is claimed atomically, so two concurrent refreshes cannot
-  both succeed — clients must single-flight their refresh calls.
-- **Browsers** get the refresh token as an `HttpOnly`, `SameSite=Lax`, `Secure`
-  (production) cookie scoped to `/api/v1/auth`; the access token lives in memory
-  only, never `localStorage`. Cookie-based refresh/logout also require
-  `X-Requested-With: showrooms`, which forces a CORS preflight that only
-  allowlisted origins pass.
-- **Native apps** send `X-Client-Type: mobile`, receive the refresh token in the
-  response body and keep it in Expo SecureStore.
-- **Password reset**: single-use hashed token (30 min) emailed via the email
-  service; the response is identical whether or not the email exists. A reset
-  revokes every refresh token and invalidates older access tokens.
-- Login compares against a dummy hash for unknown emails so response time does
-  not reveal which emails are registered.
-- Adding phone OTP or social login later means adding a new way to prove
-  identity that ends in the same `issueSession()`; tokens and sessions don't change.
+## Payments
 
-## Roles
+1. Client asks to subscribe or boost (`Idempotency-Key` header). The server
+   creates the Subscription/VehicleBoost (PENDING_PAYMENT) and a Payment with the
+   **server-computed** amount, then sends the STK push.
+2. Safaricom calls `/payments/mpesa/callback?token=…`. The token (and optional
+   IP allowlist) is checked; the callback is matched by Checkout + Merchant
+   request ids and stored raw.
+3. Success requires the paid amount to match and (by default) a confirming STK
+   Query. Then, in one transaction, a conditional update flips the payment from
+   PENDING to SUCCESS and activates the plan/boost — so duplicate or concurrent
+   callbacks, polling and reconciliation apply it at most once. Receipt numbers
+   are unique.
+4. Pending payments are reconciled by the job runner, by client polling after
+   45 s, or by an admin. Clients never mark anything paid.
 
-`BUYER`, `BROKER`, `DEALER`, `ADMIN`. Sign-up accepts only the first three.
-`ADMIN` is created by `scripts/create-admin.ts` with database access. Admins
-cannot change their own status or another admin's. Dealer staff accounts arrive
-with the dealers module: a staff member is linked to one dealer profile and
-every dealer-scoped query filters by that dealer.
+## Jobs
 
-## Security controls in place
+`src/jobs` runs every minute on the instance with `JOBS_ENABLED=true`:
+expire subscriptions and boosts, clear expired promotions, reconcile stale
+payments. Every job is idempotent.
 
-Helmet headers, CORS allowlist, 100 kB JSON limit, Zod validation (unknown keys
-stripped, so `role`/`status`/`passwordHash` in a body are ignored), bcrypt (12
-rounds), rate limits (general, auth, and login/register/reset keyed by
-IP + email), audit log for auth and admin actions, log redaction of
-authorization headers, cookies, passwords and tokens.
+## Clients
 
-Rate limits use an in-memory store. Behind more than one API instance, switch to
-a shared store (Redis) so limits apply globally.
+**Web**: public pages are server components fetching anonymous, cacheable API
+responses (`revalidate`), with dynamic metadata, Open Graph images, JSON-LD,
+sitemap and robots. Dashboards and admin are client components behind the
+session; the API re-authorizes every call. Uploads go browser → Cloudinary
+directly with progress, retry and on-device compression.
 
-## Data
-
-Collections so far: `users`, `refreshtokens`, `passwordresettokens`,
-`auditlogs`. Expiring tokens are removed by TTL indexes. Phone numbers are
-stored in E.164 (`+2547...`) and are unique when present.
-
-Local MongoDB runs as a single-node replica set so later phases can use
-transactions (payment activation).
+**Mobile**: Expo Router groups `(auth)`, `(buyer)` tabs and `(seller)` tabs;
+filters live in a Zustand store but serialize to the same query keys as the
+web URLs. Lists use FlatList virtualization and `expo-image` disk caching with
+480 px CDN renditions. The listing wizard keeps a local draft in
+AsyncStorage and a server draft.

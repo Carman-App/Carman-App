@@ -3,7 +3,7 @@ export type FetchCall = { url: string; init?: RequestInit };
 /** Minimal fetch double: responds by URL path and records calls. */
 export function mockFetch(handler: (url: string, body: unknown) => { status: number; body?: unknown }) {
   const calls: FetchCall[] = [];
-  global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, init });
     const parsed = init?.body ? JSON.parse(String(init.body)) : undefined;

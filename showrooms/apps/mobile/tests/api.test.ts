@@ -43,7 +43,7 @@ describe("mobile session handling", () => {
 
   it("keeps the session when the network is down", async () => {
     store().set("showrooms.refreshToken", "keep");
-    global.fetch = jest.fn(async () => {
+    globalThis.fetch = jest.fn(async () => {
       throw new TypeError("Network request failed");
     }) as unknown as typeof fetch;
     expect(await refreshSession()).toBeNull();

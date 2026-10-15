@@ -1,0 +1,76 @@
+name: Showrooms CI
+
+on:
+  pull_request:
+    paths: ["showrooms/**", ".github/workflows/showrooms-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["showrooms/**", ".github/workflows/showrooms-ci.yml"]
+
+concurrency:
+  group: showrooms-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: showrooms
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit + integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: showrooms/package.json }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: showrooms/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # API tests download a mongod binary through mongodb-memory-server.
+      - run: pnpm test
+      - name: Web production build
+        run: pnpm --filter @showrooms/web build
+        env: { NEXT_PUBLIC_API_URL: "http://localhost:4000/api/v1", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }
+      - name: Android bundle
+        run: pnpm --filter @showrooms/mobile export:android
+        env: { EXPO_NO_TELEMETRY: "1", CI: "1" }
+
+  e2e:
+    name: Web end-to-end (API + web + MongoDB)
+    runs-on: ubuntu-latest
+    needs: checks
+    env:
+      MONGODB_URI: mongodb://localhost:27017/showrooms?replicaSet=rs0&directConnection=true
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdefghijklmnop
+      DATA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      POSTER_SIGNING_SECRET: ci-poster-secret-0123456789abcdefghijklmnop
+      CORS_ORIGINS: http://localhost:3000
+      MEDIA_PROVIDER: local
+      RATE_LIMIT_ENABLED: "false"
+      BCRYPT_ROUNDS: "4"
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supercharge/mongodb-github-action@1.12.0
+        with: { mongodb-version: "8.0", mongodb-replica-set: rs0 }
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: showrooms/package.json }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: showrooms/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @showrooms/api seed && pnpm --filter @showrooms/api build
+      - run: pnpm --filter @showrooms/web build
+      - run: npx playwright install --with-deps chromium
+        working-directory: showrooms/apps/web
+      - name: Start servers
+        run: |
+          (cd apps/api && node dist/server.js &) 
+          (cd apps/web && npx next start --port 3000 &)
+          npx wait-on -t 60000 http://localhost:4000/api/v1/health http://localhost:3000
+      - run: pnpm --filter @showrooms/web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: showrooms/apps/web/test-results }

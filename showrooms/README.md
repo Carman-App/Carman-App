@@ -1,83 +1,92 @@
 # Showrooms — Kenyan Vehicle Marketplace
 
-Digital showrooms for Kenyan vehicle brokers, dealers and independent sellers.
-Brokers list vehicles once, reach buyers beyond their own WhatsApp contacts,
-and share every listing back to WhatsApp.
+**Give Kenyan vehicle brokers a bigger showroom without replacing WhatsApp.**
+
+Brokers, dealers and independent sellers list vehicles once, reach buyers far
+beyond their own WhatsApp contacts, and share every listing back to WhatsApp
+chats, groups and Status. Buyers search, save, compare and contact sellers
+directly on WhatsApp or by phone.
 
 ```
-apps/api          Express + MongoDB REST API (/api/v1)     ← Phase 1 (done)
-apps/web          Next.js: public site, dashboards, /admin ← Phase 2+
-apps/mobile       Expo + React Native (Android first)      ← Phase 3+
-packages/shared   Zod schemas, types, constants, design tokens
-infrastructure/   Docker for local MongoDB
-docs/             architecture.md, api.md, deployment.md
+                       Expo mobile (Android/iOS)        Next.js web
+                        buyer + seller apps     public site · dashboards · /admin
+                                   \                    /
+                                    Express API  /api/v1
+                         MongoDB · Cloudinary · M-Pesa Daraja · Resend · Expo Push
 ```
 
-## Requirements
+| Folder | What | Stack |
+| ------ | ---- | ----- |
+| `apps/api` | REST API, the only place business rules and authorization live | Express 5, Mongoose 9, Zod 4, Pino, JWT + rotating refresh tokens |
+| `apps/web` | SEO marketplace, user dashboard, admin dashboard | Next.js 16 App Router, Tailwind 4, shadcn-style UI, TanStack Query, RHF, Recharts |
+| `apps/mobile` | Buyer and seller app | Expo SDK 57, Expo Router, NativeWind, TanStack Query, RHF, SecureStore |
+| `packages/shared` | Zod schemas, types, constants, design tokens, share-message builder | Isomorphic TypeScript |
+| `infrastructure/docker` | Local MongoDB, Dockerfiles, full-stack compose | |
+| `docs/` | [architecture](docs/architecture.md), [API](docs/api.md), [security](docs/security.md), [deployment](docs/deployment.md), [mobile](docs/mobile.md) | |
 
-- Node.js 22.12+
-- pnpm 10 (`corepack enable`)
-- Docker (for local MongoDB), or any MongoDB 7+ replica set
+## Quick start
 
-## Getting started
+Requirements: Node.js 22.12+, pnpm 10 (`corepack enable`), Docker (for MongoDB) or any MongoDB 7+ replica set.
 
 ```bash
 pnpm install
-pnpm db:up                               # MongoDB 8 single-node replica set on :27017
-cp apps/api/.env.example apps/api/.env   # then set JWT_ACCESS_SECRET (openssl rand -base64 48)
-pnpm seed                                # demo accounts, password Showroom2026
-pnpm dev:api                             # http://localhost:4000/api/v1
+pnpm db:up                                  # MongoDB 8 replica set on :27017
+
+cp apps/api/.env.example apps/api/.env      # set JWT_ACCESS_SECRET, DATA_ENCRYPTION_KEY, POSTER_SIGNING_SECRET
+cp apps/web/.env.example apps/web/.env.local  # same POSTER_SIGNING_SECRET
+pnpm seed                                   # plans, makes, 9 demo accounts, 48 vehicles
+pnpm dev:api                                # http://localhost:4000/api/v1  (Swagger: /api/docs)
+pnpm --filter @showrooms/web dev            # http://localhost:3000
+pnpm --filter @showrooms/mobile dev         # Expo; press "a" for Android
 ```
 
-API docs (Swagger UI): http://localhost:4000/api/docs · OpenAPI JSON: `/api/docs.json`
-(not served when `APP_ENV=production`).
+`MEDIA_PROVIDER=local` (the default in `apps/api/.env.example`) stores uploads
+on disk so photo uploads work without Cloudinary credentials. Payments are
+off until you add Daraja sandbox credentials (`PAYMENTS_PROVIDER=mpesa`).
 
-Demo accounts after `pnpm seed`:
+### Demo accounts (password `Showroom2026`)
 
-| Role   | Email                   |
-| ------ | ----------------------- |
-| Admin  | admin@showrooms.test    |
-| Buyer  | buyer@showrooms.test    |
-| Broker | broker@showrooms.test   |
-| Dealer | dealer@showrooms.test   |
+| Role | Email | Notes |
+| ---- | ----- | ----- |
+| Admin | admin@showrooms.test | `/admin` |
+| Buyer | buyer@showrooms.test | |
+| Broker | broker@showrooms.test | Otieno Motors, Nairobi, Pro plan |
+| Broker | kamau@showrooms.test | Kamau Car Deals, Nakuru, Pro plan |
+| Dealer | dealer@showrooms.test | Coast Auto Dealers, Mombasa, Dealer plan |
 
-Create a real administrator (the public API can never create one):
+Real administrators are created only from the command line:
+`ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm --filter @showrooms/api create-admin`.
 
-```bash
-ADMIN_EMAIL=ops@example.com ADMIN_PASSWORD='...' pnpm --filter @showrooms/api create-admin
-```
+## Scripts (from this folder)
 
-## Scripts (run from this folder)
+| Command | |
+| ------- | - |
+| `pnpm dev` | All apps in watch mode |
+| `pnpm build` | Production builds (API bundle, Next.js) |
+| `pnpm lint` / `pnpm typecheck` | Every package |
+| `pnpm test` | Shared + API integration + web unit + mobile Jest |
+| `pnpm --filter @showrooms/web test:e2e` | Playwright journeys against running API + web |
+| `pnpm --filter @showrooms/mobile export:android` | Bundle the Android app (Hermes) |
+| `pnpm seed` | Demo data (refuses to run in production) |
+| `pnpm --filter @showrooms/api sync-indexes` | Build MongoDB indexes (run per release) |
+| `pnpm db:up` / `pnpm db:down` | Local MongoDB |
 
-| Command          | What it does                                  |
-| ---------------- | --------------------------------------------- |
-| `pnpm dev`       | Every app in watch mode                       |
-| `pnpm dev:api`   | API only                                      |
-| `pnpm build`     | Production builds                             |
-| `pnpm typecheck` | `tsc` in every package                        |
-| `pnpm lint`      | ESLint in every package                       |
-| `pnpm test`      | Unit + integration tests                      |
-| `pnpm db:up/down`| Start/stop local MongoDB                      |
-| `pnpm seed`      | Demo data (refuses to run in production)      |
+## Tests
 
-API tests start an in-memory MongoDB replica set with `mongodb-memory-server`,
-which downloads `mongod` on first run. Offline, point it at a local binary:
-`MONGOMS_SYSTEM_BINARY=/path/to/mongod MONGOMS_VERSION=8.0.23 pnpm test`.
+| Suite | Count | Covers |
+| ----- | ----- | ------ |
+| `packages/shared` (Vitest) | 23 | phone normalisation, schemas, KES formatting, WhatsApp message, query strings |
+| `apps/api` (Vitest + supertest + in-memory MongoDB replica set) | 66 | all 13 journeys end to end, auth + refresh rotation/reuse, role and ownership checks, dealer staff scoping, moderation, duplicates, reports, verification privacy, reviews, plan limits, M-Pesa callbacks (bad token, duplicate/concurrent, amount mismatch, unverified, cancelled, retry), subscriptions, expiry jobs |
+| `apps/web` (Vitest) | 3 | open-redirect guard, poster signature, error mapping |
+| `apps/web` (Playwright, Pixel 7 + desktop) | 5 | buyer: register → search → details → WhatsApp → save → viewing; broker: register → upload photos → submit; admin approves; listing public; share; admin gate |
+| `apps/mobile` (Jest + RNTL) | 15 | SecureStore session, single-flight refresh rotation, offline behaviour, filters ↔ API keys, WhatsApp share, wizard validation, login screen |
 
-## Environment variables
+API tests download `mongod` on first run; offline, set
+`MONGOMS_SYSTEM_BINARY=/path/to/mongod MONGOMS_VERSION=8.0.23`.
 
-Every variable is documented in [`.env.example`](.env.example). The API
-validates its environment at startup and refuses to boot on missing or weak
-values. Secrets never use `NEXT_PUBLIC_` / `EXPO_PUBLIC_` prefixes.
+## What "verified" means
 
-## Build phases
-
-1. **Monorepo, auth, roles, shared schemas** — done
-2. Vehicles, listing APIs, uploads, public website, search
-3. Expo buyer experience, broker onboarding, listing, WhatsApp sharing
-4. Web dashboards, mobile broker dashboard, inquiries, analytics
-5. Admin dashboard, moderation, verification, reports
-6. M-Pesa, subscriptions, boosts, notifications
-7. Testing, security review, performance, deployment
-
-See [docs/architecture.md](docs/architecture.md) and [docs/api.md](docs/api.md).
+*Verified seller*: identity (and business documents for dealers) checked by
+our team. *Verified listing*: staff reviewed the listing's details. Neither
+guarantees a vehicle's condition, ownership or authenticity. Every listing
+shows: **Always inspect and verify a vehicle before making payment.**

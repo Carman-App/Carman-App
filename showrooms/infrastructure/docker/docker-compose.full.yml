@@ -1,0 +1,34 @@
+# The whole stack on one machine (staging-style smoke testing).
+#   cp infrastructure/docker/stack.env.example infrastructure/docker/stack.env   # fill in secrets
+#   docker compose -f infrastructure/docker/docker-compose.full.yml up --build
+name: showrooms-stack
+
+services:
+  mongo:
+    extends: { file: docker-compose.yml, service: mongo }
+
+  api:
+    build: { context: ../.., dockerfile: infrastructure/docker/api.Dockerfile }
+    env_file: stack.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/showrooms?replicaSet=rs0&directConnection=true
+      PORT: "4000"
+    ports: ["4000:4000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    environment:
+      API_INTERNAL_URL: http://api:4000/api/v1
+      POSTER_SIGNING_SECRET: ${POSTER_SIGNING_SECRET:?set POSTER_SIGNING_SECRET}
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  mongo-data:

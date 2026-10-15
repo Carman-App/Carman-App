@@ -17,6 +17,7 @@ import { VehicleInquiry } from "../src/modules/inquiries/inquiry.model";
 import { createBrokerProfile, createDealerProfile } from "../src/modules/sellers/seller-context";
 import { getSettings } from "../src/modules/settings/settings.service";
 import { ensureDefaultPlans } from "../src/modules/subscriptions/plans";
+import { Subscription, SubscriptionPlan } from "../src/modules/subscriptions/subscription.model";
 import { User } from "../src/modules/users/user.model";
 import { ContactClick, VehicleView } from "../src/modules/vehicles/vehicle-events.model";
 import { Vehicle } from "../src/modules/vehicles/vehicle.model";
@@ -142,6 +143,13 @@ for (const [sIndex, seller] of SELLERS.entries()) {
     profile.set({ town: seller.town, description: seller.bio, address: `${AREAS[seller.town]?.[0] ?? "Town centre"}, ${seller.town}`, openingHours: "Mon–Sat 8:00–18:00", verificationStatus: "VERIFIED", verifiedAt: new Date() });
     await profile.save();
     dealerId = profile._id;
+  }
+
+  // Demo sellers on paid plans so posters, lead tracking and advanced analytics can be tried.
+  const planCode = seller.kind === "DEALER" ? "DEALER" : sIndex === 0 || sIndex === 1 ? "PRO" : null;
+  if (planCode && !(await Subscription.exists({ userId: user._id, status: "ACTIVE" }))) {
+    const plan = (await SubscriptionPlan.findOne({ code: planCode }))!;
+    await Subscription.create({ userId: user._id, planId: plan._id, planCode, planName: plan.name, priceKes: plan.priceKes, periodDays: plan.periodDays, status: "ACTIVE", startsAt: new Date(), endsAt: new Date(Date.now() + 30 * 86_400_000) });
   }
 
   if (await Vehicle.exists({ sellerId: user._id })) continue;

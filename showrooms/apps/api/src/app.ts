@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { Router, type Express } from "express";
@@ -65,6 +66,8 @@ export function createApp(options: AppOptions = {}): Express {
       maxAge: 600,
     }),
   );
+  // gzip JSON: listing pages are much smaller over slow mobile connections.
+  app.use(compression({ threshold: 1024 }));
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 
