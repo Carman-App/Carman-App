@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/plus-jakarta-sans/800.css";
+
+/*
+ * Showrooms design tokens (mirrors packages/shared/constants/design.ts).
+ * Light surfaces, charcoal ink, one signal-orange accent for prices and
+ * primary actions. WhatsApp green is reserved for WhatsApp buttons.
+ * To use Satoshi: self-host its woff2 in /public/fonts, add @font-face, and
+ * put "Satoshi" first in --font-sans.
+ */
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-background: #ffffff;
+  --color-surface: #f7f7f5;
+  --color-border: #e6e6e3;
+  --color-ink: #1c1f23;
+  --color-ink-muted: #5b6068;
+  --color-ink-subtle: #8a8f96;
+
+  --color-accent: #c2410c;
+  --color-accent-hover: #9a3412;
+  --color-accent-soft: #fff1ea;
+
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fef2f2;
+  --color-info: #1d4ed8;
+  --color-info-soft: #eff6ff;
+  --color-whatsapp: #1fa855;
+  --color-whatsapp-hover: #178a45;
+  --color-verified: #1d4ed8;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-card: 0 1px 2px rgb(28 31 35 / 0.04), 0 2px 8px rgb(28 31 35 / 0.04);
+  --shadow-raised: 0 4px 16px rgb(28 31 35 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-ink antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+  * {
+    @apply border-border;
+  }
+}
+
+@utility container-page {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

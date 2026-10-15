@@ -6,3 +6,8 @@ dist
 .next
 .expo
 coverage
+.uploads
+test-results
+playwright-report
+*.tsbuildinfo
+next-env.d.ts

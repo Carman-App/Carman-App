@@ -41,7 +41,9 @@ const envSchema = z
     POSTER_SIGNING_SECRET: z.string().min(32),
     PUBLIC_API_URL: z.url().default("http://localhost:4000"),
 
-    MEDIA_PROVIDER: z.enum(["cloudinary", "disabled"]).default("disabled"),
+    /** "local" stores files on disk under MEDIA_LOCAL_DIR: development only. */
+    MEDIA_PROVIDER: z.enum(["cloudinary", "local", "disabled"]).default("disabled"),
+    MEDIA_LOCAL_DIR: z.string().default(".uploads"),
     CLOUDINARY_CLOUD_NAME: z.string().optional(),
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
@@ -83,6 +85,9 @@ const envSchema = z
       for (const key of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"] as const) {
         if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "Required when MEDIA_PROVIDER=cloudinary" });
       }
+    }
+    if (env.MEDIA_PROVIDER === "local" && (env.APP_ENV === "production" || env.APP_ENV === "staging")) {
+      ctx.addIssue({ code: "custom", path: ["MEDIA_PROVIDER"], message: "Local media storage is for development only" });
     }
     if (env.PAYMENTS_PROVIDER === "mpesa") {
       for (const key of ["MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET", "MPESA_SHORTCODE", "MPESA_PASSKEY", "MPESA_CALLBACK_URL", "MPESA_CALLBACK_TOKEN"] as const) {

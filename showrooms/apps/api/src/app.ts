@@ -12,6 +12,8 @@ import { buildOpenApiSpec } from "./docs/openapi";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
 import { createRateLimiters } from "./middleware/rate-limit";
 import { noStore } from "./middleware/cache";
+import { services } from "./services";
+import { LocalMediaService } from "./services/media/local.media";
 import { adminRoutes } from "./modules/admin/admin.routes";
 import { analyticsRoutes } from "./modules/analytics/analytics.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
@@ -94,6 +96,10 @@ export function createApp(options: AppOptions = {}): Express {
   api.use("/boosts", boostsRoutes());
   api.use("/admin", adminRoutes());
   app.use("/api/v1", api);
+
+  // Development-only local media storage (MEDIA_PROVIDER=local).
+  const media = services().media;
+  if (media instanceof LocalMediaService) app.use(limits.general, media.router());
 
   if (env.APP_ENV !== "production") {
     const spec = buildOpenApiSpec();
